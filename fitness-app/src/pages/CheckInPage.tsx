@@ -364,23 +364,53 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     setPhotoLogs(ph.data ?? []);
   };
 
+  // Convierte cualquier imagen (incluido HEIC de iPhone) a JPEG via Canvas.
+  // Así siempre se sube un .jpg que cualquier navegador puede mostrar.
+  const toJpeg = (rawFile: File): Promise<File> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(rawFile);
+      img.onload = () => {
+        // Reducir si es muy grande (max 1920px en el lado mayor)
+        const maxDim = 1920;
+        const ratio = Math.min(maxDim / img.width, maxDim / img.height, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(objectUrl);
+        canvas.toBlob(
+          blob => blob
+            ? resolve(new File([blob], "photo.jpg", { type: "image/jpeg" }))
+            : reject(new Error("Conversión fallida")),
+          "image/jpeg", 0.85
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("No se pudo leer la imagen")); };
+      img.src = objectUrl;
+    });
+
   const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
     setUploading(true);
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `${profile.id}/${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from("checkin-photos")
-      .upload(path, file, { contentType: file.type, upsert: false });
-    if (!upErr) {
-      const { data: urlData } = supabase.storage.from("checkin-photos").getPublicUrl(path);
-      await supabase.from("checkin_photos").insert({
-        client_id: profile.id,
-        url: urlData.publicUrl,
-        taken_at: today(),
-      });
-      await loadAll();
+    try {
+      const file = await toJpeg(rawFile);           // → siempre JPEG
+      const path = `${profile.id}/${Date.now()}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from("checkin-photos")
+        .upload(path, file, { contentType: "image/jpeg", upsert: false });
+      if (!upErr) {
+        const { data: urlData } = supabase.storage.from("checkin-photos").getPublicUrl(path);
+        await supabase.from("checkin_photos").insert({
+          client_id: profile.id,
+          url: urlData.publicUrl,
+          taken_at: today(),
+        });
+        await loadAll();
+      }
+    } catch (err) {
+      console.error("Error al subir foto:", err);
     }
     setUploading(false);
     e.target.value = "";
