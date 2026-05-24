@@ -5,6 +5,7 @@ import { AntroTable } from "./CheckInPage";
 import VisitaPresencial from "./VisitaPresencial";
 import DietEditor from "./DietEditor";
 import { MVPWordmark } from "../components/MVPLogo";
+import MacroCalculator from "../components/MacroCalculator";
 
 type Profile = { id: string; full_name: string; role: string };
 type CatalogEx = { id: number; muscle_group: string; name: string; video_ref: string | null };
@@ -49,7 +50,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [clientLogs, setClientLogs] = useState<ClientLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [selectedTrainingDay, setSelectedTrainingDay] = useState<string | null>(null);
-  const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin" | "dieta">("entreno");
+  const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin" | "dieta" | "calculadora">("entreno");
   const [clientCheckIn, setClientCheckIn] = useState<{ weights: any[]; perims: any[]; folds: any[]; fatigues: any[]; photos: any[] } | null>(null);
   const [adminPreviewUrl, setAdminPreviewUrl] = useState<string | null>(null);
   const [loadingCheckIn, setLoadingCheckIn] = useState(false);
@@ -453,6 +454,15 @@ export default function AdminPage({ profile }: { profile: Profile }) {
               : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
             🥗 Dieta
           </button>
+          <button
+            onClick={() => setClientViewTab("calculadora")}
+            className={"px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap " +
+              (clientViewTab === "calculadora" ? "text-white" : "text-neutral-400")}
+            style={clientViewTab === "calculadora"
+              ? { background: "#8B1A2F", border: "1px solid #A01F38" }
+              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+            🧮 Calc.
+          </button>
           <div className="flex-1" />
           <button
             onClick={() => setShowVisita(true)}
@@ -699,6 +709,11 @@ export default function AdminPage({ profile }: { profile: Profile }) {
               </div>
             );
           })()}
+          {/* ── Calculadora de macros ── */}
+          {clientViewTab === "calculadora" && (
+            <MacroCalculator clientName={viewingClient.full_name} clientId={viewingClient.id} />
+          )}
+
         </div>
       </div>
 

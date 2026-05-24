@@ -1,178 +1,252 @@
-// Base de datos de ingredientes – valores por 100 g (crudo/seco salvo indicación)
-// Fuentes: AESAN, etiquetas Mercadona/Hacendado, FatSecret ES, Heinz
+// ──────────────────────────────────────────────────────────────────
+// ingredients.ts  –  Base de datos de alimentos
+// Fuente: Excel "Dieta para Fran" (entrenador)
+// Todos los valores son por 100 g de producto
+// ──────────────────────────────────────────────────────────────────
 
-export type IngCategory =
-  | "huevo"
-  | "carne"
-  | "pescado"
-  | "fiambre"
-  | "lacteo"
-  | "suplemento"
-  | "pan"
-  | "cereal_desayuno"
-  | "pasta_arroz"
-  | "tuberculo"
-  | "legumbre"
-  | "grasa"
-  | "verdura"
-  | "fruta"
-  | "bebida"
-  | "condimento"
-  | "postre";
+export type IngredientCategory =
+  | "lean_protein"    // Proteínas magras
+  | "fatty_protein"   // Proteínas grasas
+  | "veggie_protein"  // Proteínas vegetales
+  | "protein_carb"    // Hidratos proteicos (legumbres, avena, quinoa…)
+  | "clean_carb"      // Hidratos limpios (arroz, pasta, patata…)
+  | "fatty_carb"      // Hidratos grasos (pan integral, fajitas…)
+  | "fruit"           // Fruta
+  | "fat"             // Grasas y frutos secos
+  | "veggie_fat";     // Verduras con grasa (gazpacho, crema)
 
-export type MainSlot = "proteina" | "hidrato" | "grasa" | "extra";
+// Alias para compatibilidad con código antiguo
+export type IngCategory = IngredientCategory;
 
-export type Ingredient = {
-  id: string;
-  name: string;
-  kcal: number;
-  fat: number;
-  carbs: number;
-  protein: number;
-  category: IngCategory;
-  slot: MainSlot;
+export const CATEGORY_LABELS: Record<IngredientCategory, string> = {
+  lean_protein:   "Proteína Magra",
+  fatty_protein:  "Proteína Grasa",
+  veggie_protein: "Proteína Vegetal",
+  protein_carb:   "Hidrato Proteico",
+  clean_carb:     "Hidrato Limpio",
+  fatty_carb:     "Hidrato Graso",
+  fruit:          "Fruta",
+  fat:            "Grasa / Fruto Seco",
+  veggie_fat:     "Verdura Grasa",
 };
 
-export const INGREDIENTS: Ingredient[] = [
-  // ── PROTEÍNAS ─────────────────────────────────────────────────
-  // Huevos
-  { id: "ING001", name: "Claras de huevo líquidas", kcal: 42,  fat: 0.1,  carbs: 0.3,  protein: 9.0,  category: "huevo",       slot: "proteina" },
-  { id: "ING002", name: "Huevo entero",              kcal: 150, fat: 10.5, carbs: 0.6,  protein: 13.0, category: "huevo",       slot: "proteina" },
-  // Carnes
-  { id: "ING003", name: "Pechuga de pollo",          kcal: 106, fat: 1.2,  carbs: 0.0,  protein: 22.0, category: "carne",       slot: "proteina" },
-  { id: "ING004", name: "Pechuga de pavo",           kcal: 103, fat: 1.0,  carbs: 0.0,  protein: 22.5, category: "carne",       slot: "proteina" },
-  { id: "ING005", name: "Lomo de cerdo",             kcal: 143, fat: 5.5,  carbs: 0.0,  protein: 22.5, category: "carne",       slot: "proteina" },
-  { id: "ING006", name: "Ternera magra picada/filetes", kcal: 155, fat: 7.0, carbs: 0.0, protein: 22.0, category: "carne",      slot: "proteina" },
-  { id: "ING011", name: "Carne picada pavo/pollo Hacendado", kcal: 105, fat: 2.5, carbs: 0.0, protein: 20.5, category: "carne", slot: "proteina" },
-  { id: "ING012", name: "Hamburguesas pavo/pollo Hacendado", kcal: 115, fat: 4.0, carbs: 2.0, protein: 18.0, category: "carne", slot: "proteina" },
-  { id: "ING013", name: "Salchichas de pollo Hacendado",     kcal: 135, fat: 7.0, carbs: 2.5, protein: 16.0, category: "carne", slot: "proteina" },
-  { id: "ING014", name: "Salchichas de pavo 3% grasa",       kcal: 95,  fat: 3.0, carbs: 2.0, protein: 15.0, category: "carne", slot: "proteina" },
-  // Pescados
-  { id: "ING007", name: "Merluza",            kcal: 85,  fat: 1.5, carbs: 0.0, protein: 18.0, category: "pescado", slot: "proteina" },
-  { id: "ING008", name: "Lenguado",           kcal: 91,  fat: 2.0, carbs: 0.0, protein: 18.5, category: "pescado", slot: "proteina" },
-  { id: "ING009", name: "Lubina",             kcal: 97,  fat: 2.0, carbs: 0.0, protein: 18.5, category: "pescado", slot: "proteina" },
-  { id: "ING010", name: "Atún al natural/plancha", kcal: 98, fat: 0.9, carbs: 0.0, protein: 22.5, category: "pescado", slot: "proteina" },
-  // Fiambres y curados
-  { id: "ING015", name: "Lomo embuchado",              kcal: 190, fat: 9.5,  carbs: 0.0, protein: 26.0, category: "fiambre", slot: "proteina" },
-  { id: "ING016", name: "Lomo de pavo curado",         kcal: 105, fat: 2.0,  carbs: 0.5, protein: 22.0, category: "fiambre", slot: "proteina" },
-  { id: "ING017", name: "Fiambre pechuga de pavo",     kcal: 95,  fat: 1.0,  carbs: 2.0, protein: 19.5, category: "fiambre", slot: "proteina" },
-  { id: "ING018", name: "Jamón serrano (sin grasa)",   kcal: 247, fat: 15.0, carbs: 0.0, protein: 28.0, category: "fiambre", slot: "proteina" },
-  // Lácteos
-  { id: "ING019", name: "Yogur sin lactosa",           kcal: 55,  fat: 1.5, carbs: 4.5, protein: 5.0,  category: "lacteo", slot: "proteina" },
-  { id: "ING020", name: "Yogur proteico",              kcal: 62,  fat: 0.5, carbs: 6.5, protein: 8.5,  category: "lacteo", slot: "proteina" },
-  { id: "ING021", name: "Yogur +Proteínas Hacendado",  kcal: 65,  fat: 0.3, carbs: 7.0, protein: 9.5,  category: "lacteo", slot: "proteina" },
-  { id: "ING022", name: "Mousse proteico Hacendado",   kcal: 88,  fat: 2.5, carbs: 8.5, protein: 7.5,  category: "lacteo", slot: "proteina" },
-  { id: "ING023", name: "Queso fresco desnatado Burgos", kcal: 86, fat: 3.5, carbs: 2.5, protein: 12.0, category: "lacteo", slot: "proteina" },
-  { id: "ING024", name: "Queso fresco batido desnatado", kcal: 58, fat: 0.3, carbs: 4.5, protein: 9.5,  category: "lacteo", slot: "proteina" },
-  { id: "ING025", name: "Yogur griego ligero natural",  kcal: 60,  fat: 2.0, carbs: 5.0, protein: 6.5,  category: "lacteo", slot: "proteina" },
-  // Suplementos
-  { id: "ING028b", name: "Proteína ISO (whey isolate)", kcal: 380, fat: 1.5, carbs: 4.5, protein: 84.0, category: "suplemento", slot: "proteina" },
+export interface Ingredient {
+  id: string;
+  name: string;
+  category: IngredientCategory;
+  kcal: number;    // por 100 g
+  protein: number; // g por 100 g
+  carbs: number;   // g por 100 g
+  fat: number;     // g por 100 g
+}
 
-  // ── HIDRATOS ──────────────────────────────────────────────────
-  // Pan
-  { id: "ING031", name: "Pan de centeno",                    kcal: 258, fat: 1.7, carbs: 49.0, protein: 8.9,  category: "pan", slot: "hidrato" },
-  { id: "ING032", name: "Pan de espelta",                    kcal: 248, fat: 2.5, carbs: 44.0, protein: 9.5,  category: "pan", slot: "hidrato" },
-  { id: "ING033", name: "Pan tostado 100% integral Mercadona", kcal: 352, fat: 3.5, carbs: 64.0, protein: 11.5, category: "pan", slot: "hidrato" },
-  { id: "ING034", name: "Pan integral",                      kcal: 250, fat: 3.0, carbs: 44.0, protein: 9.5,  category: "pan", slot: "hidrato" },
-  { id: "ING035", name: "Tortas de arroz",                   kcal: 381, fat: 2.5, carbs: 80.0, protein: 7.5,  category: "pan", slot: "hidrato" },
-  { id: "ING036", name: "Tortas de maíz",                    kcal: 375, fat: 3.0, carbs: 78.0, protein: 7.0,  category: "pan", slot: "hidrato" },
-  // Cereales de desayuno
-  { id: "ING028", name: "Harina / Copos de avena (neutros)", kcal: 375, fat: 7.5, carbs: 58.0, protein: 13.0, category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING029", name: "Copos de avena finos",              kcal: 375, fat: 7.5, carbs: 59.0, protein: 13.0, category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING030", name: "Avena Crunchy sin azúcar",          kcal: 415, fat: 14.0, carbs: 56.0, protein: 12.0, category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING045", name: "Corn Flakes sin azúcar añadido",    kcal: 360, fat: 0.9,  carbs: 80.0, protein: 7.5,  category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING046", name: "Crema de arroz / Papilla cereales", kcal: 365, fat: 1.2,  carbs: 80.0, protein: 7.0,  category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING047", name: "Copos de trigo y arroz integral",   kcal: 356, fat: 1.8,  carbs: 74.0, protein: 9.5,  category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING048", name: "Rice Krispies Kellogg's",           kcal: 384, fat: 0.9,  carbs: 85.0, protein: 7.0,  category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING049", name: "Choco Zero Esgir",                  kcal: 360, fat: 4.0,  carbs: 72.0, protein: 8.0,  category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING050", name: "Cereal Mix 0% azúcares Hacendado",  kcal: 368, fat: 5.0,  carbs: 70.0, protein: 10.0, category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING051", name: "Weetabix 95% trigo integral",       kcal: 340, fat: 2.7,  carbs: 67.0, protein: 12.0, category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING052", name: "Muesli sin azúcares añadidos",      kcal: 370, fat: 8.0,  carbs: 60.0, protein: 9.5,  category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING053", name: "Copos de maíz sin azúcares añadidos", kcal: 360, fat: 0.9, carbs: 80.0, protein: 7.5,  category: "cereal_desayuno", slot: "hidrato" },
-  { id: "ING054", name: "Churros congelados (airfryer)",     kcal: 290, fat: 10.0, carbs: 42.0, protein: 5.5,  category: "cereal_desayuno", slot: "hidrato" },
-  // Pasta, arroz, otros
-  { id: "ING037", name: "Pasta seca (espagueti/macarrón)",   kcal: 356, fat: 1.5, carbs: 72.0, protein: 12.5, category: "pasta_arroz", slot: "hidrato" },
-  { id: "ING038", name: "Arroz seco",                        kcal: 357, fat: 0.8, carbs: 78.0, protein: 7.0,  category: "pasta_arroz", slot: "hidrato" },
-  { id: "ING039", name: "Arroz tres delicias Hacendado",     kcal: 150, fat: 4.5, carbs: 22.0, protein: 4.0,  category: "pasta_arroz", slot: "hidrato" },
-  { id: "ING040", name: "Ñoquis de patata",                  kcal: 168, fat: 1.5, carbs: 34.0, protein: 4.0,  category: "pasta_arroz", slot: "hidrato" },
-  { id: "ING041", name: "Quinoa seca",                       kcal: 368, fat: 6.0, carbs: 64.0, protein: 14.0, category: "pasta_arroz", slot: "hidrato" },
-  { id: "ING042", name: "Cuscús seco",                       kcal: 357, fat: 0.6, carbs: 72.0, protein: 12.8, category: "pasta_arroz", slot: "hidrato" },
-  { id: "ING043", name: "Noodles de arroz",                  kcal: 356, fat: 0.6, carbs: 81.0, protein: 7.0,  category: "pasta_arroz", slot: "hidrato" },
-  { id: "ING044", name: "Fajitas (tortillas de trigo)",      kcal: 307, fat: 7.0, carbs: 51.0, protein: 9.0,  category: "pasta_arroz", slot: "hidrato" },
-  // Tubérculos
-  { id: "ING055", name: "Patata",        kcal: 77,  fat: 0.1, carbs: 17.0, protein: 2.0, category: "tuberculo", slot: "hidrato" },
-  { id: "ING056", name: "Boniato rojo",  kcal: 86,  fat: 0.1, carbs: 20.0, protein: 1.6, category: "tuberculo", slot: "hidrato" },
-  // Legumbres
-  { id: "ING104", name: "Legumbre cocida de bote (garb./lentejas/alubias)", kcal: 97,  fat: 1.5, carbs: 13.0, protein: 6.7, category: "legumbre", slot: "hidrato" },
-  { id: "ING105", name: "Guisantes congelados",        kcal: 72,  fat: 0.4, carbs: 11.5, protein: 5.0, category: "legumbre", slot: "hidrato" },
-  { id: "ING106", name: "Alubias con tomate Heinz",    kcal: 73,  fat: 0.3, carbs: 12.5, protein: 5.0, category: "legumbre", slot: "hidrato" },
+export const ingredients: Ingredient[] = [
 
-  // ── GRASAS ────────────────────────────────────────────────────
-  { id: "ING057", name: "Aceite de oliva virgen extra", kcal: 884, fat: 100.0, carbs: 0.0, protein: 0.0, category: "grasa", slot: "grasa" },
-  { id: "ING058", name: "Aceite de coco",               kcal: 892, fat: 99.1,  carbs: 0.0, protein: 0.0, category: "grasa", slot: "grasa" },
-  { id: "ING059", name: "Aguacate",                     kcal: 160, fat: 14.7,  carbs: 8.5, protein: 2.0, category: "grasa", slot: "grasa" },
-  { id: "ING060", name: "Guacamole 95% aguacate",       kcal: 155, fat: 13.5,  carbs: 7.5, protein: 2.0, category: "grasa", slot: "grasa" },
-  { id: "ING061", name: "Chocolate negro 85% cacao",    kcal: 580, fat: 45.0,  carbs: 20.0, protein: 12.0, category: "grasa", slot: "grasa" },
+  // ── PROTEÍNAS MAGRAS ─────────────────────────────────────────────
+  { id: "iso",             name: "Proteína ISO",                                   category: "lean_protein",   kcal: 379,   protein: 90,    carbs: 2.1,  fat: 1.2  },
+  { id: "whey",            name: "Proteína Whey",                                  category: "lean_protein",   kcal: 386,   protein: 75,    carbs: 8.4,  fat: 5.6  },
+  { id: "yogur_prot",      name: "Yogur Proteico (Hacendado)",                     category: "lean_protein",   kcal: 52,    protein: 10,    carbs: 3.1,  fat: 0.5  },
+  { id: "qso_batido",      name: "Queso Fresco Batido Desnatado",                  category: "lean_protein",   kcal: 46,    protein: 8,     carbs: 3.5,  fat: 0.1  },
+  { id: "leche_prot",      name: "Leche +Proteínas (Hacendado)",                   category: "lean_protein",   kcal: 46,    protein: 7.6,   carbs: 2.2,  fat: 0.6  },
+  { id: "qso_eatlean",     name: "Queso Proteico EATLEAN",                         category: "lean_protein",   kcal: 169,   protein: 37,    carbs: 0.5,  fat: 3.0  },
+  { id: "qso_fresco",      name: "Queso Fresco Desnatado (Burgos)",                category: "lean_protein",   kcal: 68,    protein: 12.3,  carbs: 4.4,  fat: 0.2  },
+  { id: "clara",           name: "Clara de Huevo",                                 category: "lean_protein",   kcal: 50,    protein: 11,    carbs: 0.5,  fat: 0.1  },
+  { id: "pollo",           name: "Pechuga de Pollo",                               category: "lean_protein",   kcal: 107,   protein: 23,    carbs: 0.1,  fat: 1.6  },
+  { id: "pavo",            name: "Pechuga de Pavo",                                category: "lean_protein",   kcal: 103,   protein: 24,    carbs: 0,    fat: 0.9  },
+  { id: "fiambre_pavo",    name: "Fiambre de Pechuga de Pavo",                     category: "lean_protein",   kcal: 76,    protein: 16.5,  carbs: 0.5,  fat: 1.3  },
+  { id: "salchi_pavo_ff",  name: "Salchichas de Pavo Frankfurt (Hacendado)",       category: "lean_protein",   kcal: 92.5,  protein: 13.1,  carbs: 2.3,  fat: 3.0  },
+  { id: "lomo_cerdo",      name: "Lomo de Cerdo",                                  category: "lean_protein",   kcal: 117,   protein: 18,    carbs: 0,    fat: 5.0  },
+  { id: "atun_lata",       name: "Atún en Lata al Natural",                        category: "lean_protein",   kcal: 89,    protein: 18,    carbs: 0.5,  fat: 0.7  },
+  { id: "merluza",         name: "Merluza",                                        category: "lean_protein",   kcal: 82,    protein: 18,    carbs: 0.5,  fat: 1.2  },
+  { id: "tilapia",         name: "Tilapia Congelada",                              category: "lean_protein",   kcal: 96,    protein: 20,    carbs: 0,    fat: 1.7  },
+  { id: "lenguado",        name: "Lenguado",                                       category: "lean_protein",   kcal: 91,    protein: 18.8,  carbs: 1.0,  fat: 1.2  },
+  { id: "lubina",          name: "Lubina",                                         category: "lean_protein",   kcal: 148,   protein: 20.73, carbs: 0,    fat: 7.9  },
+  { id: "lomo_atun",       name: "Lomo de Atún (plancha)",                         category: "lean_protein",   kcal: 89,    protein: 20,    carbs: 1.3,  fat: 0.6  },
+  { id: "sepia",           name: "Sepia",                                          category: "lean_protein",   kcal: 78,    protein: 18,    carbs: 0.6,  fat: 0.5  },
+  { id: "calamar",         name: "Calamar",                                        category: "lean_protein",   kcal: 78,    protein: 16,    carbs: 0,    fat: 1.6  },
+  { id: "gambas",          name: "Gambas",                                         category: "lean_protein",   kcal: 77,    protein: 16.4,  carbs: 0.7,  fat: 0.94 },
 
-  // ── VERDURAS ─────────────────────────────────────────────────
-  { id: "ING076", name: "Brócoli",                   kcal: 34,  fat: 0.4, carbs: 7.0,  protein: 2.8, category: "verdura", slot: "extra" },
-  { id: "ING077", name: "Alcachofa",                 kcal: 47,  fat: 0.2, carbs: 10.5, protein: 3.3, category: "verdura", slot: "extra" },
-  { id: "ING078", name: "Espárrago verde",           kcal: 23,  fat: 0.2, carbs: 3.7,  protein: 2.2, category: "verdura", slot: "extra" },
-  { id: "ING079", name: "Espárrago blanco conserva", kcal: 20,  fat: 0.5, carbs: 2.0,  protein: 2.0, category: "verdura", slot: "extra" },
-  { id: "ING080", name: "Judía verde",               kcal: 28,  fat: 0.1, carbs: 4.8,  protein: 2.0, category: "verdura", slot: "extra" },
-  { id: "ING081", name: "Cebolla",                   kcal: 40,  fat: 0.1, carbs: 8.6,  protein: 1.3, category: "verdura", slot: "extra" },
-  { id: "ING082", name: "Champiñones",               kcal: 22,  fat: 0.3, carbs: 3.3,  protein: 3.1, category: "verdura", slot: "extra" },
-  { id: "ING083", name: "Pimiento rojo",             kcal: 31,  fat: 0.3, carbs: 6.0,  protein: 1.0, category: "verdura", slot: "extra" },
-  { id: "ING084", name: "Pimiento verde",            kcal: 20,  fat: 0.2, carbs: 3.0,  protein: 0.9, category: "verdura", slot: "extra" },
-  { id: "ING085", name: "Berenjena",                 kcal: 25,  fat: 0.2, carbs: 5.7,  protein: 1.0, category: "verdura", slot: "extra" },
-  { id: "ING086", name: "Coliflor",                  kcal: 25,  fat: 0.3, carbs: 5.0,  protein: 1.9, category: "verdura", slot: "extra" },
-  { id: "ING087", name: "Zanahoria",                 kcal: 35,  fat: 0.2, carbs: 7.5,  protein: 0.9, category: "verdura", slot: "extra" },
-  { id: "ING088", name: "Lechuga romana",            kcal: 16,  fat: 0.2, carbs: 2.0,  protein: 1.0, category: "verdura", slot: "extra" },
-  { id: "ING089", name: "Tomate natural",            kcal: 18,  fat: 0.2, carbs: 3.0,  protein: 0.9, category: "verdura", slot: "extra" },
-  { id: "ING090", name: "Pepino",                    kcal: 15,  fat: 0.1, carbs: 2.9,  protein: 0.7, category: "verdura", slot: "extra" },
-  { id: "ING091", name: "Remolacha en conserva",     kcal: 45,  fat: 0.1, carbs: 10.0, protein: 1.5, category: "verdura", slot: "extra" },
-  { id: "ING092", name: "Maíz dulce en conserva",    kcal: 90,  fat: 1.5, carbs: 17.0, protein: 2.7, category: "verdura", slot: "extra" },
-  { id: "ING093", name: "Pepinillos en vinagre",     kcal: 12,  fat: 0.1, carbs: 2.2,  protein: 0.6, category: "verdura", slot: "extra" },
-  { id: "ING094", name: "Espinacas",                 kcal: 23,  fat: 0.4, carbs: 1.4,  protein: 2.9, category: "verdura", slot: "extra" },
-  { id: "ING095", name: "Ajo",                       kcal: 149, fat: 0.5, carbs: 33.0, protein: 3.4, category: "verdura", slot: "extra" },
-  { id: "ING096", name: "Acelgas",                   kcal: 19,  fat: 0.2, carbs: 2.0,  protein: 1.8, category: "verdura", slot: "extra" },
-  { id: "ING097", name: "Cebolleta / pimiento vinagre", kcal: 14, fat: 0.1, carbs: 2.5, protein: 0.7, category: "verdura", slot: "extra" },
+  // ── PROTEÍNAS GRASAS ─────────────────────────────────────────────
+  { id: "mozza_light",     name: "Mozzarella Light (en agua)",                     category: "fatty_protein",  kcal: 153,   protein: 17,    carbs: 1.0,  fat: 9.0  },
+  { id: "qso_pizza",       name: "Queso Pizza Light Arla",                         category: "fatty_protein",  kcal: 241,   protein: 31,    carbs: 1.4,  fat: 12.0 },
+  { id: "havarti",         name: "Queso Havarti Light",                            category: "fatty_protein",  kcal: 252,   protein: 27,    carbs: 2.2,  fat: 15.0 },
+  { id: "lomo_embuchado",  name: "Lomo Embuchado de Cerdo",                        category: "fatty_protein",  kcal: 199,   protein: 38,    carbs: 0.5,  fat: 5.0  },
+  { id: "lomo_curado_pavo",name: "Lomo Curado de Pavo",                            category: "fatty_protein",  kcal: 215,   protein: 40,    carbs: 0.7,  fat: 5.8  },
+  { id: "jamon",           name: "Jamón Serrano (sin grasa visible)",              category: "fatty_protein",  kcal: 232,   protein: 31,    carbs: 0,    fat: 12.0 },
+  { id: "ternera",         name: "Cadera de Ternera Magra",                        category: "fatty_protein",  kcal: 122,   protein: 23,    carbs: 2.2,  fat: 3.5  },
+  { id: "picada_pollo",    name: "Carne Picada Pavo/Pollo (Hacendado)",            category: "fatty_protein",  kcal: 137,   protein: 19,    carbs: 1.0,  fat: 6.0  },
+  { id: "hamburguesa",     name: "Hamburguesa Pavo/Pollo (Hacendado)",             category: "fatty_protein",  kcal: 129,   protein: 18.4,  carbs: 2.6,  fat: 5.0  },
+  { id: "salchi_pollo",    name: "Salchichas de Pollo Embutido (Hacendado)",       category: "fatty_protein",  kcal: 136,   protein: 18,    carbs: 2.5,  fat: 6.0  },
+  { id: "huevo",           name: "Huevo Entero",                                   category: "fatty_protein",  kcal: 191,   protein: 12.7,  carbs: 1.0,  fat: 9.7  },
+  { id: "salmon",          name: "Salmón",                                         category: "fatty_protein",  kcal: 224,   protein: 20,    carbs: 0,    fat: 16.0 },
+  { id: "trucha",          name: "Trucha",                                         category: "fatty_protein",  kcal: 174,   protein: 21,    carbs: 0,    fat: 10.0 },
 
-  // ── FRUTAS ───────────────────────────────────────────────────
-  { id: "ING098", name: "Fruta genérica (manzana/naranja/pera…)", kcal: 52, fat: 0.2, carbs: 12.0, protein: 0.3, category: "fruta", slot: "extra" },
-  { id: "ING099", name: "Fresas",                  kcal: 33,  fat: 0.3, carbs: 7.7,  protein: 0.7, category: "fruta", slot: "extra" },
-  { id: "ING100", name: "Frambuesas",              kcal: 43,  fat: 0.5, carbs: 9.5,  protein: 1.4, category: "fruta", slot: "extra" },
-  { id: "ING101", name: "Arándanos congelados",    kcal: 57,  fat: 0.3, carbs: 14.5, protein: 0.7, category: "fruta", slot: "extra" },
-  { id: "ING102", name: "Frutos rojos congelados (mix)", kcal: 45, fat: 0.3, carbs: 10.0, protein: 1.0, category: "fruta", slot: "extra" },
-  { id: "ING103", name: "Plátano",                 kcal: 89,  fat: 0.3, carbs: 20.0, protein: 1.1, category: "fruta", slot: "extra" },
+  // ── PROTEÍNAS VEGETALES ───────────────────────────────────────────
+  { id: "tofu",            name: "Tofu",                                           category: "veggie_protein", kcal: 110,   protein: 11.1,  carbs: 0.9,  fat: 6.9  },
+  { id: "heura",           name: "Heura",                                          category: "veggie_protein", kcal: 136,   protein: 19.7,  carbs: 1.8,  fat: 3.0  },
+  { id: "soja_tex",        name: "Soja Texturizada",                               category: "veggie_protein", kcal: 326,   protein: 51,    carbs: 20,   fat: 1.3  },
+  { id: "edamame",         name: "Edamame",                                        category: "veggie_protein", kcal: 130,   protein: 11,    carbs: 10,   fat: 4.0  },
+  { id: "seitan",          name: "Seitán",                                         category: "veggie_protein", kcal: 123.5, protein: 24,    carbs: 3.5,  fat: 1.5  },
+  { id: "yogur_soja",      name: "Yogur de Soja Sin Azúcar",                       category: "veggie_protein", kcal: 56,    protein: 5,     carbs: 4.5,  fat: 2.0  },
+  { id: "vegan_prozis",    name: "Vegan Prozis",                                   category: "veggie_protein", kcal: 380,   protein: 70,    carbs: 13,   fat: 6.8  },
 
-  // ── BEBIDAS Y LECHES ──────────────────────────────────────────
-  { id: "ING026", name: "Leche vegetal sin azúcares", kcal: 30,  fat: 1.0, carbs: 2.5, protein: 1.0, category: "bebida", slot: "extra" },
-  { id: "ING027", name: "Leche de almendra sin azúcar", kcal: 24, fat: 1.5, carbs: 0.5, protein: 0.5, category: "bebida", slot: "extra" },
+  // ── HIDRATOS PROTEICOS ────────────────────────────────────────────
+  { id: "garbanzo",        name: "Garbanzos (conserva)",                           category: "protein_carb",   kcal: 95,    protein: 5.7,   carbs: 11,   fat: 1.9  },
+  { id: "alubia_blanca",   name: "Alubia Blanca (conserva)",                       category: "protein_carb",   kcal: 112,   protein: 5.8,   carbs: 10.7, fat: 0.5  },
+  { id: "lenteja",         name: "Lenteja (conserva)",                             category: "protein_carb",   kcal: 81,    protein: 5.7,   carbs: 11.2, fat: 0.4  },
+  { id: "alubia_tomate",   name: "Alubias con Salsa de Tomate Heinz",              category: "protein_carb",   kcal: 79,    protein: 4.7,   carbs: 12.9, fat: 0.2  },
+  { id: "helices_lenteja", name: "Hélices 100% Lenteja Roja (Hacendado)",          category: "protein_carb",   kcal: 334,   protein: 26,    carbs: 50,   fat: 1.7  },
+  { id: "quinoa",          name: "Quinoa",                                         category: "protein_carb",   kcal: 389,   protein: 14,    carbs: 66,   fat: 6.1  },
+  { id: "avena_copos",     name: "Copos de Avena",                                 category: "protein_carb",   kcal: 375,   protein: 14,    carbs: 59,   fat: 7.0  },
+  { id: "harina_avena",    name: "Harina de Avena",                                category: "protein_carb",   kcal: 391,   protein: 14,    carbs: 53,   fat: 11.0 },
+  { id: "avena_crunchy",   name: "Avena Crunchy (Hacendado)",                      category: "protein_carb",   kcal: 390,   protein: 13,    carbs: 66,   fat: 5.8  },
+  { id: "tortas_legumbre", name: "Tortas de Legumbres (Hacendado)",                category: "protein_carb",   kcal: 366,   protein: 25,    carbs: 55,   fat: 3.1  },
+  { id: "pan_fibra",       name: "Pan de Fibra y Sésamo (Hacendado)",              category: "protein_carb",   kcal: 391,   protein: 13,    carbs: 60,   fat: 7.6  },
+  { id: "pan_wasa",        name: "Pan Wasa Fibra",                                 category: "protein_carb",   kcal: 339,   protein: 12.5,  carbs: 42,   fat: 13.0 },
 
-  // ── CONDIMENTOS ───────────────────────────────────────────────
-  { id: "ING062", name: "Mermelada sin azúcares añadidos", kcal: 35, fat: 0.1, carbs: 8.0,  protein: 0.4, category: "condimento", slot: "extra" },
-  { id: "ING063", name: "Ketchup Zero Heinz",      kcal: 22,  fat: 0.1, carbs: 4.5,  protein: 0.7, category: "condimento", slot: "extra" },
-  { id: "ING064", name: "Salsa barbacoa Zero",      kcal: 30,  fat: 0.1, carbs: 6.5,  protein: 0.5, category: "condimento", slot: "extra" },
-  { id: "ING065", name: "Salsa de soja sin azúcares", kcal: 60, fat: 0.1, carbs: 6.0,  protein: 6.0, category: "condimento", slot: "extra" },
-  { id: "ING066", name: "Tomate triturado/tamizado", kcal: 27,  fat: 0.2, carbs: 5.0,  protein: 1.2, category: "condimento", slot: "extra" },
-  { id: "ING067", name: "Salsa de tomate frito",    kcal: 76,  fat: 4.0, carbs: 8.5,  protein: 1.5, category: "condimento", slot: "extra" },
-  { id: "ING068", name: "Vinagre de manzana",       kcal: 22,  fat: 0.0, carbs: 0.9,  protein: 0.0, category: "condimento", slot: "extra" },
-  { id: "ING069", name: "Vinagre de Módena sin azúcares", kcal: 18, fat: 0.0, carbs: 2.5, protein: 0.5, category: "condimento", slot: "extra" },
-  { id: "ING070", name: "Canela en polvo",          kcal: 247, fat: 1.2, carbs: 55.0, protein: 4.0, category: "condimento", slot: "extra" },
-  { id: "ING071", name: "Edulcorante líquido",      kcal: 0,   fat: 0.0, carbs: 0.0,  protein: 0.0, category: "condimento", slot: "extra" },
-  { id: "ING072", name: "Levadura en polvo",        kcal: 53,  fat: 0.0, carbs: 11.0, protein: 2.5, category: "condimento", slot: "extra" },
-  { id: "ING074", name: "Jengibre fresco",          kcal: 80,  fat: 0.8, carbs: 17.0, protein: 1.8, category: "condimento", slot: "extra" },
+  // ── HIDRATOS LIMPIOS ──────────────────────────────────────────────
+  { id: "pasta",           name: "Pasta",                                          category: "clean_carb",     kcal: 354,   protein: 11,    carbs: 72,   fat: 1.2  },
+  { id: "pasta_integral",  name: "Pasta Integral",                                 category: "clean_carb",     kcal: 346,   protein: 12,    carbs: 66,   fat: 2.0  },
+  { id: "arroz",           name: "Arroz Blanco",                                   category: "clean_carb",     kcal: 347,   protein: 6.7,   carbs: 77,   fat: 1.1  },
+  { id: "arroz_int",       name: "Arroz Integral",                                 category: "clean_carb",     kcal: 338,   protein: 8,     carbs: 72,   fat: 2.0  },
+  { id: "patata",          name: "Patata",                                         category: "clean_carb",     kcal: 78,    protein: 2.86,  carbs: 17.2, fat: 0.1  },
+  { id: "patata_bote",     name: "Patata en Conserva (bote)",                      category: "clean_carb",     kcal: 57,    protein: 1.2,   carbs: 12,   fat: 0.5  },
+  { id: "boniato",         name: "Boniato Naranja",                                category: "clean_carb",     kcal: 107,   protein: 1.61,  carbs: 24,   fat: 0.1  },
+  { id: "noquis",          name: "Ñoquis de Patata",                               category: "clean_carb",     kcal: 174,   protein: 4.5,   carbs: 37.6, fat: 0.4  },
+  { id: "pan_blanco",      name: "Pan Blanco de Panadería",                        category: "clean_carb",     kcal: 261,   protein: 8.5,   carbs: 51.5, fat: 1.6  },
+  { id: "pan_integral_pan",name: "Pan Integral de Panadería",                      category: "clean_carb",     kcal: 234,   protein: 7,     carbs: 45,   fat: 2.9  },
+  { id: "noodles_arroz",   name: "Noodles de Arroz",                               category: "clean_carb",     kcal: 343,   protein: 6.4,   carbs: 77,   fat: 0.6  },
+  { id: "cuscus",          name: "Cuscús",                                         category: "clean_carb",     kcal: 346,   protein: 12,    carbs: 69,   fat: 1.6  },
+  { id: "arroz_3del",      name: "Arroz Tres Delicias Congelado",                  category: "clean_carb",     kcal: 109,   protein: 4.6,   carbs: 19,   fat: 1.4  },
+  { id: "arroz_bolsita",   name: "Arroz Congelado Hacendado (bolsitas)",           category: "clean_carb",     kcal: 127,   protein: 2.7,   carbs: 28,   fat: 0.3  },
+  { id: "tortas_arroz",    name: "Tortas de Arroz",                                category: "clean_carb",     kcal: 382,   protein: 8.2,   carbs: 81,   fat: 2.0  },
+  { id: "tortas_maiz",     name: "Tortas de Maíz",                                 category: "clean_carb",     kcal: 368,   protein: 7.5,   carbs: 80,   fat: 1.8  },
+  { id: "corn_flakes",     name: "Corn Flakes Sin Azúcar",                         category: "clean_carb",     kcal: 377,   protein: 8.5,   carbs: 82,   fat: 1.1  },
+  { id: "copos_trigo",     name: "Copos de Trigo y Arroz Integral Sin Azúcar",     category: "clean_carb",     kcal: 364,   protein: 9.6,   carbs: 76,   fat: 1.7  },
+  { id: "rice_krispies",   name: "Rice Krispies Kellogg's",                        category: "clean_carb",     kcal: 377,   protein: 8,     carbs: 84,   fat: 1.0  },
+  { id: "cereal_mix",      name: "Cereal Mix Sin Azúcares (Hacendado)",            category: "clean_carb",     kcal: 389,   protein: 10.1,  carbs: 74.1, fat: 4.1  },
+  { id: "churros",         name: "Churros Congelados (Hacendado)",                 category: "clean_carb",     kcal: 173,   protein: 5.2,   carbs: 33,   fat: 1.7  },
+  { id: "crema_arroz",     name: "Crema de Arroz Sin Azúcares",                    category: "clean_carb",     kcal: 379,   protein: 7.3,   carbs: 85,   fat: 0.7  },
+  { id: "choco_zero",      name: "Choco Zero (marca Esgir)",                       category: "clean_carb",     kcal: 392,   protein: 6.41,  carbs: 83,   fat: 3.41 },
+  { id: "miel",            name: "Miel",                                           category: "clean_carb",     kcal: 332,   protein: 0,     carbs: 82.4, fat: 0.5  },
+  { id: "maltodextrina",   name: "Maltodextrina",                                  category: "clean_carb",     kcal: 380,   protein: 0,     carbs: 95,   fat: 0    },
+  { id: "ciclodextrina",   name: "Ciclodextrina",                                  category: "clean_carb",     kcal: 388,   protein: 0,     carbs: 97,   fat: 0    },
 
-  // ── POSTRES ───────────────────────────────────────────────────
-  { id: "ING075", name: "Gelatina sin azúcares añadidos", kcal: 5, fat: 0.0, carbs: 0.2, protein: 0.7, category: "postre", slot: "extra" },
+  // ── HIDRATOS GRASOS ───────────────────────────────────────────────
+  { id: "pan_tostado",     name: "Pan Tostado 100% Integral (Hacendado)",          category: "fatty_carb",     kcal: 376,   protein: 16,    carbs: 59.4, fat: 6.0  },
+  { id: "pan_molde",       name: "Pan de Molde Integral",                          category: "fatty_carb",     kcal: 230,   protein: 6,     carbs: 38,   fat: 2.9  },
+  { id: "pizza_masa",      name: "Masa de Pizza Precocida",                        category: "fatty_carb",     kcal: 283,   protein: 6.5,   carbs: 53.4, fat: 4.4  },
+  { id: "pizza_int",       name: "Masa de Pizza Precocida Integral",               category: "fatty_carb",     kcal: 258,   protein: 8.7,   carbs: 46.1, fat: 4.3  },
+  { id: "fajitas",         name: "Tortillas de Trigo (Fajitas)",                   category: "fatty_carb",     kcal: 308,   protein: 7.1,   carbs: 55,   fat: 6.2  },
+  { id: "patatas_fritas",  name: "Patatas Fritas Congeladas (corte grueso)",        category: "fatty_carb",     kcal: 116,   protein: 2.1,   carbs: 20,   fat: 2.4  },
+  { id: "muesli",          name: "Muesli Sin Azúcares (Hacendado)",                category: "fatty_carb",     kcal: 409,   protein: 9.3,   carbs: 64,   fat: 13.0 },
+
+  // ── FRUTA ─────────────────────────────────────────────────────────
+  { id: "fresas",          name: "Fresas",                                         category: "fruit",          kcal: 34.9,  protein: 0.65,  carbs: 6.14, fat: 0.2  },
+  { id: "frambuesas",      name: "Frambuesas",                                     category: "fruit",          kcal: 51,    protein: 1.2,   carbs: 11.94,fat: 0.65 },
+  { id: "arandanos",       name: "Arándanos",                                      category: "fruit",          kcal: 57,    protein: 0.74,  carbs: 14.49,fat: 0.33 },
+  { id: "frutos_rojos",    name: "Frutos Rojos Congelados (Hacendado)",            category: "fruit",          kcal: 39,    protein: 0,     carbs: 5.5,  fat: 0.9  },
+  { id: "pina",            name: "Piña",                                           category: "fruit",          kcal: 48,    protein: 0.54,  carbs: 12.63,fat: 0.12 },
+  { id: "kiwi",            name: "Kiwi",                                           category: "fruit",          kcal: 61,    protein: 1.14,  carbs: 14.66,fat: 0.62 },
+  { id: "platano",         name: "Plátano",                                        category: "fruit",          kcal: 89,    protein: 1.09,  carbs: 22.84,fat: 0.33 },
+  { id: "melocoton",       name: "Melocotón",                                      category: "fruit",          kcal: 39,    protein: 0.91,  carbs: 9.54, fat: 0.25 },
+  { id: "pera",            name: "Pera",                                           category: "fruit",          kcal: 58,    protein: 0.38,  carbs: 15.46,fat: 0.12 },
+  { id: "manzana",         name: "Manzana",                                        category: "fruit",          kcal: 72,    protein: 0.36,  carbs: 19.06,fat: 0.23 },
+  { id: "datiles",         name: "Dátiles",                                        category: "fruit",          kcal: 298,   protein: 2,     carbs: 68.9, fat: 0.5  },
+  { id: "pasas",           name: "Pasas Sultanas",                                 category: "fruit",          kcal: 324,   protein: 3.1,   carbs: 73,   fat: 1.1  },
+  { id: "higos",           name: "Higos Secos",                                    category: "fruit",          kcal: 279,   protein: 3.2,   carbs: 63.3, fat: 0.6  },
+  { id: "orejones",        name: "Orejones de Albaricoque",                        category: "fruit",          kcal: 208,   protein: 2.8,   carbs: 46,   fat: 0.5  },
+  { id: "uva",             name: "Uva",                                            category: "fruit",          kcal: 69,    protein: 0.72,  carbs: 18.1, fat: 0.16 },
+  { id: "sandia",          name: "Sandía",                                         category: "fruit",          kcal: 30,    protein: 0.6,   carbs: 8,    fat: 0.2  },
+  { id: "melon",           name: "Melón",                                          category: "fruit",          kcal: 36,    protein: 0.54,  carbs: 9.08, fat: 0.14 },
+  { id: "cerezas",         name: "Cerezas",                                        category: "fruit",          kcal: 58,    protein: 1.02,  carbs: 14.77,fat: 0.22 },
+  { id: "mermelada",       name: "Mermelada Sin Azúcar",                           category: "fruit",          kcal: 210,   protein: 0,     carbs: 52,   fat: 0.5  },
+
+  // ── GRASAS Y FRUTOS SECOS ─────────────────────────────────────────
+  { id: "aceite_oliva",    name: "Aceite de Oliva Virgen Extra",                   category: "fat",            kcal: 822,   protein: 0,     carbs: 0,    fat: 91.0 },
+  { id: "aceite_coco",     name: "Aceite de Coco",                                 category: "fat",            kcal: 900,   protein: 0,     carbs: 0,    fat: 100  },
+  { id: "aceite_lino",     name: "Aceite de Lino",                                 category: "fat",            kcal: 900,   protein: 0,     carbs: 0,    fat: 100  },
+  { id: "aguacate",        name: "Aguacate",                                       category: "fat",            kcal: 160,   protein: 2,     carbs: 2,    fat: 15.0 },
+  { id: "guacamole",       name: "Guacamole 95% Aguacate",                         category: "fat",            kcal: 149,   protein: 1.9,   carbs: 2,    fat: 13.7 },
+  { id: "aceitunas",       name: "Aceitunas",                                      category: "fat",            kcal: 150,   protein: 1.6,   carbs: 0.9,  fat: 15.0 },
+  { id: "crema_cacah",     name: "Crema de Cacahuete 100%",                        category: "fat",            kcal: 618,   protein: 30,    carbs: 7,    fat: 50.0 },
+  { id: "cacahuete",       name: "Cacahuete",                                      category: "fat",            kcal: 618,   protein: 24,    carbs: 13,   fat: 50.4 },
+  { id: "almendras",       name: "Almendras",                                      category: "fat",            kcal: 603,   protein: 25,    carbs: 5.4,  fat: 51.0 },
+  { id: "anacardos",       name: "Anacardos",                                      category: "fat",            kcal: 604,   protein: 21.9,  carbs: 19,   fat: 48.2 },
+  { id: "nuez",            name: "Nuez Mondada",                                   category: "fat",            kcal: 716,   protein: 17,    carbs: 2.2,  fat: 69.6 },
+  { id: "chocolate85",     name: "Chocolate Negro 85% Cacao",                      category: "fat",            kcal: 597,   protein: 12,    carbs: 20,   fat: 49.0 },
+  { id: "omega3",          name: "Omega 3 (aceite)",                               category: "fat",            kcal: 900,   protein: 0,     carbs: 0,    fat: 100  },
+
+  // ── VERDURAS GRASAS ───────────────────────────────────────────────
+  { id: "crema_verduras",  name: "Crema de Verduras (Hacendado)",                  category: "veggie_fat",     kcal: 107,   protein: 2.6,   carbs: 16,   fat: 2.9  },
+  { id: "gazpacho",        name: "Gazpacho Hacendado",                             category: "veggie_fat",     kcal: 110,   protein: 2,     carbs: 9,    fat: 6.0  },
 ];
 
-// ── Helpers de cálculo ────────────────────────────────────────────
-export type MacroResult = { kcal: number; protein: number; carbs: number; fat: number };
+// ── Helpers ───────────────────────────────────────────────────────
 
-export const calcMacros = (ingId: string, grams: number): MacroResult => {
-  const ing = INGREDIENTS.find(i => i.id === ingId);
+/** Devuelve los ingredientes de una o varias categorías */
+export function byCategory(...cats: IngredientCategory[]): Ingredient[] {
+  return ingredients.filter(i => cats.includes(i.category));
+}
+
+/** Macro neta de un alimento en `grams` gramos */
+export function macroAt(ing: Ingredient, grams: number) {
+  const f = grams / 100;
+  return {
+    kcal:    Math.round(ing.kcal    * f * 10) / 10,
+    protein: Math.round(ing.protein * f * 10) / 10,
+    carbs:   Math.round(ing.carbs   * f * 10) / 10,
+    fat:     Math.round(ing.fat     * f * 10) / 10,
+  };
+}
+
+// ── Compatibilidad con DietEditor / DietPage ──────────────────────
+// Los slots internos de los planes de dieta usan nombres en español.
+
+/** Alias — la lista completa de ingredientes */
+export const INGREDIENTS = ingredients;
+
+/** Slot de macro usado en los planes de dieta */
+export type MainSlot = "proteina" | "hidrato" | "grasa" | "extra";
+
+/** Resultado de macros por ración */
+export interface MacroResult {
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+/** Devuelve ingredientes según el slot del plan de dieta */
+export function bySlot(slot: MainSlot): Ingredient[] {
+  switch (slot) {
+    case "proteina":
+      return ingredients.filter(i =>
+        i.category === "lean_protein" ||
+        i.category === "fatty_protein" ||
+        i.category === "veggie_protein"
+      );
+    case "hidrato":
+      return ingredients.filter(i =>
+        i.category === "clean_carb" ||
+        i.category === "fatty_carb" ||
+        i.category === "protein_carb" ||
+        i.category === "fruit"
+      );
+    case "grasa":
+      return ingredients.filter(i =>
+        i.category === "fat" ||
+        i.category === "veggie_fat"
+      );
+    case "extra":
+    default:
+      return ingredients;
+  }
+}
+
+/** Calcula macros de un ingrediente por id y gramos */
+export function calcMacros(ingId: string, grams: number): MacroResult {
+  const ing = ingredients.find(i => i.id === ingId);
   if (!ing || !grams) return { kcal: 0, protein: 0, carbs: 0, fat: 0 };
   const f = grams / 100;
   return {
@@ -181,10 +255,11 @@ export const calcMacros = (ingId: string, grams: number): MacroResult => {
     carbs:   Math.round(ing.carbs   * f * 10) / 10,
     fat:     Math.round(ing.fat     * f * 10) / 10,
   };
-};
+}
 
-export const sumMacros = (items: MacroResult[]): MacroResult =>
-  items.reduce(
+/** Suma un array de MacroResult */
+export function sumMacros(arr: MacroResult[]): MacroResult {
+  return arr.reduce(
     (acc, m) => ({
       kcal:    Math.round((acc.kcal    + m.kcal)    * 10) / 10,
       protein: Math.round((acc.protein + m.protein) * 10) / 10,
@@ -193,27 +268,4 @@ export const sumMacros = (items: MacroResult[]): MacroResult =>
     }),
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   );
-
-// Categorías agrupadas para los selects
-export const CATEGORY_LABELS: Record<IngCategory, string> = {
-  huevo:           "Huevos",
-  carne:           "Carnes y aves",
-  pescado:         "Pescados",
-  fiambre:         "Fiambres y curados",
-  lacteo:          "Lácteos",
-  suplemento:      "Suplementos",
-  pan:             "Pan y tortas",
-  cereal_desayuno: "Cereales de desayuno",
-  pasta_arroz:     "Pasta, arroz y otros",
-  tuberculo:       "Tubérculos",
-  legumbre:        "Legumbres",
-  grasa:           "Grasas",
-  verdura:         "Verduras",
-  fruta:           "Frutas",
-  bebida:          "Bebidas y leches",
-  condimento:      "Condimentos y salsas",
-  postre:          "Postres",
-};
-
-export const bySlot = (slot: "proteina" | "hidrato" | "grasa" | "extra") =>
-  INGREDIENTS.filter(i => i.slot === slot);
+}

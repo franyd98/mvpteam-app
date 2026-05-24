@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import heic2any from "heic2any";
+import MacroCalculator from "../components/MacroCalculator";
 
 type Profile = { id: string; full_name: string; role: string };
-type Tab = "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos";
+type Tab = "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos" | "calculadora";
 
 const today = () => new Date().toISOString().split("T")[0];
 const fmtDate = (d: string) =>
@@ -542,6 +543,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     ["fatiga", "🔥 Fatiga"],
     ["antropometria", "📊 Antropometría"],
     ["fotos", "📷 Fotos"],
+    ["calculadora", "🧮 Calculadora"],
   ];
 
   // Los 10 sitios de la fórmula Excel (Σ/1000 = % grasa)
@@ -845,6 +847,11 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
             perimLogs={[...perimLogs].sort((a, b) => a.date.localeCompare(b.date))}
             foldLogs={[...foldLogs].sort((a, b) => a.date.localeCompare(b.date))}
           />
+        )}
+
+        {/* ── CALCULADORA ── */}
+        {tab === "calculadora" && (
+          <MacroCalculator clientName={profile.full_name} clientId={profile.id} />
         )}
 
         {/* ── FOTOS ── */}
