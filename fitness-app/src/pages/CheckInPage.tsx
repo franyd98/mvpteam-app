@@ -860,7 +860,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
             ) : (
               <div className="grid grid-cols-3 gap-2">
                 {photoLogs.map(photo => (
-                  <div key={photo.id} className="relative aspect-square group">
+                  <div key={photo.id} className="relative aspect-square">
                     <img
                       src={photo.url}
                       alt="foto progreso"
@@ -869,8 +869,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                     />
                     <button
                       onClick={() => handleDeletePhoto(photo)}
-                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      ✕
+                      className="absolute top-1 right-1 w-7 h-7 rounded-full flex items-center justify-center text-white text-sm shadow-md"
+                      style={{ background: "rgba(0,0,0,0.65)" }}>
+                      🗑️
                     </button>
                     <p className="absolute bottom-0 left-0 right-0 text-[9px] text-center text-white/60 bg-black/40 rounded-b-xl py-0.5">
                       {fmtShort(photo.taken_at)}
