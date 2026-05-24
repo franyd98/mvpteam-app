@@ -166,8 +166,19 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
 
   const loadDiet = async () => {
     setLoading(true);
+    // 1. Buscar asignación activa de este cliente
+    const { data: assignment } = await supabase
+      .from("diet_assignments")
+      .select("plan_id")
+      .eq("client_id", profile.id)
+      .eq("active", true)
+      .single();
+
+    if (!assignment) { setLoading(false); return; }
+
+    // 2. Cargar el plan asignado
     const { data: planData } = await supabase
-      .from("diet_plans").select("*").eq("client_id", profile.id).single();
+      .from("diet_plans").select("*").eq("id", assignment.plan_id).single();
 
     if (!planData) { setLoading(false); return; }
     setPlan(planData);

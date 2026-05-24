@@ -1,5 +1,6 @@
-// Editor del admin: crea y edita el plan nutricional de un cliente.
-// Usa selectores de ingredientes (del PDF) en lugar de textareas libres.
+// DietEditor — editor standalone de planes de dieta.
+// Recibe planId (null = nuevo plan) y onBack.
+// No está atado a ningún cliente.
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -8,527 +9,357 @@ import {
   type IngCategory, type MainSlot,
 } from "../data/ingredients";
 
-type Profile = { id: string; full_name: string; role: string };
-
-// ── Tipos internos del editor ─────────────────────────────────────
+// ── Tipos internos ────────────────────────────────────────────
 type SlotFilter = "proteina" | "hidrato" | "grasa" | "extra";
 
-type DraftItem = {
-  _id: string;
-  ingId: string;
-  grams: number;
-};
+type DraftItem = { _id: string; ingId: string; grams: number };
+type DraftGroup = { _id: string; label: string; slot: SlotFilter; isChoice: boolean; items: DraftItem[]; note: string };
+type DraftOption = { _id: string; name: string; groups: DraftGroup[] };
+type DraftMeal   = { _id: string; name: string; emoji: string; day_type: "on"|"off"|"both"; options: DraftOption[]; expanded: boolean };
 
-type DraftGroup = {
-  _id: string;
-  label: string;
-  slot: SlotFilter;
-  isChoice: boolean;
-  items: DraftItem[];
-  note: string;
-};
-
-type DraftOption = {
-  _id: string;
+type PlanMeta = {
   name: string;
-  groups: DraftGroup[];
+  kcal_on: number; kcal_off: number;
+  protein_on: number; protein_off: number;
+  carbs_on: number; carbs_off: number;
+  fat_on: number; fat_off: number;
+  notes: string;
 };
 
-type DraftMeal = {
-  _id: string;
-  name: string;
-  emoji: string;
-  day_type: "on" | "off" | "both";
-  options: DraftOption[];
-  expanded: boolean;
-};
-
-// ── Helpers ───────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 10);
 const EMOJIS = ["🍳","☕","🥗","🍽️","🥩","🥙","🥪","🍜","🥦","🍎","🥤","🍱","🧀","🥚","🍞"];
 
-const newItem  = (): DraftItem  => ({ _id: uid(), ingId: "", grams: 100 });
-const newGroup = (slot: SlotFilter = "proteina"): DraftGroup =>
-  ({ _id: uid(), label: slot === "proteina" ? "Proteína" : slot === "hidrato" ? "Hidratos" : slot === "grasa" ? "Grasa" : "", slot, isChoice: true, items: [newItem()], note: "" });
+const newItem   = (): DraftItem  => ({ _id: uid(), ingId: "", grams: 100 });
+const newGroup  = (slot: SlotFilter = "proteina"): DraftGroup => ({
+  _id: uid(), slot, isChoice: true, items: [newItem()], note: "",
+  label: slot === "proteina" ? "Proteína" : slot === "hidrato" ? "Hidratos" : slot === "grasa" ? "Grasa" : "",
+});
 const newOption = (n = 1): DraftOption =>
   ({ _id: uid(), name: `Opción ${n}`, groups: [newGroup("proteina"), newGroup("hidrato"), newGroup("grasa")] });
-const newMeal = (): DraftMeal =>
+const newMeal   = (): DraftMeal =>
   ({ _id: uid(), name: "", emoji: "🍽️", day_type: "both", options: [newOption(1)], expanded: true });
 
-const SLOT_LABELS: Record<SlotFilter, string> = {
-  proteina: "Proteína",
-  hidrato:  "Hidratos",
-  grasa:    "Grasa",
-  extra:    "Resto",
-};
+const SLOT_LABELS: Record<SlotFilter, string> = { proteina: "Proteína", hidrato: "Hidratos", grasa: "Grasa", extra: "" };
+const SLOT_COLORS: Record<SlotFilter, string> = { proteina: "#DC2626", hidrato: "#D97706", grasa: "#2563EB", extra: "#6B7280" };
+const SLOT_ICONS:  Record<SlotFilter, string> = { proteina: "🔴", hidrato: "🟡", grasa: "🔵", extra: "⚪" };
 
-// ── Selector de ingrediente con filtro por slot ───────────────────
-function IngSelect({ slot, value, onChange }: {
-  slot: SlotFilter; value: string; onChange: (v: string) => void;
-}) {
-  const ings = bySlot(slot);
-  const groups = [...new Set(ings.map(i => i.category))];
+const emptyMeta = (): PlanMeta => ({
+  name: "", kcal_on: 2000, kcal_off: 1800,
+  protein_on: 160, protein_off: 140,
+  carbs_on: 200, carbs_off: 150,
+  fat_on: 60, fat_off: 55, notes: "",
+});
+
+// ── IngSelect ─────────────────────────────────────────────────
+function IngSelect({ value, onChange, slot }: { value: string; onChange: (v: string) => void; slot: SlotFilter }) {
+  const filtered = bySlot(slot as MainSlot);
+  const grouped  = filtered.reduce<Record<string, typeof filtered>>((acc, ing) => {
+    if (!acc[ing.category]) acc[ing.category] = [];
+    acc[ing.category].push(ing);
+    return acc;
+  }, {});
   return (
-    <select value={value} onChange={e => onChange(e.target.value)}
-      className="flex-1 min-w-0 bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-neutral-500">
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="flex-1 text-sm rounded-lg px-2 py-1.5 text-white focus:outline-none"
+      style={{ background: "#1A1A1A", border: "1px solid #333" }}
+    >
       <option value="">— Elige alimento —</option>
-      {groups.map(cat => {
-        const items = ings.filter(i => i.category === cat);
-        return (
-          <optgroup key={cat} label={CATEGORY_LABELS[cat]}>
-            {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-          </optgroup>
-        );
-      })}
+      {Object.entries(grouped).map(([cat, ings]) => (
+        <optgroup key={cat} label={CATEGORY_LABELS[cat as IngCategory] ?? cat}>
+          {ings.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+        </optgroup>
+      ))}
     </select>
   );
 }
 
-// ── Componente principal ──────────────────────────────────────────
-export default function DietEditor({ client, onBack }: { client: Profile; onBack: () => void }) {
-  const [planId,     setPlanId]     = useState<string | null>(null);
-  const [planName,   setPlanName]   = useState("Plan Nutricional");
-  const [kcalOn,     setKcalOn]     = useState("");
-  const [kcalOff,    setKcalOff]    = useState("");
-  const [proteinOn,  setProteinOn]  = useState("");
-  const [carbsOn,    setCarbsOn]    = useState("");
-  const [fatOn,      setFatOn]      = useState("");
-  const [proteinOff, setProteinOff] = useState("");
-  const [carbsOff,   setCarbsOff]   = useState("");
-  const [fatOff,     setFatOff]     = useState("");
-  const [notes,      setNotes]      = useState("");
-  const [meals,      setMeals]      = useState<DraftMeal[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [saving,     setSaving]     = useState(false);
-  const [saved,      setSaved]      = useState(false);
-  const [errorMsg,   setErrorMsg]   = useState<string | null>(null);
+// ── Componente principal ──────────────────────────────────────
+export default function DietEditor({ planId, onBack }: { planId: string | null; onBack: () => void }) {
+  const [meta, setMeta]   = useState<PlanMeta>(emptyMeta());
+  const [meals, setMeals] = useState<DraftMeal[]>([newMeal()]);
+  const [saving, setSaving]   = useState(false);
+  const [loading, setLoading] = useState(!!planId);
+  const [toast, setToast]     = useState<string | null>(null);
+  const [showMeta, setShowMeta] = useState(true);
 
-  useEffect(() => { loadPlan(); }, []);
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
-  // ── Carga plan existente ────────────────────────────────────────
-  const loadPlan = async () => {
-    setLoading(true);
-    const { data: plan } = await supabase
-      .from("diet_plans").select("*").eq("client_id", client.id).single();
+  // ── Cargar plan existente ─────────────────────────────────
+  useEffect(() => {
+    if (!planId) return;
+    (async () => {
+      const { data: plan } = await supabase.from("diet_plans").select("*").eq("id", planId).single();
+      if (plan) setMeta({
+        name: plan.name ?? "",
+        kcal_on: plan.kcal_on ?? 2000, kcal_off: plan.kcal_off ?? 1800,
+        protein_on: plan.protein_on ?? 160, protein_off: plan.protein_off ?? 140,
+        carbs_on: plan.carbs_on ?? 200, carbs_off: plan.carbs_off ?? 150,
+        fat_on: plan.fat_on ?? 60, fat_off: plan.fat_off ?? 55,
+        notes: plan.notes ?? "",
+      });
 
-    if (plan) {
-      setPlanId(plan.id);
-      setPlanName(plan.name ?? "Plan Nutricional");
-      setKcalOn(plan.kcal_on?.toString() ?? "");
-      setKcalOff(plan.kcal_off?.toString() ?? "");
-      setProteinOn(plan.protein_on?.toString() ?? "");
-      setCarbsOn(plan.carbs_on?.toString() ?? "");
-      setFatOn(plan.fat_on?.toString() ?? "");
-      setProteinOff(plan.protein_off?.toString() ?? "");
-      setCarbsOff(plan.carbs_off?.toString() ?? "");
-      setFatOff(plan.fat_off?.toString() ?? "");
-      setNotes(plan.notes ?? "");
+      const { data: mealsData } = await supabase.from("diet_meals").select("*").eq("plan_id", planId).order("sort_order");
+      if (!mealsData?.length) { setLoading(false); return; }
 
-      const { data: mealsData } = await supabase
-        .from("diet_meals").select("*, diet_options(*)")
-        .eq("plan_id", plan.id).order("sort_order");
-
-      if (mealsData?.length) {
-        setMeals(mealsData.map((m: any) => ({
-          _id: m.id, name: m.name, emoji: m.emoji ?? "🍽️",
-          day_type: m.day_type, expanded: false,
-          options: (m.diet_options ?? [])
-            .sort((a: any, b: any) => a.sort_order - b.sort_order)
-            .map((o: any) => ({
-              _id: o.id, name: o.name,
-              groups: (o.content ?? []).map((g: any) => ({
-                _id: uid(),
-                label: g.label ?? "",
-                slot: (g.slot ?? "extra") as SlotFilter,
-                isChoice: g.isChoice ?? true,
-                items: (g.items ?? []).map((item: any) => ({
-                  _id: uid(),
-                  ingId: typeof item === "object" ? (item.ingId ?? "") : "",
-                  grams: typeof item === "object" ? (item.grams ?? 100) : 100,
-                })),
-                note: g.note ?? "",
-              })),
+      const draftMeals: DraftMeal[] = await Promise.all(mealsData.map(async (m) => {
+        const { data: opts } = await supabase.from("diet_options").select("*").eq("meal_id", m.id).order("sort_order");
+        return {
+          _id: m.id, name: m.name, emoji: m.emoji ?? "🍽️", day_type: m.day_type ?? "both", expanded: false,
+          options: (opts ?? []).map((o) => ({
+            _id: o.id, name: o.name,
+            groups: (o.content ?? []).map((g: any) => ({
+              _id: uid(), label: g.label ?? "", slot: g.slot ?? "proteina",
+              isChoice: g.isChoice ?? true, note: g.note ?? "",
+              items: (g.items ?? []).map((it: any) => ({ _id: uid(), ingId: it.ingId ?? "", grams: it.grams ?? 100 })),
             })),
-        })));
-      }
-    }
-    setLoading(false);
-  };
+          })),
+        };
+      }));
+      setMeals(draftMeals);
+      setLoading(false);
+    })();
+  }, [planId]);
 
-  // ── Guardar ─────────────────────────────────────────────────────
+  // ── Guardar ───────────────────────────────────────────────
   const handleSave = async () => {
-    setSaving(true); setSaved(false); setErrorMsg(null);
-
-    const planData = {
-      client_id:   client.id,
-      name:        planName || "Plan Nutricional",
-      kcal_on:     kcalOn    ? parseInt(kcalOn)        : null,
-      kcal_off:    kcalOff   ? parseInt(kcalOff)       : null,
-      protein_on:  proteinOn ? parseFloat(proteinOn)   : null,
-      carbs_on:    carbsOn   ? parseFloat(carbsOn)     : null,
-      fat_on:      fatOn     ? parseFloat(fatOn)       : null,
-      protein_off: proteinOff ? parseFloat(proteinOff) : null,
-      carbs_off:   carbsOff  ? parseFloat(carbsOff)    : null,
-      fat_off:     fatOff    ? parseFloat(fatOff)      : null,
-      notes:       notes || null,
-    };
-
-    let pid = planId;
-    if (pid) {
-      const { error } = await supabase.from("diet_plans").update(planData).eq("id", pid);
-      if (error) { setErrorMsg(`Plan: ${error.message}`); setSaving(false); return; }
-    } else {
-      const { data, error } = await supabase.from("diet_plans").insert(planData).select().single();
-      if (error || !data) { setErrorMsg(`Plan: ${error?.message}`); setSaving(false); return; }
-      pid = data.id; setPlanId(data.id);
-    }
-
-    await supabase.from("diet_meals").delete().eq("plan_id", pid);
-
-    for (let mi = 0; mi < meals.length; mi++) {
-      const m = meals[mi];
-      const { data: mRow, error: me } = await supabase
-        .from("diet_meals")
-        .insert({ plan_id: pid, name: m.name, emoji: m.emoji, day_type: m.day_type, sort_order: mi })
-        .select().single();
-      if (me || !mRow) continue;
-
-      for (let oi = 0; oi < m.options.length; oi++) {
-        const o = m.options[oi];
-        const content = o.groups
-          .filter(g => g.items.some(i => i.ingId))
-          .map(g => ({
-            label:    g.label,
-            slot:     g.slot,
-            isChoice: g.isChoice,
-            items:    g.items.filter(i => i.ingId).map(i => ({ ingId: i.ingId, grams: i.grams })),
-            ...(g.note ? { note: g.note } : {}),
-          }));
-        await supabase.from("diet_options").insert({
-          meal_id: mRow.id, name: o.name, content, sort_order: oi,
-        });
+    if (!meta.name.trim()) { showToast("⚠️ El plan necesita un nombre"); return; }
+    setSaving(true);
+    try {
+      let pid = planId;
+      if (!pid) {
+        const { data, error } = await supabase.from("diet_plans").insert({
+          name: meta.name.trim(), kcal_on: meta.kcal_on, kcal_off: meta.kcal_off,
+          protein_on: meta.protein_on, protein_off: meta.protein_off,
+          carbs_on: meta.carbs_on, carbs_off: meta.carbs_off,
+          fat_on: meta.fat_on, fat_off: meta.fat_off, notes: meta.notes,
+        }).select("id").single();
+        if (error || !data) throw error;
+        pid = data.id;
+      } else {
+        await supabase.from("diet_plans").update({
+          name: meta.name.trim(), kcal_on: meta.kcal_on, kcal_off: meta.kcal_off,
+          protein_on: meta.protein_on, protein_off: meta.protein_off,
+          carbs_on: meta.carbs_on, carbs_off: meta.carbs_off,
+          fat_on: meta.fat_on, fat_off: meta.fat_off, notes: meta.notes,
+        }).eq("id", pid);
+        await supabase.from("diet_meals").delete().eq("plan_id", pid);
       }
-    }
 
-    setSaving(false); setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+      for (let i = 0; i < meals.length; i++) {
+        const m = meals[i];
+        const { data: mRow, error: mErr } = await supabase.from("diet_meals").insert({
+          plan_id: pid, name: m.name || "Comida", emoji: m.emoji, day_type: m.day_type, sort_order: i,
+        }).select("id").single();
+        if (mErr || !mRow) throw mErr;
+        for (let j = 0; j < m.options.length; j++) {
+          const o = m.options[j];
+          const content = o.groups.map(g => ({
+            label: g.label, slot: g.slot, isChoice: g.isChoice, note: g.note,
+            items: g.items.filter(it => it.ingId).map(it => ({ ingId: it.ingId, grams: it.grams })),
+          }));
+          await supabase.from("diet_options").insert({ meal_id: mRow.id, name: o.name, content, sort_order: j });
+        }
+      }
+      showToast("✅ Plan guardado");
+      setTimeout(() => onBack(), 1200);
+    } catch (e: any) {
+      showToast(`❌ Error: ${e?.message ?? "desconocido"}`);
+    }
+    setSaving(false);
   };
 
-  // ── Helpers de mutación ───────────────────────────────────────────
-  const updMeal = (id: string, p: Partial<DraftMeal>) =>
-    setMeals(ms => ms.map(m => m._id === id ? { ...m, ...p } : m));
-  const delMeal = (id: string) => setMeals(ms => ms.filter(m => m._id !== id));
-  const moveMeal = (id: string, dir: -1 | 1) =>
-    setMeals(ms => {
-      const a = [...ms], i = a.findIndex(m => m._id === id), ni = i + dir;
-      if (ni < 0 || ni >= a.length) return ms;
-      [a[i], a[ni]] = [a[ni], a[i]]; return a;
-    });
-
-  const updOpt = (mid: string, oid: string, p: Partial<DraftOption>) =>
-    setMeals(ms => ms.map(m => m._id === mid
-      ? { ...m, options: m.options.map(o => o._id === oid ? { ...o, ...p } : o) } : m));
-  const delOpt = (mid: string, oid: string) =>
-    setMeals(ms => ms.map(m => m._id === mid
-      ? { ...m, options: m.options.filter(o => o._id !== oid) } : m));
-  const addOpt = (mid: string) =>
-    setMeals(ms => ms.map(m => m._id === mid
-      ? { ...m, options: [...m.options, newOption(m.options.length + 1)] } : m));
-
-  const updGroup = (mid: string, oid: string, gid: string, p: Partial<DraftGroup>) =>
-    setMeals(ms => ms.map(m => m._id === mid ? {
-      ...m, options: m.options.map(o => o._id === oid ? {
-        ...o, groups: o.groups.map(g => g._id === gid ? { ...g, ...p } : g)
-      } : o)
-    } : m));
-  const delGroup = (mid: string, oid: string, gid: string) =>
-    setMeals(ms => ms.map(m => m._id === mid ? {
-      ...m, options: m.options.map(o => o._id === oid ? {
-        ...o, groups: o.groups.filter(g => g._id !== gid)
-      } : o)
-    } : m));
-  const addGroup = (mid: string, oid: string, slot: SlotFilter) =>
-    setMeals(ms => ms.map(m => m._id === mid ? {
-      ...m, options: m.options.map(o => o._id === oid ? {
-        ...o, groups: [...o.groups, newGroup(slot)]
-      } : o)
-    } : m));
-
-  const updItem = (mid: string, oid: string, gid: string, iid: string, p: Partial<DraftItem>) =>
-    setMeals(ms => ms.map(m => m._id === mid ? {
-      ...m, options: m.options.map(o => o._id === oid ? {
-        ...o, groups: o.groups.map(g => g._id === gid ? {
-          ...g, items: g.items.map(i => i._id === iid ? { ...i, ...p } : i)
-        } : g)
-      } : o)
-    } : m));
-  const delItem = (mid: string, oid: string, gid: string, iid: string) =>
-    setMeals(ms => ms.map(m => m._id === mid ? {
-      ...m, options: m.options.map(o => o._id === oid ? {
-        ...o, groups: o.groups.map(g => g._id === gid ? {
-          ...g, items: g.items.filter(i => i._id !== iid)
-        } : g)
-      } : o)
-    } : m));
-  const addItem = (mid: string, oid: string, gid: string) =>
-    setMeals(ms => ms.map(m => m._id === mid ? {
-      ...m, options: m.options.map(o => o._id === oid ? {
-        ...o, groups: o.groups.map(g => g._id === gid ? {
-          ...g, items: [...g.items, newItem()]
-        } : g)
-      } : o)
-    } : m));
+  // ── Helpers de edición ────────────────────────────────────
+  const updMeal = (id: string, patch: Partial<DraftMeal>) =>
+    setMeals(ms => ms.map(m => m._id === id ? { ...m, ...patch } : m));
+  const updOpt = (mId: string, oId: string, patch: Partial<DraftOption>) =>
+    setMeals(ms => ms.map(m => m._id === mId ? { ...m, options: m.options.map(o => o._id === oId ? { ...o, ...patch } : o) } : m));
+  const updGroup = (mId: string, oId: string, gId: string, patch: Partial<DraftGroup>) =>
+    updOpt(mId, oId, { groups: meals.find(m => m._id === mId)!.options.find(o => o._id === oId)!.groups.map(g => g._id === gId ? { ...g, ...patch } : g) } as any);
+  const updItem = (mId: string, oId: string, gId: string, itId: string, patch: Partial<DraftItem>) => {
+    const meal = meals.find(m => m._id === mId)!;
+    const opt  = meal.options.find(o => o._id === oId)!;
+    const grp  = opt.groups.find(g => g._id === gId)!;
+    updGroup(mId, oId, gId, { items: grp.items.map(it => it._id === itId ? { ...it, ...patch } : it) });
+  };
 
   if (loading) return (
-    <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-      <p className="text-neutral-500">Cargando plan…</p>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A0A0A" }}>
+      <p className="text-neutral-500 text-sm">Cargando plan...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-neutral-950 pb-28">
+    <div className="min-h-screen pb-24" style={{ background: "linear-gradient(160deg,#0A0A0A 80%,#1A0810 100%)" }}>
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg whitespace-nowrap"
+          style={{ background: "#1A1A1A", border: "1px solid #333" }}>{toast}</div>
+      )}
+
       {/* Header */}
-      <header className="bg-neutral-900 border-b border-neutral-800 px-4 py-3 flex items-center gap-3 sticky top-0 z-20">
+      <header className="px-4 py-3 flex items-center gap-3 sticky top-0 z-10"
+        style={{ background: "#0F0F0F", borderBottom: "1px solid #8B1A2F40" }}>
         <button onClick={onBack}
-          className="w-9 h-9 rounded-lg bg-neutral-800 text-neutral-300 hover:bg-neutral-700 flex items-center justify-center text-lg shrink-0">←</button>
+          className="w-9 h-9 rounded-lg text-neutral-300 flex items-center justify-center shrink-0"
+          style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-white font-bold text-base">Plan Nutricional</h1>
-          <p className="text-neutral-500 text-xs truncate">{client.full_name}</p>
+          <p className="text-white font-bold text-sm truncate">{meta.name || "Nuevo plan de dieta"}</p>
+          <p className="text-neutral-500 text-xs">{planId ? "Editando plan" : "Nuevo plan"}</p>
         </div>
-        {saved && <span className="text-emerald-400 text-xs font-semibold shrink-0">✅ Guardado</span>}
+        <button onClick={handleSave} disabled={saving}
+          className="px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-40"
+          style={{ background: "#8B1A2F" }}>
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
       </header>
 
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
 
-        {/* ── INFO DEL PLAN ── */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-neutral-800">
-            <p className="text-white font-semibold text-sm">ℹ️ Información del plan</p>
-          </div>
-          <div className="px-4 py-4 space-y-4">
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 block">Nombre del plan</label>
-              <input value={planName} onChange={e => setPlanName(e.target.value)}
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500" />
-            </div>
-
-            {/* Macros ON */}
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-blue-500 font-semibold mb-2">💪 Día ON</p>
-              <div className="grid grid-cols-4 gap-2">
-                {([["Kcal",kcalOn,setKcalOn],["Proteína g",proteinOn,setProteinOn],
-                   ["Hidratos g",carbsOn,setCarbsOn],["Grasa g",fatOn,setFatOn]] as [string,string,(v:string)=>void][])
-                  .map(([lbl,val,set]) => (
-                  <div key={lbl}>
-                    <label className="text-[10px] text-neutral-500 mb-0.5 block">{lbl}</label>
-                    <input type="number" value={val} onChange={e => set(e.target.value)}
-                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-700" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Macros OFF */}
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-indigo-400 font-semibold mb-2">😴 Día OFF</p>
-              <div className="grid grid-cols-4 gap-2">
-                {([["Kcal",kcalOff,setKcalOff],["Proteína g",proteinOff,setProteinOff],
-                   ["Hidratos g",carbsOff,setCarbsOff],["Grasa g",fatOff,setFatOff]] as [string,string,(v:string)=>void][])
-                  .map(([lbl,val,set]) => (
-                  <div key={lbl}>
-                    <label className="text-[10px] text-neutral-500 mb-0.5 block">{lbl}</label>
-                    <input type="number" value={val} onChange={e => set(e.target.value)}
-                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-indigo-700" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Notas */}
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 block">Notas generales</label>
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-                placeholder="NEAT, cafeína, hidratación, instrucciones especiales…"
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500 placeholder-neutral-700 resize-none" />
-            </div>
-          </div>
-        </div>
-
-        {/* ── COMIDAS ── */}
-        <div className="flex items-center justify-between">
-          <p className="text-neutral-400 text-sm font-semibold">Comidas <span className="text-neutral-600">({meals.length})</span></p>
-          <button onClick={() => setMeals(ms => [...ms, newMeal()])}
-            className="px-3 py-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 text-sm">
-            + Añadir comida
+        {/* ── Metadatos del plan ── */}
+        <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: "1px solid #222" }}>
+          <button onClick={() => setShowMeta(v => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left">
+            <span className="text-white font-semibold text-sm">📋 Datos del plan</span>
+            <span className="text-neutral-500 text-xs">{showMeta ? "▲" : "▼"}</span>
           </button>
+          {showMeta && (
+            <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: "#222" }}>
+              <div className="pt-3">
+                <label className="text-xs uppercase tracking-wider text-neutral-500 mb-1.5 block">Nombre del plan *</label>
+                <input value={meta.name} onChange={e => setMeta(v => ({ ...v, name: e.target.value }))}
+                  placeholder="Ej: Volumen moderado, Definición verano..."
+                  className="w-full rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                  style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  ["Kcal día ON", "kcal_on"], ["Kcal día OFF", "kcal_off"],
+                  ["Proteína ON (g)", "protein_on"], ["Proteína OFF (g)", "protein_off"],
+                  ["HC ON (g)", "carbs_on"], ["HC OFF (g)", "carbs_off"],
+                  ["Grasa ON (g)", "fat_on"], ["Grasa OFF (g)", "fat_off"],
+                ].map(([label, key]) => (
+                  <div key={key}>
+                    <label className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 block">{label}</label>
+                    <input type="number" value={(meta as any)[key]}
+                      onChange={e => setMeta(v => ({ ...v, [key]: Number(e.target.value) }))}
+                      className="w-full rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                      style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-wider text-neutral-500 mb-1.5 block">Notas</label>
+                <textarea value={meta.notes} onChange={e => setMeta(v => ({ ...v, notes: e.target.value }))}
+                  rows={2} placeholder="Indicaciones generales..."
+                  className="w-full rounded-lg px-3 py-2 text-white text-sm focus:outline-none resize-none"
+                  style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+              </div>
+            </div>
+          )}
         </div>
 
-        {meals.map((meal, mi) => (
-          <div key={meal._id} className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
+        {/* ── Comidas ── */}
+        <p className="text-xs uppercase tracking-wider text-neutral-500 px-1">Comidas del plan</p>
 
+        {meals.map((meal, mIdx) => (
+          <div key={meal._id} className="rounded-xl overflow-hidden" style={{ background: "#111", border: "1px solid #222" }}>
             {/* Cabecera comida */}
-            <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-neutral-800">
+            <div className="px-4 py-3 flex items-center gap-2">
               <select value={meal.emoji} onChange={e => updMeal(meal._id, { emoji: e.target.value })}
-                className="bg-neutral-800 rounded-lg text-xl px-1.5 py-1 focus:outline-none cursor-pointer border-0">
+                className="text-lg bg-transparent border-none outline-none cursor-pointer">
                 {EMOJIS.map(e => <option key={e} value={e}>{e}</option>)}
               </select>
               <input value={meal.name} onChange={e => updMeal(meal._id, { name: e.target.value })}
-                placeholder="Nombre (ej: Desayuno)"
-                className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-neutral-500 placeholder-neutral-700" />
-              <select value={meal.day_type}
-                onChange={e => updMeal(meal._id, { day_type: e.target.value as DraftMeal["day_type"] })}
-                className="bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-neutral-300 text-xs focus:outline-none">
+                placeholder={`Comida ${mIdx + 1}`}
+                className="flex-1 bg-transparent text-white text-sm font-semibold focus:outline-none" />
+              <select value={meal.day_type} onChange={e => updMeal(meal._id, { day_type: e.target.value as any })}
+                className="text-xs rounded-lg px-2 py-1 text-neutral-300"
+                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
                 <option value="both">ON + OFF</option>
                 <option value="on">Solo ON</option>
                 <option value="off">Solo OFF</option>
               </select>
-              <button onClick={() => moveMeal(meal._id, -1)} disabled={mi === 0}
-                className="w-7 h-7 rounded bg-neutral-800 text-neutral-400 disabled:opacity-25 hover:bg-neutral-700 flex items-center justify-center text-sm">↑</button>
-              <button onClick={() => moveMeal(meal._id, 1)} disabled={mi === meals.length - 1}
-                className="w-7 h-7 rounded bg-neutral-800 text-neutral-400 disabled:opacity-25 hover:bg-neutral-700 flex items-center justify-center text-sm">↓</button>
               <button onClick={() => updMeal(meal._id, { expanded: !meal.expanded })}
-                className="w-7 h-7 rounded bg-neutral-800 text-neutral-400 hover:bg-neutral-700 flex items-center justify-center text-sm">
-                {meal.expanded ? "▾" : "▸"}
-              </button>
-              <button onClick={() => delMeal(meal._id)}
-                className="w-7 h-7 rounded bg-red-900/30 text-red-400 hover:bg-red-900/60 flex items-center justify-center text-sm">✕</button>
+                className="text-neutral-500 text-xs px-2">{meal.expanded ? "▲" : "▼"}</button>
+              <button onClick={() => setMeals(ms => ms.filter(m => m._id !== meal._id))}
+                className="text-neutral-600 hover:text-red-400 text-sm">✕</button>
             </div>
 
             {meal.expanded && (
-              <div className="p-3 space-y-3">
-                {meal.options.map((opt, oi) => (
-                  <div key={opt._id} className="bg-neutral-800/50 border border-neutral-700 rounded-xl p-3 space-y-3">
-
-                    {/* Cabecera opción */}
+              <div className="px-4 pb-4 space-y-4 border-t" style={{ borderColor: "#1A1A1A" }}>
+                {meal.options.map((opt, oIdx) => (
+                  <div key={opt._id} className="rounded-lg p-3 space-y-3"
+                    style={{ background: "#0A0A0A", border: "1px solid #1E1E1E" }}>
                     <div className="flex items-center gap-2">
                       <input value={opt.name} onChange={e => updOpt(meal._id, opt._id, { name: e.target.value })}
-                        placeholder="Nombre opción"
-                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-neutral-500" />
+                        placeholder={`Opción ${oIdx + 1}`}
+                        className="flex-1 bg-transparent text-white text-sm font-medium focus:outline-none" />
+                      <button onClick={() => updOpt(meal._id, opt._id, { groups: [...opt.groups, newGroup("proteina")] })}
+                        className="text-xs px-2 py-1 rounded text-red-400" style={{ background: "#1A0A0A" }}>🔴+</button>
+                      <button onClick={() => updOpt(meal._id, opt._id, { groups: [...opt.groups, newGroup("hidrato")] })}
+                        className="text-xs px-2 py-1 rounded text-yellow-400" style={{ background: "#1A1500" }}>🟡+</button>
+                      <button onClick={() => updOpt(meal._id, opt._id, { groups: [...opt.groups, newGroup("grasa")] })}
+                        className="text-xs px-2 py-1 rounded text-blue-400" style={{ background: "#0A0A1A" }}>🔵+</button>
+                      <button onClick={() => updOpt(meal._id, opt._id, { groups: [...opt.groups, newGroup("extra")] })}
+                        className="text-xs px-2 py-1 rounded text-neutral-400" style={{ background: "#1A1A1A" }}>⚪+</button>
                       {meal.options.length > 1 && (
-                        <button onClick={() => delOpt(meal._id, opt._id)}
-                          className="w-7 h-7 rounded bg-red-900/30 text-red-400 hover:bg-red-900/60 flex items-center justify-center text-sm">✕</button>
+                        <button onClick={() => updMeal(meal._id, { options: meal.options.filter(o => o._id !== opt._id) })}
+                          className="text-neutral-600 hover:text-red-400 text-xs">✕</button>
                       )}
                     </div>
 
-                    {/* Grupos de alimentos */}
-                    {opt.groups.map(g => (
-                      <div key={g._id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-3 space-y-2">
-
-                        {/* Fila de configuración del grupo */}
-                        <div className="flex gap-2 items-center flex-wrap">
-                          {/* Slot selector */}
-                          <select value={g.slot}
-                            onChange={e => updGroup(meal._id, opt._id, g._id, {
-                              slot: e.target.value as SlotFilter,
-                              label: SLOT_LABELS[e.target.value as SlotFilter] || g.label,
-                            })}
-                            className="bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-xs text-neutral-300 focus:outline-none">
-                            <option value="proteina">🔴 Proteína</option>
-                            <option value="hidrato">🟡 Hidratos</option>
-                            <option value="grasa">🔵 Grasa</option>
-                            <option value="extra">⚪ Resto</option>
-                          </select>
-                          {/* Etiqueta personalizada */}
-                          <input value={g.label}
-                            onChange={e => updGroup(meal._id, opt._id, g._id, { label: e.target.value })}
+                    {opt.groups.map(grp => (
+                      <div key={grp._id} className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs" style={{ color: SLOT_COLORS[grp.slot] }}>
+                            {SLOT_ICONS[grp.slot]} {SLOT_LABELS[grp.slot]}
+                          </span>
+                          <input value={grp.label}
+                            onChange={e => updGroup(meal._id, opt._id, grp._id, { label: e.target.value })}
                             placeholder="Etiqueta (opcional)"
-                            className="flex-1 min-w-0 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-neutral-500 placeholder-neutral-700" />
-                          {/* Elige uno / Obligatorio */}
-                          <button
-                            onClick={() => updGroup(meal._id, opt._id, g._id, { isChoice: !g.isChoice })}
-                            className={"px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors " +
-                              (g.isChoice
-                                ? "bg-blue-700/50 text-blue-300 border border-blue-700"
-                                : "bg-emerald-800/50 text-emerald-300 border border-emerald-800")}>
-                            {g.isChoice ? "Elige uno" : "Obligatorio"}
-                          </button>
-                          <button onClick={() => delGroup(meal._id, opt._id, g._id)}
-                            className="w-7 h-7 rounded bg-red-900/30 text-red-400 hover:bg-red-900/60 flex items-center justify-center text-xs">✕</button>
+                            className="flex-1 bg-transparent text-neutral-400 text-xs focus:outline-none" />
+                          <button onClick={() => updOpt(meal._id, opt._id, { groups: opt.groups.filter(g => g._id !== grp._id) })}
+                            className="text-neutral-700 hover:text-red-400 text-xs">✕</button>
                         </div>
-
-                        {/* Items de ingrediente */}
-                        <div className="space-y-1.5">
-                          {g.items.map(item => {
-                            const ing = INGREDIENTS.find(i => i.id === item.ingId);
-                            return (
-                              <div key={item._id} className="space-y-0.5">
-                                <div className="flex items-center gap-2">
-                                  <IngSelect slot={g.slot} value={item.ingId}
-                                    onChange={v => updItem(meal._id, opt._id, g._id, item._id, { ingId: v })} />
-                                  <input type="number" min="1" max="2000" value={item.grams}
-                                    onChange={e => updItem(meal._id, opt._id, g._id, item._id, { grams: parseFloat(e.target.value) || 0 })}
-                                    className="w-16 shrink-0 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-xs text-center focus:outline-none focus:border-neutral-500" />
-                                  <span className="text-neutral-600 text-xs shrink-0">g</span>
-                                  {g.items.length > 1 && (
-                                    <button onClick={() => delItem(meal._id, opt._id, g._id, item._id)}
-                                      className="w-6 h-6 rounded text-neutral-600 hover:text-red-400 flex items-center justify-center text-xs">✕</button>
-                                  )}
-                                </div>
-                                {/* Macros del ítem seleccionado */}
-                                {ing && item.grams > 0 && (
-                                  <p className="text-[10px] text-neutral-600 pl-1 tabular-nums">
-                                    {((ing.kcal * item.grams) / 100).toFixed(0)} kcal ·{" "}
-                                    {((ing.protein * item.grams) / 100).toFixed(1)}g P ·{" "}
-                                    {((ing.carbs * item.grams) / 100).toFixed(1)}g H ·{" "}
-                                    {((ing.fat * item.grams) / 100).toFixed(1)}g G
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Añadir alimento al grupo */}
-                        <button onClick={() => addItem(meal._id, opt._id, g._id)}
-                          className="w-full py-1.5 rounded-lg border border-dashed border-neutral-700 text-neutral-600 hover:text-neutral-400 hover:border-neutral-600 text-xs transition-colors">
-                          + Añadir alimento
-                        </button>
-
-                        {/* Nota del grupo */}
-                        <input value={g.note}
-                          onChange={e => updGroup(meal._id, opt._id, g._id, { note: e.target.value })}
-                          placeholder="Nota opcional (ej: Si comes pan, añade tomate rallado)"
-                          className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1 text-neutral-400 text-xs focus:outline-none focus:border-neutral-500 placeholder-neutral-700" />
+                        {grp.items.map(item => (
+                          <div key={item._id} className="flex items-center gap-2">
+                            <IngSelect value={item.ingId} slot={grp.slot}
+                              onChange={v => updItem(meal._id, opt._id, grp._id, item._id, { ingId: v })} />
+                            <input type="number" value={item.grams}
+                              onChange={e => updItem(meal._id, opt._id, grp._id, item._id, { grams: Number(e.target.value) })}
+                              className="w-16 text-xs text-center rounded-lg px-2 py-1.5 text-white focus:outline-none"
+                              style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+                            <span className="text-neutral-600 text-xs shrink-0">g</span>
+                            {grp.items.length > 1 && (
+                              <button onClick={() => updGroup(meal._id, opt._id, grp._id, { items: grp.items.filter(i => i._id !== item._id) })}
+                                className="text-neutral-700 hover:text-red-400 text-xs">✕</button>
+                            )}
+                          </div>
+                        ))}
+                        <button onClick={() => updGroup(meal._id, opt._id, grp._id, { items: [...grp.items, newItem()] })}
+                          className="text-xs text-neutral-600 hover:text-neutral-400">+ Añadir alimento</button>
                       </div>
                     ))}
-
-                    {/* Añadir grupo */}
-                    <div className="flex gap-2 flex-wrap">
-                      {(["proteina","hidrato","grasa","extra"] as SlotFilter[]).map(s => (
-                        <button key={s} onClick={() => addGroup(meal._id, opt._id, s)}
-                          className="px-2.5 py-1.5 rounded-lg border border-dashed border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 text-xs transition-colors">
-                          + {SLOT_LABELS[s]}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 ))}
 
-                <button onClick={() => addOpt(meal._id)}
-                  className="w-full py-2 rounded-xl border border-dashed border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 text-sm transition-colors">
-                  + Añadir opción
+                <button onClick={() => updMeal(meal._id, { options: [...meal.options, newOption(meal.options.length + 1)] })}
+                  className="w-full py-2 rounded-lg text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                  style={{ border: "1px dashed #2A2A2A" }}>
+                  + Añadir opción a esta comida
                 </button>
               </div>
             )}
           </div>
         ))}
 
-        {errorMsg && (
-          <div className="bg-red-900/30 border border-red-700 rounded-xl px-4 py-3">
-            <p className="text-red-400 text-xs font-mono">{errorMsg}</p>
-          </div>
-        )}
-
-      </div>
-
-      {/* Botón guardar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-neutral-950 border-t border-neutral-800 px-4 py-4">
-        <div className="max-w-2xl mx-auto">
-          <button onClick={handleSave} disabled={saving || saved}
-            className="w-full py-4 rounded-xl bg-white text-black text-sm font-bold hover:bg-neutral-200 disabled:opacity-40 transition-colors">
-            {saving ? "Guardando plan…" : saved ? "✅ Plan guardado" : "💾 Guardar plan nutricional"}
-          </button>
-        </div>
+        <button onClick={() => setMeals(ms => [...ms, newMeal()])}
+          className="w-full py-3 rounded-xl text-sm text-neutral-400 hover:text-white transition-colors"
+          style={{ border: "1px dashed #2A2A2A" }}>
+          + Añadir comida
+        </button>
       </div>
     </div>
   );

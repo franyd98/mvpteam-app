@@ -10,7 +10,9 @@ type Profile = { id: string; full_name: string; role: string };
 type CatalogEx = { id: number; muscle_group: string; name: string; video_ref: string | null };
 type ProgramRow = { id: number; name: string; description: string | null };
 type Assignment = { client_id: string; program_id: number; program_name: string };
-type Tab = "programas" | "clientes" | "ejercicios";
+type DietPlan = { id: string; name: string; kcal_on: number | null; kcal_off: number | null; notes: string | null };
+type DietAssignment = { client_id: string; plan_id: string; plan_name: string };
+type Tab = "programas" | "clientes" | "ejercicios" | "dietas";
 
 type ClientLog = {
   id: number;
@@ -47,12 +49,16 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [clientLogs, setClientLogs] = useState<ClientLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [selectedTrainingDay, setSelectedTrainingDay] = useState<string | null>(null);
-  const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin">("entreno");
+  const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin" | "dieta">("entreno");
   const [clientCheckIn, setClientCheckIn] = useState<{ weights: any[]; perims: any[]; folds: any[]; fatigues: any[] } | null>(null);
   const [loadingCheckIn, setLoadingCheckIn] = useState(false);
   const [showVisita, setShowVisita] = useState(false);
   const [checkInFilter, setCheckInFilter] = useState<"all" | "presencial" | "auto">("all");
-  const [showDietEditor, setShowDietEditor] = useState(false);
+  const [dietPlans, setDietPlans] = useState<DietPlan[]>([]);
+  const [dietAssignments, setDietAssignments] = useState<DietAssignment[]>([]);
+  // "__none__" = cerrado; null = nuevo plan; string = editar plan existente
+  const [editingDietPlanId, setEditingDietPlanId] = useState<string | null | "__none__">("__none__");
+  const [assigningDietPlan, setAssigningDietPlan] = useState<string | null>(null);
 
   // Añadir ejercicio al catálogo
   const [newExName, setNewExName] = useState("");
@@ -72,7 +78,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
   const loadAll = async () => {
     setLoading(true);
-    await Promise.all([loadClients(), loadExercises(), loadPrograms(), loadAssignments()]);
+    await Promise.all([loadClients(), loadExercises(), loadPrograms(), loadAssignments(), loadDietPlans(), loadDietAssignments()]);
     setLoading(false);
   };
   const loadClients = async () => {
@@ -97,6 +103,23 @@ export default function AdminPage({ profile }: { profile: Profile }) {
         client_id: a.client_id,
         program_id: a.program_id,
         program_name: a.programs?.name ?? "Programa desconocido",
+      }))
+    );
+  };
+  const loadDietPlans = async () => {
+    const { data } = await supabase.from("diet_plans").select("id, name, kcal_on, kcal_off, notes").order("name");
+    setDietPlans(data ?? []);
+  };
+  const loadDietAssignments = async () => {
+    const { data } = await supabase
+      .from("diet_assignments")
+      .select("client_id, plan_id, diet_plans(name)")
+      .eq("active", true);
+    setDietAssignments(
+      (data ?? []).map((a: any) => ({
+        client_id: a.client_id,
+        plan_id: a.plan_id,
+        plan_name: a.diet_plans?.name ?? "Plan desconocido",
       }))
     );
   };
@@ -166,6 +189,44 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     await supabase.from("program_assignments").update({ active: false }).eq("client_id", clientId);
     showToast(`✅ Programa desasignado de ${clientName}`);
     await loadAssignments();
+  };
+
+  // ── Diet handlers ────────────────────────────────────────────
+  const handleAssignDiet = async (planId: string, clientId: string, clientName: string) => {
+    await supabase.from("diet_assignments").update({ active: false }).eq("client_id", clientId);
+    const { error } = await supabase.from("diet_assignments").insert({ plan_id: planId, client_id: clientId, active: true });
+    showToast(error ? "Error al asignar dieta" : `✅ Dieta asignada a ${clientName}`);
+    setAssigningDietPlan(null);
+    await loadDietAssignments();
+  };
+  const handleUnassignDiet = async (clientId: string, clientName: string) => {
+    await supabase.from("diet_assignments").update({ active: false }).eq("client_id", clientId);
+    showToast(`✅ Dieta desasignada de ${clientName}`);
+    await loadDietAssignments();
+  };
+  const handleDuplicateDiet = async (plan: DietPlan) => {
+    const { data: newPlan } = await supabase.from("diet_plans")
+      .insert({ name: plan.name + " (copia)", kcal_on: plan.kcal_on, kcal_off: plan.kcal_off, notes: plan.notes })
+      .select().single();
+    if (!newPlan) { showToast("Error al duplicar"); return; }
+    const { data: meals } = await supabase.from("diet_meals").select("*, diet_options(*)").eq("plan_id", plan.id).order("sort_order");
+    for (const meal of meals ?? []) {
+      const { data: newMeal } = await supabase.from("diet_meals")
+        .insert({ plan_id: newPlan.id, name: meal.name, emoji: meal.emoji, day_type: meal.day_type, sort_order: meal.sort_order })
+        .select().single();
+      if (!newMeal) continue;
+      for (const opt of (meal as any).diet_options ?? []) {
+        await supabase.from("diet_options").insert({ meal_id: newMeal.id, name: opt.name, content: opt.content, sort_order: opt.sort_order });
+      }
+    }
+    await loadDietPlans();
+    showToast(`✅ "${plan.name}" duplicado`);
+  };
+  const handleDeleteDiet = async (plan: DietPlan) => {
+    if (!confirm(`¿Eliminar "${plan.name}"? También se desasignará de los clientes.`)) return;
+    await supabase.from("diet_plans").delete().eq("id", plan.id);
+    await Promise.all([loadDietPlans(), loadDietAssignments()]);
+    showToast("✅ Plan eliminado");
   };
 
   const handleDuplicate = async (prog: ProgramRow) => {
@@ -277,12 +338,12 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     );
   }
 
-  // Editor de dieta
-  if (showDietEditor && viewingClient) {
+  // Editor de dieta (standalone desde pestaña Dietas)
+  if (editingDietPlanId !== "__none__") {
     return (
       <DietEditor
-        client={viewingClient}
-        onBack={() => setShowDietEditor(false)}
+        planId={editingDietPlanId as string | null}
+        onBack={async () => { setEditingDietPlanId("__none__"); await loadDietPlans(); }}
       />
     );
   }
@@ -368,9 +429,12 @@ export default function AdminPage({ profile }: { profile: Profile }) {
             📊 Control
           </button>
           <button
-            onClick={() => setShowDietEditor(true)}
-            className="px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap text-neutral-400"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+            onClick={() => setClientViewTab("dieta")}
+            className={"px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap " +
+              (clientViewTab === "dieta" ? "text-white" : "text-neutral-400")}
+            style={clientViewTab === "dieta"
+              ? { background: "#8B1A2F", border: "1px solid #A01F38" }
+              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
             🥗 Dieta
           </button>
           <div className="flex-1" />
@@ -529,6 +593,74 @@ export default function AdminPage({ profile }: { profile: Profile }) {
               );
             })()
           ))}
+
+          {/* ── Dieta del cliente ── */}
+          {clientViewTab === "dieta" && (() => {
+            const da = dietAssignments.find(a => a.client_id === viewingClient.id);
+            return (
+              <div className="space-y-4">
+                {/* Plan asignado actualmente */}
+                <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+                  <p className="text-xs uppercase tracking-wider text-neutral-500 mb-3">Plan asignado</p>
+                  {da ? (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <p className="text-white font-semibold">{da.plan_name}</p>
+                        {(() => {
+                          const plan = dietPlans.find(p => p.id === da.plan_id);
+                          return plan?.kcal_on
+                            ? <p className="text-neutral-400 text-xs mt-0.5">🔥 {plan.kcal_on} kcal día ON · {plan.kcal_off} día OFF</p>
+                            : null;
+                        })()}
+                      </div>
+                      <button
+                        onClick={() => setEditingDietPlanId(da.plan_id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-300 hover:text-white"
+                        style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                        ✏️ Editar plan
+                      </button>
+                      <button
+                        onClick={() => handleUnassignDiet(viewingClient.id, viewingClient.full_name)}
+                        className="px-3 py-1.5 rounded-lg text-xs text-red-400 hover:text-red-300"
+                        style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-neutral-500 text-sm">Sin dieta asignada</p>
+                  )}
+                </div>
+
+                {/* Lista de planes para asignar */}
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Asignar plan</p>
+                  {dietPlans.length === 0 ? (
+                    <p className="text-neutral-600 text-sm">No hay planes creados todavía. Créalos en la pestaña 🥗 Dietas.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {dietPlans.map(plan => {
+                        const isAssigned = da?.plan_id === plan.id;
+                        return (
+                          <button key={plan.id}
+                            onClick={() => handleAssignDiet(plan.id, viewingClient.id, viewingClient.full_name)}
+                            className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors"
+                            style={isAssigned
+                              ? { background: "#1A0810", border: "1px solid #8B1A2F" }
+                              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                            <div className="flex-1">
+                              <p className={isAssigned ? "text-white font-semibold text-sm" : "text-neutral-300 text-sm"}>{plan.name}</p>
+                              {plan.kcal_on && <p className="text-neutral-500 text-xs">{plan.kcal_on} / {plan.kcal_off} kcal</p>}
+                            </div>
+                            {isAssigned && <span className="text-xs font-medium" style={{ color: "#8B1A2F" }}>✓ Activa</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     );
@@ -571,10 +703,10 @@ export default function AdminPage({ profile }: { profile: Profile }) {
         </div>
       )}
 
-      <div className="flex gap-1 p-4 max-w-3xl mx-auto">
-        {([["programas", "📋 Programas"], ["clientes", "👥 Clientes"], ["ejercicios", "🏋️ Ejercicios"]] as [Tab, string][]).map(([t, label]) => (
+      <div className="flex gap-1 p-4 max-w-3xl mx-auto overflow-x-auto">
+        {([["programas", "📋 Programas"], ["clientes", "👥 Clientes"], ["dietas", "🥗 Dietas"], ["ejercicios", "🏋️ Ejercicios"]] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
-            className={"px-4 py-2 rounded-lg text-sm font-medium transition-colors " + (tab === t ? "text-white" : "text-neutral-400")}
+            className={"px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap " + (tab === t ? "text-white" : "text-neutral-400")}
             style={tab === t
               ? { background: "#8B1A2F", border: "1px solid #A01F38" }
               : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
@@ -705,6 +837,122 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB DIETAS ── */}
+        {tab === "dietas" && (
+          <div>
+            {/* Botón crear nuevo plan */}
+            <button
+              onClick={() => setEditingDietPlanId(null)}
+              className="w-full py-3 rounded-xl text-sm font-semibold mb-4 transition-colors"
+              style={{ background: "#8B1A2F", border: "1px solid #A01F38", color: "white" }}>
+              + Nuevo plan de dieta
+            </button>
+
+            {dietPlans.length === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-4xl mb-3">🥗</p>
+                <p className="text-neutral-400 text-sm">Aún no hay planes de dieta.</p>
+                <p className="text-neutral-600 text-xs mt-1">Pulsa "Nuevo plan" para crear el primero.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {dietPlans.map((plan) => {
+                  const assigned = dietAssignments.filter(a => a.plan_id === plan.id);
+                  return (
+                    <div key={plan.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h2 className="text-white font-semibold text-base">{plan.name}</h2>
+                        {assigned.length > 0 && (
+                          <span className="text-xs px-2 py-0.5 rounded-full shrink-0"
+                            style={{ background: "#1A0810", color: "#C4394F", border: "1px solid #8B1A2F50" }}>
+                            {assigned.length} cliente{assigned.length > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      {(plan.kcal_on || plan.kcal_off) && (
+                        <p className="text-neutral-500 text-xs mb-3">
+                          🔥 ON: {plan.kcal_on ?? "—"} kcal · OFF: {plan.kcal_off ?? "—"} kcal
+                        </p>
+                      )}
+                      {assigned.length > 0 && (
+                        <p className="text-neutral-600 text-xs mb-3">
+                          Asignado a: {assigned.map(a => {
+                            const c = clients.find(cl => cl.id === a.client_id);
+                            return c?.full_name ?? "Cliente";
+                          }).join(", ")}
+                        </p>
+                      )}
+
+                      {/* Acciones */}
+                      <div className="flex gap-2 mb-3">
+                        <button onClick={() => setEditingDietPlanId(plan.id)}
+                          className="flex-1 py-2 rounded-lg bg-neutral-800 text-neutral-200 text-sm font-medium hover:bg-neutral-700 transition-colors">
+                          ✏️ Editar
+                        </button>
+                        <button onClick={() => handleDuplicateDiet(plan)}
+                          className="flex-1 py-2 rounded-lg bg-neutral-800 text-neutral-200 text-sm font-medium hover:bg-neutral-700 transition-colors">
+                          📋 Duplicar
+                        </button>
+                        <button onClick={() => handleDeleteDiet(plan)}
+                          className="px-3 py-2 rounded-lg text-red-400 text-sm hover:bg-red-950/40 transition-colors"
+                          style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
+                          🗑️
+                        </button>
+                      </div>
+
+                      {/* Asignar a cliente */}
+                      {assigningDietPlan === plan.id ? (
+                        <div>
+                          <p className="text-xs text-neutral-400 mb-2">Asignar a:</p>
+                          {clients.length === 0 ? (
+                            <p className="text-neutral-500 text-xs">No hay clientes.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {clients.map((c) => {
+                                const isAssigned = dietAssignments.find(a => a.client_id === c.id && a.plan_id === plan.id);
+                                return (
+                                  <div key={c.id} className="flex items-center gap-2">
+                                    <button onClick={() => handleAssignDiet(plan.id, c.id, c.full_name)}
+                                      className={"flex-1 text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-colors " +
+                                        (isAssigned ? "text-white" : "text-neutral-300 hover:text-white")}
+                                      style={isAssigned
+                                        ? { background: "#1A0810", border: "1px solid #8B1A2F" }
+                                        : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                                      <span className="w-7 h-7 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-bold shrink-0">
+                                        {c.full_name.charAt(0).toUpperCase()}
+                                      </span>
+                                      <span className="flex-1">{c.full_name}</span>
+                                      {isAssigned && <span className="text-xs shrink-0" style={{ color: "#C4394F" }}>✓ Asignado</span>}
+                                    </button>
+                                    {isAssigned && (
+                                      <button
+                                        onClick={() => handleUnassignDiet(c.id, c.full_name)}
+                                        className="w-8 h-8 rounded-lg text-red-400 border flex items-center justify-center text-sm shrink-0 hover:bg-red-950/40"
+                                        style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
+                                        ✕
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <button onClick={() => setAssigningDietPlan(null)} className="mt-2 text-xs text-neutral-500 hover:text-neutral-300">Cancelar</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setAssigningDietPlan(plan.id)}
+                          className="w-full py-2.5 rounded-lg bg-white text-black text-sm font-semibold hover:bg-neutral-200 transition-colors">
+                          Asignar a cliente →
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
