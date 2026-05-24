@@ -366,58 +366,18 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
 
   const [photoError, setPhotoError] = useState<string | null>(null);
 
-  // Intenta convertir a JPEG via Canvas (funciona con JPEG/PNG/WebP y HEIC en Safari).
-  // Si el navegador no puede decodificar el formato, rechaza la promesa.
-  const toJpeg = (rawFile: File): Promise<File> =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(rawFile);
-      img.onload = () => {
-        const maxDim = 1920;
-        const ratio = Math.min(maxDim / img.width, maxDim / img.height, 1);
-        const canvas = document.createElement("canvas");
-        canvas.width  = Math.round(img.width  * ratio);
-        canvas.height = Math.round(img.height * ratio);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { URL.revokeObjectURL(objectUrl); reject(new Error("Canvas no disponible")); return; }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(objectUrl);
-        canvas.toBlob(
-          blob => blob
-            ? resolve(new File([blob], "photo.jpg", { type: "image/jpeg" }))
-            : reject(new Error("toBlob fallida")),
-          "image/jpeg", 0.85
-        );
-      };
-      img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("onerror")); };
-      img.src = objectUrl;
-    });
-
   const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawFile = e.target.files?.[0];
-    if (!rawFile) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
     setUploading(true);
     setPhotoError(null);
 
-    // Intentar convertir a JPEG; si falla (p.ej. HEIC en Chrome de escritorio),
-    // subir el archivo original tal cual.
-    let file: File;
-    let contentType: string;
-    let ext: string;
-    try {
-      file = await toJpeg(rawFile);
-      contentType = "image/jpeg";
-      ext = "jpg";
-    } catch {
-      file = rawFile;
-      contentType = rawFile.type || "application/octet-stream";
-      ext = rawFile.name.split(".").pop()?.toLowerCase() ?? "bin";
-    }
-
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
     const path = `${profile.id}/${Date.now()}.${ext}`;
+
     const { error: upErr } = await supabase.storage
       .from("checkin-photos")
-      .upload(path, file, { contentType, upsert: false });
+      .upload(path, file, { contentType: file.type, upsert: false });
 
     if (upErr) {
       setPhotoError("Error al subir. Inténtalo de nuevo.");
@@ -849,7 +809,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
               (uploading ? "border-neutral-700 text-neutral-600" : "border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white")}>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
                 className="hidden"
                 disabled={uploading}
                 onChange={handleUploadPhoto}
@@ -888,8 +848,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                     <img
                       src={photo.url}
                       alt="foto progreso"
-                      className="w-full h-full object-cover rounded-xl cursor-pointer"
+                      className="w-full h-full object-cover rounded-xl cursor-pointer bg-neutral-800"
                       onClick={() => setPreviewUrl(photo.url)}
+                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                     />
                     <button
                       onClick={() => handleDeletePhoto(photo)}
