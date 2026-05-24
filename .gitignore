@@ -1,0 +1,15 @@
+# Credenciales — nunca subir
+.env
+.env.local
+.env*.local
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+dist/
+.cache/
+
+# TypeScript build info
+*.tsbuildinfo
