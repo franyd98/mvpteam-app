@@ -1,0 +1,11 @@
+# Archivos que NO subimos a git.
+# Si esto suena a chino, lo veremos en una próxima fase.
+
+node_modules
+dist
+.DS_Store
+*.local
+.env
+.env.local
+.vscode/*
+!.vscode/extensions.json
