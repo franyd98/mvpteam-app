@@ -406,20 +406,24 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     setUploading(true);
     setPhotoError(null);
 
+    // Intentar convertir a JPEG; si falla, subir el archivo original
     let file: File;
+    let converted = false;
     try {
       file = await toJpeg(raw);
+      converted = true;
     } catch {
-      setPhotoError("No se pudo procesar la imagen. Inténtalo con una foto JPEG o PNG.");
-      setUploading(false);
-      e.target.value = "";
-      return;
+      // La conversión falló (HEIC no soportado o error de canvas) → subir original
+      file = raw;
     }
 
-    const path = `${profile.id}/${Date.now()}.jpg`;
+    const ext = converted ? "jpg" : (raw.name.split(".").pop()?.toLowerCase() || "jpg");
+    const mime = converted ? "image/jpeg" : (raw.type || "image/jpeg");
+    const path = `${profile.id}/${Date.now()}.${ext}`;
+
     const { error: upErr } = await supabase.storage
       .from("checkin-photos")
-      .upload(path, file, { contentType: "image/jpeg", upsert: false });
+      .upload(path, file, { contentType: mime, upsert: false });
 
     if (upErr) {
       setPhotoError("Error al subir. Inténtalo de nuevo.");
