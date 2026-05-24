@@ -191,6 +191,18 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     await loadAssignments();
   };
 
+  const handleDeleteProgram = async (prog: ProgramRow) => {
+    const clientsAssigned = assignments.filter(a => a.program_id === prog.id);
+    const msg = clientsAssigned.length > 0
+      ? `¿Eliminar "${prog.name}"? Está asignado a ${clientsAssigned.length} cliente(s). Se eliminará todo el contenido.`
+      : `¿Eliminar "${prog.name}"? Se eliminará todo su contenido permanentemente.`;
+    if (!confirm(msg)) return;
+    const { error } = await supabase.from("programs").delete().eq("id", prog.id);
+    if (error) { showToast("❌ Error al eliminar"); return; }
+    await Promise.all([loadPrograms(), loadAssignments()]);
+    showToast(`✅ "${prog.name}" eliminado`);
+  };
+
   // ── Diet handlers ────────────────────────────────────────────
   const handleAssignDiet = async (planId: string, clientId: string, clientName: string) => {
     await supabase.from("diet_assignments").update({ active: false }).eq("client_id", clientId);
@@ -739,6 +751,11 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                       <button onClick={() => handleDuplicate(prog)}
                         className="flex-1 py-2 rounded-lg bg-neutral-800 text-neutral-200 text-sm font-medium hover:bg-neutral-700 transition-colors">
                         📋 Duplicar
+                      </button>
+                      <button onClick={() => handleDeleteProgram(prog)}
+                        className="px-3 py-2 rounded-lg text-red-400 text-sm hover:bg-red-950/40 transition-colors"
+                        style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
+                        🗑️
                       </button>
                     </div>
 
