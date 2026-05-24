@@ -364,29 +364,32 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     setPhotoLogs(ph.data ?? []);
   };
 
-  // Convierte cualquier imagen (incluido HEIC de iPhone) a JPEG via Canvas.
-  // Así siempre se sube un .jpg que cualquier navegador puede mostrar.
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  // Intenta convertir a JPEG via Canvas (funciona con JPEG/PNG/WebP y HEIC en Safari).
+  // Si el navegador no puede decodificar el formato, rechaza la promesa.
   const toJpeg = (rawFile: File): Promise<File> =>
     new Promise((resolve, reject) => {
       const img = new Image();
       const objectUrl = URL.createObjectURL(rawFile);
       img.onload = () => {
-        // Reducir si es muy grande (max 1920px en el lado mayor)
         const maxDim = 1920;
         const ratio = Math.min(maxDim / img.width, maxDim / img.height, 1);
         const canvas = document.createElement("canvas");
         canvas.width  = Math.round(img.width  * ratio);
         canvas.height = Math.round(img.height * ratio);
-        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { URL.revokeObjectURL(objectUrl); reject(new Error("Canvas no disponible")); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(objectUrl);
         canvas.toBlob(
           blob => blob
             ? resolve(new File([blob], "photo.jpg", { type: "image/jpeg" }))
-            : reject(new Error("Conversión fallida")),
+            : reject(new Error("toBlob fallida")),
           "image/jpeg", 0.85
         );
       };
-      img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("No se pudo leer la imagen")); };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("onerror")); };
       img.src = objectUrl;
     });
 
@@ -394,24 +397,40 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
     setUploading(true);
+    setPhotoError(null);
+
+    // Intentar convertir a JPEG; si falla (p.ej. HEIC en Chrome de escritorio),
+    // subir el archivo original tal cual.
+    let file: File;
+    let contentType: string;
+    let ext: string;
     try {
-      const file = await toJpeg(rawFile);           // → siempre JPEG
-      const path = `${profile.id}/${Date.now()}.jpg`;
-      const { error: upErr } = await supabase.storage
-        .from("checkin-photos")
-        .upload(path, file, { contentType: "image/jpeg", upsert: false });
-      if (!upErr) {
-        const { data: urlData } = supabase.storage.from("checkin-photos").getPublicUrl(path);
-        await supabase.from("checkin_photos").insert({
-          client_id: profile.id,
-          url: urlData.publicUrl,
-          taken_at: today(),
-        });
-        await loadAll();
-      }
-    } catch (err) {
-      console.error("Error al subir foto:", err);
+      file = await toJpeg(rawFile);
+      contentType = "image/jpeg";
+      ext = "jpg";
+    } catch {
+      file = rawFile;
+      contentType = rawFile.type || "application/octet-stream";
+      ext = rawFile.name.split(".").pop()?.toLowerCase() ?? "bin";
     }
+
+    const path = `${profile.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("checkin-photos")
+      .upload(path, file, { contentType, upsert: false });
+
+    if (upErr) {
+      setPhotoError("Error al subir. Inténtalo de nuevo.");
+    } else {
+      const { data: urlData } = supabase.storage.from("checkin-photos").getPublicUrl(path);
+      await supabase.from("checkin_photos").insert({
+        client_id: profile.id,
+        url: urlData.publicUrl,
+        taken_at: today(),
+      });
+      await loadAll();
+    }
+
     setUploading(false);
     e.target.value = "";
   };
@@ -849,6 +868,11 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                 </>
               )}
             </label>
+
+            {/* Error de subida */}
+            {photoError && (
+              <p className="text-red-400 text-sm text-center -mt-2">{photoError}</p>
+            )}
 
             {/* Grid de fotos */}
             {photoLogs.length === 0 ? (
