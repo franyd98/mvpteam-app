@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import heic2any from "heic2any";
 
 type Profile = { id: string; full_name: string; role: string };
 type Tab = "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos";
@@ -366,12 +367,22 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
 
   const [photoError, setPhotoError] = useState<string | null>(null);
 
-  // Convierte a JPEG via createImageBitmap + Canvas.
-  // createImageBitmap rechaza inmediatamente para formatos no soportados
-  // (ej. HEIC en Chrome), evitando colgarse como hacía new Image().
-  // En Safari (iOS/Mac) sí soporta HEIC, así que convierte correctamente.
-  const toJpeg = async (raw: File): Promise<{ file: File; ext: string; type: string }> => {
-    const bitmap = await createImageBitmap(raw); // lanza si no soportado
+  // Convierte cualquier imagen a JPEG antes de subir.
+  // HEIC/HEIF: usa heic2any (funciona en Chrome, Firefox y Safari).
+  // Resto: usa createImageBitmap + Canvas (más rápido).
+  const toJpeg = async (raw: File): Promise<File> => {
+    const isHeic = raw.type === "image/heic" || raw.type === "image/heif"
+      || /\.(heic|heif)$/i.test(raw.name);
+
+    if (isHeic) {
+      // heic2any convierte en JS puro, sin depender del soporte del navegador
+      const result = await heic2any({ blob: raw, toType: "image/jpeg", quality: 0.85 });
+      const blob = Array.isArray(result) ? result[0] : result;
+      return new File([blob], "photo.jpg", { type: "image/jpeg" });
+    }
+
+    // Para JPEG, PNG, WebP: Canvas (rápido y sin dependencias extra)
+    const bitmap = await createImageBitmap(raw);
     const maxDim = 1920;
     const ratio = Math.min(maxDim / bitmap.width, maxDim / bitmap.height, 1);
     const canvas = document.createElement("canvas");
@@ -380,10 +391,12 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
     return new Promise((resolve, reject) => {
-      canvas.toBlob(blob => blob
-        ? resolve({ file: new File([blob], "photo.jpg", { type: "image/jpeg" }), ext: "jpg", type: "image/jpeg" })
-        : reject(new Error("toBlob falló")),
-        "image/jpeg", 0.85);
+      canvas.toBlob(
+        blob => blob
+          ? resolve(new File([blob], "photo.jpg", { type: "image/jpeg" }))
+          : reject(new Error("toBlob falló")),
+        "image/jpeg", 0.85
+      );
     });
   };
 
@@ -394,21 +407,19 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     setPhotoError(null);
 
     let file: File;
-    let ext: string;
-    let contentType: string;
     try {
-      ({ file, ext, type: contentType } = await toJpeg(raw));
+      file = await toJpeg(raw);
     } catch {
-      // Formato no soportado por el navegador (ej. HEIC en Chrome) → sube tal cual
-      file = raw;
-      ext = raw.name.split(".").pop()?.toLowerCase() ?? "bin";
-      contentType = raw.type || "application/octet-stream";
+      setPhotoError("No se pudo procesar la imagen. Inténtalo con una foto JPEG o PNG.");
+      setUploading(false);
+      e.target.value = "";
+      return;
     }
 
-    const path = `${profile.id}/${Date.now()}.${ext}`;
+    const path = `${profile.id}/${Date.now()}.jpg`;
     const { error: upErr } = await supabase.storage
       .from("checkin-photos")
-      .upload(path, file, { contentType, upsert: false });
+      .upload(path, file, { contentType: "image/jpeg", upsert: false });
 
     if (upErr) {
       setPhotoError("Error al subir. Inténtalo de nuevo.");
@@ -840,7 +851,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
               (uploading ? "border-neutral-700 text-neutral-600" : "border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white")}>
               <input
                 type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
+                accept="image/*"
                 className="hidden"
                 disabled={uploading}
                 onChange={handleUploadPhoto}
