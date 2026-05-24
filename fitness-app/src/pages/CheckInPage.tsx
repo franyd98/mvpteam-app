@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 type Profile = { id: string; full_name: string; role: string };
-type Tab = "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria";
+type Tab = "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos";
 
 const today = () => new Date().toISOString().split("T")[0];
 const fmtDate = (d: string) =>
@@ -341,20 +341,59 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   const [ff, setFf] = useState<Record<string, string>>(emptyFatigue());
   const [savingF, setSavingF] = useState(false);
 
+  // ── FOTOS ─────────────────────────────────────────────────────
+  const [photoLogs, setPhotoLogs] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
     const cid = profile.id;
-    const [w, p, fl, f] = await Promise.all([
+    const [w, p, fl, f, ph] = await Promise.all([
       supabase.from("weight_logs").select("*").eq("client_id", cid).order("date", { ascending: false }).limit(20),
       supabase.from("perimeter_logs").select("*").eq("client_id", cid).order("date", { ascending: false }).limit(20),
       supabase.from("fold_logs").select("*").eq("client_id", cid).order("date", { ascending: false }).limit(20),
       supabase.from("fatigue_logs").select("*").eq("client_id", cid).order("date", { ascending: false }).limit(20),
+      supabase.from("checkin_photos").select("*").eq("client_id", cid).order("created_at", { ascending: false }).limit(60),
     ]);
     setWeightLogs(w.data ?? []);
     setPerimLogs(p.data ?? []);
     setFoldLogs(fl.data ?? []);
     setFatigueLogs(f.data ?? []);
+    setPhotoLogs(ph.data ?? []);
+  };
+
+  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path = `${profile.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("checkin-photos")
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (!upErr) {
+      const { data: urlData } = supabase.storage.from("checkin-photos").getPublicUrl(path);
+      await supabase.from("checkin_photos").insert({
+        client_id: profile.id,
+        url: urlData.publicUrl,
+        taken_at: today(),
+      });
+      await loadAll();
+    }
+    setUploading(false);
+    e.target.value = "";
+  };
+
+  const handleDeletePhoto = async (photo: any) => {
+    if (!confirm("¿Eliminar esta foto?")) return;
+    // El path es la parte tras el nombre del bucket en la URL pública
+    const marker = "/checkin-photos/";
+    const path = photo.url.includes(marker) ? photo.url.split(marker)[1] : null;
+    if (path) await supabase.storage.from("checkin-photos").remove([path]);
+    await supabase.from("checkin_photos").delete().eq("id", photo.id);
+    setPhotoLogs(prev => prev.filter(p => p.id !== photo.id));
   };
 
   // ── Saves ─────────────────────────────────────────────────────
@@ -447,6 +486,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     ["pliegues", "📌 Pliegues"],
     ["fatiga", "🔥 Fatiga"],
     ["antropometria", "📊 Antropometría"],
+    ["fotos", "📷 Fotos"],
   ];
 
   // Los 10 sitios de la fórmula Excel (Σ/1000 = % grasa)
@@ -752,7 +792,84 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
           />
         )}
 
+        {/* ── FOTOS ── */}
+        {tab === "fotos" && (
+          <div className="space-y-4">
+            {/* Botón subir */}
+            <label className={"w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-dashed transition-colors cursor-pointer " +
+              (uploading ? "border-neutral-700 text-neutral-600" : "border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white")}>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={handleUploadPhoto}
+              />
+              {uploading ? (
+                <>
+                  <span className="text-sm">Subiendo...</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-2xl">📷</span>
+                  <div>
+                    <p className="text-sm font-medium">Subir foto de progreso</p>
+                    <p className="text-xs text-neutral-500">Cámara o galería</p>
+                  </div>
+                </>
+              )}
+            </label>
+
+            {/* Grid de fotos */}
+            {photoLogs.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-4xl mb-3">📷</p>
+                <p className="text-neutral-400 text-sm">Aún no hay fotos.</p>
+                <p className="text-neutral-600 text-xs mt-1">Sube tu primera foto de progreso.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {photoLogs.map(photo => (
+                  <div key={photo.id} className="relative aspect-square group">
+                    <img
+                      src={photo.url}
+                      alt="foto progreso"
+                      className="w-full h-full object-cover rounded-xl cursor-pointer"
+                      onClick={() => setPreviewUrl(photo.url)}
+                    />
+                    <button
+                      onClick={() => handleDeletePhoto(photo)}
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      ✕
+                    </button>
+                    <p className="absolute bottom-0 left-0 right-0 text-[9px] text-center text-white/60 bg-black/40 rounded-b-xl py-0.5">
+                      {fmtShort(photo.taken_at)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
+
+      {/* Lightbox */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95"
+          onClick={() => setPreviewUrl(null)}>
+          <img
+            src={previewUrl}
+            alt="preview"
+            className="max-w-full max-h-full object-contain p-4"
+          />
+          <button
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center text-lg hover:bg-white/20">
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

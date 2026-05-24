@@ -50,7 +50,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [selectedTrainingDay, setSelectedTrainingDay] = useState<string | null>(null);
   const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin" | "dieta">("entreno");
-  const [clientCheckIn, setClientCheckIn] = useState<{ weights: any[]; perims: any[]; folds: any[]; fatigues: any[] } | null>(null);
+  const [clientCheckIn, setClientCheckIn] = useState<{ weights: any[]; perims: any[]; folds: any[]; fatigues: any[]; photos: any[] } | null>(null);
+  const [adminPreviewUrl, setAdminPreviewUrl] = useState<string | null>(null);
   const [loadingCheckIn, setLoadingCheckIn] = useState(false);
   const [showVisita, setShowVisita] = useState(false);
   const [checkInFilter, setCheckInFilter] = useState<"all" | "presencial" | "auto">("all");
@@ -136,17 +137,19 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
   const loadClientCheckIn = async (clientId: string) => {
     setLoadingCheckIn(true);
-    const [w, p, fl, f] = await Promise.all([
+    const [w, p, fl, f, ph] = await Promise.all([
       supabase.from("weight_logs").select("*").eq("client_id", clientId).order("date", { ascending: true }).limit(20),
       supabase.from("perimeter_logs").select("*").eq("client_id", clientId).order("date", { ascending: true }).limit(20),
       supabase.from("fold_logs").select("*").eq("client_id", clientId).order("date", { ascending: true }).limit(20),
       supabase.from("fatigue_logs").select("*").eq("client_id", clientId).order("date", { ascending: false }).limit(20),
+      supabase.from("checkin_photos").select("*").eq("client_id", clientId).order("created_at", { ascending: false }).limit(60),
     ]);
     setClientCheckIn({
       weights: w.data ?? [],
       perims: p.data ?? [],
       folds: fl.data ?? [],
       fatigues: f.data ?? [],
+      photos: ph.data ?? [],
     });
     setLoadingCheckIn(false);
   };
@@ -394,6 +397,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     ] as const;
 
     return (
+      <>
       <div className="min-h-screen pb-10" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
         <header className="px-4 py-3 flex items-center gap-3"
           style={{ background: "#0F0F0F", borderBottom: "1px solid #8B1A2F40" }}>
@@ -495,6 +499,28 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                     />
                   );
                 })()}
+
+                {/* Fotos de progreso */}
+                {clientCheckIn.photos.length > 0 && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-neutral-500 mb-3">Fotos de progreso</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {clientCheckIn.photos.map((photo: any) => (
+                        <div key={photo.id} className="relative aspect-square cursor-pointer"
+                          onClick={() => setAdminPreviewUrl(photo.url)}>
+                          <img
+                            src={photo.url}
+                            alt="foto progreso"
+                            className="w-full h-full object-cover rounded-xl hover:opacity-90 transition-opacity"
+                          />
+                          <p className="absolute bottom-0 left-0 right-0 text-[9px] text-center text-white/60 bg-black/40 rounded-b-xl py-0.5">
+                            {new Date(photo.taken_at + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Historial Fatiga */}
                 {clientCheckIn.fatigues.length > 0 && (
@@ -675,6 +701,25 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           })()}
         </div>
       </div>
+
+      {/* Lightbox fotos admin */}
+      {adminPreviewUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95"
+          onClick={() => setAdminPreviewUrl(null)}>
+          <img
+            src={adminPreviewUrl}
+            alt="preview"
+            className="max-w-full max-h-full object-contain p-4"
+          />
+          <button
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center text-lg hover:bg-white/20"
+            onClick={() => setAdminPreviewUrl(null)}>
+            ✕
+          </button>
+        </div>
+      )}
+      </>
     );
   }
 
