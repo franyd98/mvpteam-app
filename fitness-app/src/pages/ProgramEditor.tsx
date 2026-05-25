@@ -190,38 +190,32 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   ).values()].sort((a, b) => a.localeCompare(b, "es"));
 
   // Cambia el exercise_id de un microcycle_exercise sin borrar sus series.
-  // También lo propaga a todos los demás microciclos del mismo día.
+  // Propaga el cambio a TODOS los microciclos del mismo día con una sola query.
   const swapExercise = async () => {
-    if (!swapping || !swapping.selectedExId) return;
+    if (!swapping || !swapping.selectedExId || !currentDay) return;
     setSaving(true);
 
-    // Actualizar el microciclo actual
+    // 1. Obtener el exercise_id ANTIGUO antes de modificar nada
+    let oldExerciseId: number | null = null;
+    for (const mc of currentDay.microcycles) {
+      const found = mc.exercises.find(e => e.id === swapping.meId);
+      if (found) { oldExerciseId = found.exercise_id; break; }
+    }
+
+    // 2. Actualizar el microcycle_exercise concreto que editó el admin
     await supabase.from("microcycle_exercises")
       .update({ exercise_id: swapping.selectedExId })
       .eq("id", swapping.meId);
 
-    // Propagar al mismo ejercicio en los demás microciclos del día
-    if (currentDay) {
-      // Averiguar el exercise_id antiguo buscando el meId en todos los microciclos
-      let oldExerciseId: number | null = null;
-      for (const mc of currentDay.microcycles) {
-        const found = mc.exercises.find(e => e.id === swapping.meId);
-        if (found) { oldExerciseId = found.exercise_id; break; }
-      }
-
-      if (oldExerciseId !== null) {
-        // Actualizar en todos los microciclos que tengan el mismo ejercicio viejo
-        for (const mc of currentDay.microcycles) {
-          const sameEx = mc.exercises.find(
-            e => e.exercise_id === oldExerciseId && e.id !== swapping.meId
-          );
-          if (sameEx) {
-            await supabase.from("microcycle_exercises")
-              .update({ exercise_id: swapping.selectedExId })
-              .eq("id", sameEx.id);
-          }
-        }
-      }
+    // 3. Propagar a TODOS los demás microciclos del día en una sola query
+    if (oldExerciseId !== null) {
+      const allMcIds = currentDay.microcycles.map(m => m.id);
+      await supabase
+        .from("microcycle_exercises")
+        .update({ exercise_id: swapping.selectedExId })
+        .in("microcycle_id", allMcIds)
+        .eq("exercise_id", oldExerciseId)
+        .neq("id", swapping.meId);
     }
 
     setSwapping(null);
