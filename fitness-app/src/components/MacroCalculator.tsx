@@ -64,8 +64,9 @@ const GOAL_OPTIONS = [
   { label: "Ganancia +10%",      value:  0.10, color: "text-blue-400" },
 ];
 
-const PROTEIN_MULTIPLIERS = [1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2];
-const FAT_MULTIPLIERS     = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8];
+// Rangos exactos del entrenador
+const PROTEIN_MULTIPLIERS = [1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2];
+const FAT_MULTIPLIERS     = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
 
 // Reducción calórica en días OFF (principalmente hidratos)
 const OFF_REDUCTIONS = [
@@ -608,6 +609,22 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
             </>
           )}
 
+          {/* Fórmula del hidrato — el hidrato es el RESIDUO calórico */}
+          {activeResult && (
+            <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 space-y-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Cómo se calcula el hidrato</p>
+              <div className="flex items-center gap-2 text-xs flex-wrap">
+                <span className="text-white font-bold">{activeResult.tdee} kcal</span>
+                <span className="text-neutral-600">−</span>
+                <span className="text-blue-400">{activeResult.protein_g}g prot × 4 = {activeResult.protein_kcal} kcal</span>
+                <span className="text-neutral-600">−</span>
+                <span className="text-rose-400">{activeResult.fat_g}g grasa × 9 = {activeResult.fat_kcal} kcal</span>
+                <span className="text-neutral-600">=</span>
+                <span className="text-amber-400 font-bold">{activeResult.carbs_kcal} kcal ÷ 4 = {activeResult.carbs_g}g HC</span>
+              </div>
+            </div>
+          )}
+
           {/* Comparativa hidratos ON → OFF */}
           {result && resultOff && (
             <div className="bg-amber-900/10 border border-amber-800/30 rounded-xl px-4 py-3">
@@ -632,7 +649,9 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
           )}
 
           <p className="text-[10px] text-neutral-600 px-1">
-            Mifflin-St Jeor × {activeDayTab === "on" ? activityFactor : round1(activityFactor * (1 - offReduction))} × {goal >= 0 ? "+" : ""}{Math.round(goal * 100)}% · {proteinMult}g prot/kg · {fatMult}g grasa/kg
+            Mifflin-St Jeor × {activeDayTab === "on" ? activityFactor : round1(activityFactor * (1 - offReduction))}
+            {" "}({goal >= 0 ? "+" : ""}{Math.round(goal * 100)}% objetivo)
+            {" "}· Prot {proteinMult} g/kg · Grasa {fatMult} g/kg · HC = residuo
           </p>
 
           {/* Guardar */}
@@ -702,15 +721,19 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
                 </div>
               ))}
 
+              {/* Objetivo diario — mostramos el TARGET de la dieta, no la suma de los alimentos ilustrativos */}
               {activeResult && (
                 <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">Total del plan generado</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Objetivo diario</p>
+                  <p className="text-[9px] text-neutral-600 mb-3">
+                    Los alimentos del plan son orientativos — ajusta cantidades hasta alcanzar estos valores.
+                  </p>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     {[
-                      { label: "Kcal",     val: activePlan.reduce((s, m) => s + m.totalKcal,    0).toFixed(0), color: "text-white" },
-                      { label: "Proteína", val: activePlan.reduce((s, m) => s + m.totalProtein, 0).toFixed(1) + "g", color: "text-blue-400" },
-                      { label: "Hidratos", val: activePlan.reduce((s, m) => s + m.totalCarbs,   0).toFixed(1) + "g", color: "text-amber-400" },
-                      { label: "Grasa",    val: activePlan.reduce((s, m) => s + m.totalFat,     0).toFixed(1) + "g", color: "text-rose-400" },
+                      { label: "Kcal",     val: String(activeResult.tdee),                     color: "text-white" },
+                      { label: "Proteína", val: activeResult.protein_g + "g",                  color: "text-blue-400" },
+                      { label: "Hidratos", val: activeResult.carbs_g   + "g",                  color: "text-amber-400" },
+                      { label: "Grasa",    val: activeResult.fat_g     + "g",                  color: "text-rose-400" },
                     ].map(t => (
                       <div key={t.label}>
                         <p className={`text-base font-bold ${t.color}`}>{t.val}</p>
@@ -718,9 +741,6 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
                       </div>
                     ))}
                   </div>
-                  <p className="text-[9px] text-neutral-700 mt-2 text-center">
-                    Objetivo: {activeResult.tdee} kcal · {activeResult.protein_g}g P · {activeResult.carbs_g}g HC · {activeResult.fat_g}g G
-                  </p>
                 </div>
               )}
 
