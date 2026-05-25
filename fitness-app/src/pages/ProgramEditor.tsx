@@ -189,13 +189,41 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     catalog.map(e => [e.muscle_group.trim().toLowerCase(), e.muscle_group.trim()])
   ).values()].sort((a, b) => a.localeCompare(b, "es"));
 
-  // Cambia el exercise_id de un microcycle_exercise sin borrar sus series
+  // Cambia el exercise_id de un microcycle_exercise sin borrar sus series.
+  // También lo propaga a todos los demás microciclos del mismo día.
   const swapExercise = async () => {
     if (!swapping || !swapping.selectedExId) return;
     setSaving(true);
+
+    // Actualizar el microciclo actual
     await supabase.from("microcycle_exercises")
       .update({ exercise_id: swapping.selectedExId })
       .eq("id", swapping.meId);
+
+    // Propagar al mismo ejercicio en los demás microciclos del día
+    if (currentDay) {
+      // Averiguar el exercise_id antiguo buscando el meId en todos los microciclos
+      let oldExerciseId: number | null = null;
+      for (const mc of currentDay.microcycles) {
+        const found = mc.exercises.find(e => e.id === swapping.meId);
+        if (found) { oldExerciseId = found.exercise_id; break; }
+      }
+
+      if (oldExerciseId !== null) {
+        // Actualizar en todos los microciclos que tengan el mismo ejercicio viejo
+        for (const mc of currentDay.microcycles) {
+          const sameEx = mc.exercises.find(
+            e => e.exercise_id === oldExerciseId && e.id !== swapping.meId
+          );
+          if (sameEx) {
+            await supabase.from("microcycle_exercises")
+              .update({ exercise_id: swapping.selectedExId })
+              .eq("id", sameEx.id);
+          }
+        }
+      }
+    }
+
     setSwapping(null);
     await loadAll();
     setSaving(false);
