@@ -2,8 +2,7 @@
 // MacroCalculator.tsx
 // Calculadora de requerimientos calóricos + generador de plan diario
 // Fórmula: Mifflin-St Jeor × Factor de actividad
-// Fuente: Excel "Dieta para Fran" (entrenador)
-// Los resultados se guardan en la tabla client_macros (Supabase)
+// Días ON / Días OFF con carb cycling
 // ──────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from "react";
@@ -55,7 +54,16 @@ const ACTIVITY_LEVELS = [
 ];
 
 const PROTEIN_MULTIPLIERS = [1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2];
-const FAT_MULTIPLIERS     = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+const FAT_MULTIPLIERS     = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+
+// Reducción calórica en días OFF — se aplica al TDEE total.
+// La proteína y grasa se mantienen igual; los hidratos absorben la diferencia.
+const OFF_REDUCTIONS = [
+  { label: "−10%", value: 0.10 },
+  { label: "−13%", value: 0.13 },
+  { label: "−15%", value: 0.15 },
+  { label: "−20%", value: 0.20 },
+];
 
 // Distribución de macros por comida (% del total diario)
 const MEAL_DIST: [string, string, number, number, number][] = [
@@ -193,11 +201,18 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
   const [age,            setAge]            = useState("");
   const [height,         setHeight]         = useState("");
   const [weight,         setWeight]         = useState("");
-  const [activityFactor, setActivityFactor] = useState(1.5);
-  const [proteinMult,    setProteinMult]    = useState(2.0);
-  const [fatMult,        setFatMult]        = useState(0.8);
+  const [activityFactor, setActivityFactor] = useState(1.4);
+  // Multiplicadores ajustados al plan real del entrenador (~1.77 prot, ~0.47 grasa)
+  const [proteinMult,    setProteinMult]    = useState(1.8);
+  const [fatMult,        setFatMult]        = useState(0.5);
+  const [offReduction,   setOffReduction]   = useState(0.13);
+  const [trainDays,      setTrainDays]      = useState(4);
+
   const [result,         setResult]         = useState<MacroResult | null>(null);
+  const [resultOff,      setResultOff]      = useState<MacroResult | null>(null);
   const [plan,           setPlan]           = useState<Meal[] | null>(null);
+  const [planOff,        setPlanOff]        = useState<Meal[] | null>(null);
+  const [activeDayTab,   setActiveDayTab]   = useState<"on" | "off">("on");
   const [showPlan,       setShowPlan]       = useState(false);
   const [saving,         setSaving]         = useState(false);
   const [savedAt,        setSavedAt]        = useState<string | null>(null);
@@ -224,14 +239,6 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
           setProteinMult(Number(data.protein_mult));
           setFatMult(Number(data.fat_mult));
           setSavedAt(data.updated_at);
-          // Recalcular con los datos guardados
-          const r = calcMacros(
-            data.sex as "male" | "female",
-            Number(data.age), Number(data.height_cm), Number(data.weight_kg),
-            Number(data.activity_factor), Number(data.protein_mult), Number(data.fat_mult),
-          );
-          setResult(r);
-          setPlan(generatePlan(r));
         }
         setLoadingData(false);
       });
@@ -242,13 +249,22 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
 
   // Recalcular automáticamente cada vez que cambia cualquier input
   useEffect(() => {
-    if (!canCalc) { setResult(null); setPlan(null); return; }
-    const r = calcMacros(sex, Number(age), Number(height), Number(weight),
+    if (!canCalc) {
+      setResult(null); setResultOff(null);
+      setPlan(null);   setPlanOff(null);
+      return;
+    }
+    const r    = calcMacros(sex, Number(age), Number(height), Number(weight),
       activityFactor, proteinMult, fatMult);
+    // Días OFF: mismo BMR pero TDEE reducido → los hidratos absorben la diferencia
+    const rOff = calcMacros(sex, Number(age), Number(height), Number(weight),
+      activityFactor * (1 - offReduction), proteinMult, fatMult);
     setResult(r);
+    setResultOff(rOff);
     setPlan(generatePlan(r));
+    setPlanOff(generatePlan(rOff));
     setShowPlan(false);
-  }, [sex, age, height, weight, activityFactor, proteinMult, fatMult]);
+  }, [sex, age, height, weight, activityFactor, proteinMult, fatMult, offReduction]);
 
   const handleSave = async () => {
     if (!result || !clientId) return;
@@ -285,10 +301,18 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
     setTimeout(() => setSaveMsg(null), 3000);
   };
 
-  const pctBar = result ? {
-    p: Math.round(result.protein_kcal / result.tdee * 100),
-    h: Math.round(result.carbs_kcal   / result.tdee * 100),
-    f: Math.round(result.fat_kcal     / result.tdee * 100),
+  // Media semanal ponderada
+  const weeklyAvg = result && resultOff
+    ? Math.round((trainDays * result.tdee + (7 - trainDays) * resultOff.tdee) / 7)
+    : null;
+
+  const activeResult = activeDayTab === "on" ? result : resultOff;
+  const activePlan   = activeDayTab === "on" ? plan   : planOff;
+
+  const pctBar = activeResult ? {
+    p: Math.round(activeResult.protein_kcal / activeResult.tdee * 100),
+    h: Math.round(activeResult.carbs_kcal   / activeResult.tdee * 100),
+    f: Math.round(activeResult.fat_kcal     / activeResult.tdee * 100),
   } : null;
 
   if (loadingData) {
@@ -320,7 +344,7 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
               <button key={v} type="button"
                 onClick={() => setSex(v)}
                 className={"flex-1 py-2 rounded-lg text-sm font-medium transition-colors " +
-                  (sex === v ? "bg-white text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700")}>
+                  (sex === v ? "bg-white text-black" : "bg-neutral-800 text-neutral-400 active:bg-neutral-700")}>
                 {l}
               </button>
             ))}
@@ -352,7 +376,7 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
 
         {/* Factor de actividad */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">Factor de actividad</label>
+          <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">Factor de actividad (días ON)</label>
           <select
             value={activityFactor}
             onChange={e => setActivityFactor(Number(e.target.value))}
@@ -368,44 +392,89 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
           <button
             type="button"
             onClick={() => setShowAdvanced(v => !v)}
-            className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-neutral-500 hover:text-neutral-300 transition-colors">
+            className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-neutral-500 active:text-neutral-300 transition-colors">
             <span>{showAdvanced ? "▾" : "▸"}</span>
             <span>⚙ Configuración avanzada</span>
           </button>
 
           {showAdvanced && (
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
-                  Proteína <span className="text-neutral-600">(g/kg)</span>
-                </label>
-                <select
-                  value={proteinMult}
-                  onChange={e => setProteinMult(Number(e.target.value))}
-                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500">
-                  {PROTEIN_MULTIPLIERS.map(m => (
-                    <option key={m} value={m}>{m} g/kg</option>
-                  ))}
-                </select>
+            <div className="space-y-3 mt-3">
+              {/* Multiplicadores proteína y grasa */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
+                    Proteína <span className="text-neutral-600">(g/kg)</span>
+                  </label>
+                  <select
+                    value={proteinMult}
+                    onChange={e => setProteinMult(Number(e.target.value))}
+                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500">
+                    {PROTEIN_MULTIPLIERS.map(m => (
+                      <option key={m} value={m}>{m} g/kg</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
+                    Grasa <span className="text-neutral-600">(g/kg)</span>
+                  </label>
+                  <select
+                    value={fatMult}
+                    onChange={e => setFatMult(Number(e.target.value))}
+                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500">
+                    {FAT_MULTIPLIERS.map(m => (
+                      <option key={m} value={m}>{m} g/kg</option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {/* Reducción días OFF */}
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
-                  Grasa <span className="text-neutral-600">(g/kg)</span>
+                  Reducción días OFF <span className="text-neutral-600">(↓ hidratos)</span>
                 </label>
-                <select
-                  value={fatMult}
-                  onChange={e => setFatMult(Number(e.target.value))}
-                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500">
-                  {FAT_MULTIPLIERS.map(m => (
-                    <option key={m} value={m}>{m} g/kg</option>
+                <div className="flex gap-2">
+                  {OFF_REDUCTIONS.map(o => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() => setOffReduction(o.value)}
+                      className={"flex-1 py-2 rounded-lg text-xs font-medium transition-colors " +
+                        (offReduction === o.value
+                          ? "bg-white text-black"
+                          : "bg-neutral-800 text-neutral-400 active:bg-neutral-700")}>
+                      {o.label}
+                    </button>
                   ))}
-                </select>
+                </div>
+              </div>
+
+              {/* Días de entrenamiento por semana */}
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
+                  Días de entrenamiento / semana
+                </label>
+                <div className="flex gap-2">
+                  {[2, 3, 4, 5].map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setTrainDays(d)}
+                      className={"flex-1 py-2 rounded-lg text-sm font-medium transition-colors " +
+                        (trainDays === d
+                          ? "bg-white text-black"
+                          : "bg-neutral-800 text-neutral-400 active:bg-neutral-700")}>
+                      {d}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Indicador de que el cálculo es en tiempo real */}
+        {/* Estado del cálculo */}
         {!canCalc && (
           <p className="text-neutral-600 text-xs text-center">
             Rellena todos los datos para ver los resultados
@@ -419,54 +488,121 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
       </div>
 
       {/* ── Resultado ── */}
-      {result && (
+      {result && resultOff && (
         <div className="space-y-3">
 
-          {/* Kcal totales */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
-            <div className="flex items-end justify-between mb-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">Metabolismo Basal</p>
-                <p className="text-neutral-400 text-sm">{result.bmr} kcal</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">Requerimiento Total (TDEE)</p>
-                <p className="text-white text-3xl font-bold">{result.tdee} <span className="text-neutral-500 text-base font-normal">kcal</span></p>
-              </div>
-            </div>
-
-            {/* Barra de macros */}
-            {pctBar && (
-              <div className="flex rounded-lg overflow-hidden h-3 mb-3">
-                <div style={{ width: `${pctBar.p}%` }} className="bg-blue-500" />
-                <div style={{ width: `${pctBar.h}%` }} className="bg-amber-400" />
-                <div style={{ width: `${pctBar.f}%` }} className="bg-rose-500" />
-              </div>
-            )}
-            <div className="flex gap-3 text-[10px]">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block"/>Proteína</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>Hidratos</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block"/>Grasa</span>
-            </div>
+          {/* Tabs ON / OFF */}
+          <div className="flex gap-1 p-1 bg-neutral-900 rounded-xl border border-neutral-800">
+            <button
+              onClick={() => { setActiveDayTab("on"); setShowPlan(false); }}
+              className={"flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors " +
+                (activeDayTab === "on"
+                  ? "bg-white text-black"
+                  : "text-neutral-400 active:bg-neutral-800")}>
+              💪 Día ON
+              <span className={"block text-xs font-normal mt-0.5 " + (activeDayTab === "on" ? "text-neutral-600" : "text-neutral-600")}>
+                {result.tdee} kcal
+              </span>
+            </button>
+            <button
+              onClick={() => { setActiveDayTab("off"); setShowPlan(false); }}
+              className={"flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors " +
+                (activeDayTab === "off"
+                  ? "bg-white text-black"
+                  : "text-neutral-400 active:bg-neutral-800")}>
+              😴 Día OFF
+              <span className={"block text-xs font-normal mt-0.5 " + (activeDayTab === "off" ? "text-neutral-600" : "text-neutral-600")}>
+                {resultOff.tdee} kcal
+              </span>
+            </button>
           </div>
+
+          {/* Media semanal */}
+          {weeklyAvg && (
+            <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-neutral-500">Media semanal</p>
+                <p className="text-white text-base font-bold">{weeklyAvg} <span className="text-neutral-500 text-xs font-normal">kcal/día</span></p>
+              </div>
+              <p className="text-neutral-500 text-xs text-right">
+                {trainDays} ON · {7 - trainDays} OFF
+              </p>
+            </div>
+          )}
+
+          {/* Kcal totales del día activo */}
+          {activeResult && (
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
+              <div className="flex items-end justify-between mb-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">Metabolismo Basal</p>
+                  <p className="text-neutral-400 text-sm">{activeResult.bmr} kcal</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">
+                    TDEE {activeDayTab === "on" ? "Día ON" : "Día OFF"}
+                  </p>
+                  <p className="text-white text-3xl font-bold">{activeResult.tdee} <span className="text-neutral-500 text-base font-normal">kcal</span></p>
+                </div>
+              </div>
+
+              {/* Barra de macros */}
+              {pctBar && (
+                <div className="flex rounded-lg overflow-hidden h-3 mb-3">
+                  <div style={{ width: `${pctBar.p}%` }} className="bg-blue-500" />
+                  <div style={{ width: `${pctBar.h}%` }} className="bg-amber-400" />
+                  <div style={{ width: `${pctBar.f}%` }} className="bg-rose-500" />
+                </div>
+              )}
+              <div className="flex gap-3 text-[10px]">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block"/>Proteína</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>Hidratos</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block"/>Grasa</span>
+              </div>
+            </div>
+          )}
 
           {/* Tarjetas de macros */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Proteína", g: result.protein_g, kcal: result.protein_kcal, color: "text-blue-400",  bg: "bg-blue-900/20 border-blue-800/40" },
-              { label: "Hidratos", g: result.carbs_g,   kcal: result.carbs_kcal,   color: "text-amber-400", bg: "bg-amber-900/20 border-amber-800/40" },
-              { label: "Grasa",    g: result.fat_g,     kcal: result.fat_kcal,     color: "text-rose-400",  bg: "bg-rose-900/20 border-rose-800/40" },
-            ].map(m => (
-              <div key={m.label} className={`rounded-xl border p-3 text-center ${m.bg}`}>
-                <p className={`text-xl font-bold ${m.color}`}>{m.g}<span className="text-xs font-normal ml-0.5">g</span></p>
-                <p className="text-[10px] text-neutral-400 mt-0.5">{m.label}</p>
-                <p className="text-[9px] text-neutral-600 mt-0.5">{m.kcal} kcal</p>
+          {activeResult && (
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Proteína", g: activeResult.protein_g, kcal: activeResult.protein_kcal, color: "text-blue-400",  bg: "bg-blue-900/20 border-blue-800/40" },
+                { label: "Hidratos", g: activeResult.carbs_g,   kcal: activeResult.carbs_kcal,   color: "text-amber-400", bg: "bg-amber-900/20 border-amber-800/40" },
+                { label: "Grasa",    g: activeResult.fat_g,     kcal: activeResult.fat_kcal,     color: "text-rose-400",  bg: "bg-rose-900/20 border-rose-800/40" },
+              ].map(m => (
+                <div key={m.label} className={`rounded-xl border p-3 text-center ${m.bg}`}>
+                  <p className={`text-xl font-bold ${m.color}`}>{m.g}<span className="text-xs font-normal ml-0.5">g</span></p>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">{m.label}</p>
+                  <p className="text-[9px] text-neutral-600 mt-0.5">{m.kcal} kcal</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Comparativa ON/OFF de hidratos — el macro que más cambia */}
+          {result && resultOff && (
+            <div className="bg-amber-900/10 border border-amber-800/30 rounded-xl px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-amber-600 mb-2">Variación de hidratos ON → OFF</p>
+              <div className="flex items-center gap-3">
+                <div className="text-center flex-1">
+                  <p className="text-amber-400 text-lg font-bold">{result.carbs_g}g</p>
+                  <p className="text-neutral-500 text-[10px]">Día ON</p>
+                </div>
+                <span className="text-neutral-600 text-lg">→</span>
+                <div className="text-center flex-1">
+                  <p className="text-amber-400 text-lg font-bold">{resultOff.carbs_g}g</p>
+                  <p className="text-neutral-500 text-[10px]">Día OFF</p>
+                </div>
+                <div className="text-center flex-1">
+                  <p className="text-rose-400 text-lg font-bold">−{round1(result.carbs_g - resultOff.carbs_g)}g</p>
+                  <p className="text-neutral-500 text-[10px]">Diferencia</p>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
 
           <p className="text-[10px] text-neutral-600 px-1">
-            Fórmula Mifflin-St Jeor × {activityFactor} · Proteína: {proteinMult} g/kg · Grasa: {fatMult} g/kg
+            Fórmula Mifflin-St Jeor × {activeDayTab === "on" ? activityFactor : round1(activityFactor * (1 - offReduction))} · Proteína: {proteinMult} g/kg · Grasa: {fatMult} g/kg
           </p>
 
           {/* Botón guardar */}
@@ -488,18 +624,20 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
           {/* Botón plan */}
           <button
             onClick={() => setShowPlan(p => !p)}
-            className="w-full py-3 rounded-xl bg-neutral-800 text-white text-sm font-medium hover:bg-neutral-700 transition-colors">
-            {showPlan ? "▲ Ocultar plan de ejemplo" : "✨ Ver plan diario de ejemplo"}
+            className="w-full py-3 rounded-xl bg-neutral-800 text-white text-sm font-medium active:bg-neutral-700 transition-colors">
+            {showPlan
+              ? `▲ Ocultar plan ${activeDayTab === "on" ? "ON" : "OFF"}`
+              : `✨ Ver plan diario de ejemplo (${activeDayTab === "on" ? "Día ON" : "Día OFF"})`}
           </button>
 
           {/* ── Plan de 5 comidas ── */}
-          {showPlan && plan && (
+          {showPlan && activePlan && (
             <div className="space-y-3">
               <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-1">
-                Plan de ejemplo — 5 comidas · ajustar según gustos
+                Plan de ejemplo — 5 comidas · {activeDayTab === "on" ? "💪 Día ON" : "😴 Día OFF"} · ajustar según gustos
               </p>
 
-              {plan.map((meal, i) => (
+              {activePlan.map((meal, i) => (
                 <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -540,25 +678,27 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
               ))}
 
               {/* Totales del día */}
-              <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-4">
-                <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">Total del plan generado</p>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  {[
-                    { label: "Kcal",     val: plan.reduce((s, m) => s + m.totalKcal,    0).toFixed(0), color: "text-white" },
-                    { label: "Proteína", val: plan.reduce((s, m) => s + m.totalProtein, 0).toFixed(1) + "g", color: "text-blue-400" },
-                    { label: "Hidratos", val: plan.reduce((s, m) => s + m.totalCarbs,   0).toFixed(1) + "g", color: "text-amber-400" },
-                    { label: "Grasa",    val: plan.reduce((s, m) => s + m.totalFat,     0).toFixed(1) + "g", color: "text-rose-400" },
-                  ].map(t => (
-                    <div key={t.label}>
-                      <p className={`text-base font-bold ${t.color}`}>{t.val}</p>
-                      <p className="text-[9px] text-neutral-500">{t.label}</p>
-                    </div>
-                  ))}
+              {activeResult && (
+                <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">Total del plan generado</p>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    {[
+                      { label: "Kcal",     val: activePlan.reduce((s, m) => s + m.totalKcal,    0).toFixed(0), color: "text-white" },
+                      { label: "Proteína", val: activePlan.reduce((s, m) => s + m.totalProtein, 0).toFixed(1) + "g", color: "text-blue-400" },
+                      { label: "Hidratos", val: activePlan.reduce((s, m) => s + m.totalCarbs,   0).toFixed(1) + "g", color: "text-amber-400" },
+                      { label: "Grasa",    val: activePlan.reduce((s, m) => s + m.totalFat,     0).toFixed(1) + "g", color: "text-rose-400" },
+                    ].map(t => (
+                      <div key={t.label}>
+                        <p className={`text-base font-bold ${t.color}`}>{t.val}</p>
+                        <p className="text-[9px] text-neutral-500">{t.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-neutral-700 mt-2 text-center">
+                    Objetivo: {activeResult.tdee} kcal · {activeResult.protein_g}g P · {activeResult.carbs_g}g HC · {activeResult.fat_g}g G
+                  </p>
                 </div>
-                <p className="text-[9px] text-neutral-700 mt-2 text-center">
-                  Objetivo: {result.tdee} kcal · {result.protein_g}g P · {result.carbs_g}g HC · {result.fat_g}g G
-                </p>
-              </div>
+              )}
 
               <p className="text-[10px] text-neutral-600 px-1 text-center">
                 Este plan es orientativo. El entrenador puede ajustar alimentos y cantidades al crear el plan oficial.
