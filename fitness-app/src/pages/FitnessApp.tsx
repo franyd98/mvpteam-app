@@ -17,6 +17,8 @@ type Profile = { id: string; full_name: string; role: string };
 
 type ActiveTab = "workout" | "diet" | "checkin";
 
+const lockKey = (dId: string, mcNum: number) => `${dId}:${mcNum}`;
+
 type EditingTarget = {
   dayId: string;
   microcycleNumber: number;
@@ -43,6 +45,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("workout");
   const [rest, setRest] = useState<RestState>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  // Clave: "dayId:mcNumber" → true si está bloqueado
+  const [lockedMcs, setLockedMcs] = useState<Set<string>>(new Set());
+  const [lockingSaving, setLockingSaving] = useState(false);
 
   const [logs, setLogs] = useState<SetLog[]>([]);
   const [settings, setSettings] = useSettings();
@@ -53,6 +58,32 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   useEffect(() => {
     loadAssignedProgram();
   }, []);
+
+  // ── Helpers de bloqueo ────────────────────────────────────────
+  const isLocked = (dId: string, mcNum: number) => lockedMcs.has(lockKey(dId, mcNum));
+
+  const toggleLock = async (dId: string, mcNum: number) => {
+    setLockingSaving(true);
+    const key = lockKey(dId, mcNum);
+    if (lockedMcs.has(key)) {
+      // Desbloquear
+      await supabase
+        .from("locked_microcycles")
+        .delete()
+        .eq("client_id", profile.id)
+        .eq("day_id", dId)
+        .eq("microcycle_number", mcNum);
+      setLockedMcs(prev => { const s = new Set(prev); s.delete(key); return s; });
+    } else {
+      // Bloquear
+      await supabase
+        .from("locked_microcycles")
+        .upsert({ client_id: profile.id, day_id: dId, microcycle_number: mcNum },
+          { onConflict: "client_id,day_id,microcycle_number" });
+      setLockedMcs(prev => new Set([...prev, key]));
+    }
+    setLockingSaving(false);
+  };
 
   const loadAssignedProgram = async () => {
     const { data, error } = await supabase
@@ -136,13 +167,13 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     setProgram(transformed);
     if (transformed.days.length > 0) setDayId(transformed.days[0].id);
 
-    const { data: logsData } = await supabase
-      .from("set_logs")
-      .select("*")
-      .eq("client_id", profile.id);
+    const [logsRes, locksRes] = await Promise.all([
+      supabase.from("set_logs").select("*").eq("client_id", profile.id),
+      supabase.from("locked_microcycles").select("day_id,microcycle_number").eq("client_id", profile.id),
+    ]);
 
-    if (logsData) {
-      const converted = logsData.flatMap((row) => {
+    if (logsRes.data) {
+      const converted = logsRes.data.flatMap((row) => {
         const entry = idToEntryRef.current.get(row.exercise_set_id);
         if (!entry) return [];
         return [{
@@ -158,6 +189,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         } as SetLog];
       });
       setLogs(converted);
+    }
+
+    if (locksRes.data) {
+      setLockedMcs(new Set(locksRes.data.map((r: any) => lockKey(String(r.day_id), r.microcycle_number))));
     }
 
     setLoadingProgram(false);
@@ -367,25 +402,56 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             </div>
           </section>
 
-          {/* Selector de microciclo */}
+          {/* Selector de microciclo + botón de bloqueo */}
           {day && (
             <section className="mb-5">
               <label className="text-xs uppercase tracking-wider text-neutral-500 mb-2 block">Semana</label>
-              <div className="flex flex-wrap gap-2">
-                {day.microcycles.map((m) => (
+              <div className="flex flex-wrap gap-2 items-center">
+                {day.microcycles.map((m) => {
+                  const locked = isLocked(dayId, m.number);
+                  return (
+                    <button
+                      key={m.number}
+                      onClick={() => setMicrocycleNumber(m.number)}
+                      className={"relative w-10 h-10 rounded-xl text-sm font-medium transition-colors active:scale-95 " +
+                        (m.number === microcycleNumber ? "text-white" : "text-neutral-300")}
+                      style={m.number === microcycleNumber
+                        ? { background: "#8B1A2F", border: "1px solid #A01F38" }
+                        : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                    >
+                      {m.number}
+                      {locked && (
+                        <span className="absolute -top-1 -right-1 text-[9px] leading-none">🔒</span>
+                      )}
+                    </button>
+                  );
+                })}
+
+                {/* Botón bloquear/desbloquear microciclo actual */}
+                {day.microcycles.length > 0 && (
                   <button
-                    key={m.number}
-                    onClick={() => setMicrocycleNumber(m.number)}
-                    className={"w-10 h-10 rounded-xl text-sm font-medium transition-colors active:scale-95 " +
-                      (m.number === microcycleNumber ? "text-white" : "text-neutral-300")}
-                    style={m.number === microcycleNumber
-                      ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-                      : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                    onClick={() => toggleLock(dayId, microcycleNumber)}
+                    disabled={lockingSaving}
+                    className={"ml-1 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors active:scale-95 disabled:opacity-40 " +
+                      (isLocked(dayId, microcycleNumber)
+                        ? "bg-amber-950/60 text-amber-300 border border-amber-800/50"
+                        : "bg-neutral-800 text-neutral-400 border border-neutral-700")}
+                    title={isLocked(dayId, microcycleNumber) ? "Desbloquear semana" : "Bloquear semana completada"}
                   >
-                    {m.number}
+                    {isLocked(dayId, microcycleNumber) ? "🔒 Bloqueada" : "🔓 Bloquear"}
                   </button>
-                ))}
+                )}
               </div>
+
+              {/* Aviso visible cuando el microciclo actual está bloqueado */}
+              {isLocked(dayId, microcycleNumber) && (
+                <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-950/40 border border-amber-800/30">
+                  <span className="text-amber-400 text-sm">🔒</span>
+                  <p className="text-amber-300 text-xs">
+                    Semana bloqueada — los registros están protegidos. Pulsa "Bloqueada" para editar.
+                  </p>
+                </div>
+              )}
             </section>
           )}
 
@@ -427,14 +493,18 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                             ? "="
                             : "↓"
                           : null;
+                      const mcLocked = isLocked(dayId, microcycleNumber);
                       return (
                         <div key={setKey(dayId, microcycleNumber, idx, s.number)}>
                           <button
-                            onClick={() => setEditing({ dayId, microcycleNumber, exerciseIndex: idx, setNumber: s.number })}
-                            className={"w-full flex items-center gap-3 text-sm rounded-xl px-3 py-3 text-left transition-colors active:scale-[0.98] " +
+                            onClick={() => !mcLocked && setEditing({ dayId, microcycleNumber, exerciseIndex: idx, setNumber: s.number })}
+                            className={"w-full flex items-center gap-3 text-sm rounded-xl px-3 py-3 text-left transition-colors " +
+                              (mcLocked
+                                ? "cursor-default opacity-75 "
+                                : "active:scale-[0.98] ") +
                               (log
-                                ? "bg-emerald-950 border border-emerald-800 active:bg-emerald-900"
-                                : "bg-neutral-950 border border-neutral-800 active:bg-neutral-900")}
+                                ? "bg-emerald-950 border border-emerald-800 " + (mcLocked ? "" : "active:bg-emerald-900")
+                                : "bg-neutral-950 border border-neutral-800 " + (mcLocked ? "" : "active:bg-neutral-900"))}
                           >
                             <span className="text-neutral-500 w-14 shrink-0 text-xs">Serie {s.number}</span>
                             <span className="text-neutral-400 text-xs flex-1 truncate">
@@ -455,9 +525,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                                     {prog}
                                   </span>
                                 )}
+                                {mcLocked && <span className="text-amber-400 text-xs ml-1">🔒</span>}
                               </span>
                             ) : (
-                              <span className="text-neutral-500 text-xs">Registrar →</span>
+                              <span className="text-neutral-500 text-xs">
+                                {mcLocked ? "🔒 Bloqueado" : "Registrar →"}
+                              </span>
                             )}
                           </button>
                           {!log && prevLog && (

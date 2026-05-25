@@ -206,6 +206,104 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     }).eq("id", setId);
   };
 
+  // ── Sincronizar estructura al resto de microciclos ──────────────
+  // Copia los ejercicios y el número de series del microciclo actual
+  // a todos los demás microciclos del mismo día.
+  // NO sobreescribe target_reps / target_rpe de series ya existentes.
+  const syncStructureToAll = async () => {
+    if (!currentDay || !currentMc) return;
+    const otherMcs = currentDay.microcycles.filter(m => m.id !== currentMc.id);
+    if (otherMcs.length === 0) {
+      alert("Solo existe un microciclo — no hay nada que sincronizar.");
+      return;
+    }
+    if (!confirm(
+      `¿Copiar la estructura del Mc ${currentMc.number} a los ${otherMcs.length} microciclo(s) restantes?\n\n` +
+      `• Se añadirán ejercicios que falten (sin reps/RIR).\n` +
+      `• Se eliminarán ejercicios que sobren.\n` +
+      `• Se ajustará el número de series.\n` +
+      `• Los valores de reps/RIR que ya existan no se tocarán.`
+    )) return;
+
+    setSaving(true);
+
+    for (const mc of otherMcs) {
+      // Mapa exercise_id → EditorEx del microciclo destino
+      const destMap = new Map(mc.exercises.map(e => [e.exercise_id, e]));
+      // IDs de ejercicios que deben estar (según el mc origen)
+      const srcIds = new Set(currentMc.exercises.map(e => e.exercise_id));
+
+      // 1. Eliminar ejercicios del destino que no están en el origen
+      for (const dEx of mc.exercises) {
+        if (!srcIds.has(dEx.exercise_id)) {
+          await supabase.from("microcycle_exercises").delete().eq("id", dEx.id);
+        }
+      }
+
+      // 2. Para cada ejercicio del origen, añadir o ajustar en el destino
+      for (const srcEx of currentMc.exercises) {
+        const destEx = destMap.get(srcEx.exercise_id);
+
+        if (!destEx) {
+          // 2a. Ejercicio nuevo: crear con series vacías
+          const { data: newMe } = await supabase
+            .from("microcycle_exercises")
+            .insert({
+              microcycle_id: mc.id,
+              exercise_id: srcEx.exercise_id,
+              order_index: srcEx.order_index,
+              total_sets: srcEx.sets.length,
+            })
+            .select()
+            .single();
+          if (newMe) {
+            await supabase.from("exercise_sets").insert(
+              srcEx.sets.map(s => ({
+                microcycle_exercise_id: newMe.id,
+                set_number: s.set_number,
+                target_reps: null,
+                target_rpe: null,
+              }))
+            );
+          }
+        } else {
+          // 2b. Ejercicio ya existe: actualizar orden y ajustar series
+          await supabase
+            .from("microcycle_exercises")
+            .update({ order_index: srcEx.order_index, total_sets: srcEx.sets.length })
+            .eq("id", destEx.id);
+
+          const destSets = [...destEx.sets].sort((a, b) => a.set_number - b.set_number);
+          const targetCount = srcEx.sets.length;
+
+          if (destSets.length < targetCount) {
+            // Añadir series que faltan (sin reps/RIR)
+            const toAdd = [];
+            for (let n = destSets.length + 1; n <= targetCount; n++) {
+              toAdd.push({
+                microcycle_exercise_id: destEx.id,
+                set_number: n,
+                target_reps: null,
+                target_rpe: null,
+              });
+            }
+            await supabase.from("exercise_sets").insert(toAdd);
+          } else if (destSets.length > targetCount) {
+            // Eliminar series sobrantes (las últimas)
+            const idsToRemove = destSets
+              .slice(targetCount)
+              .map(s => s.id);
+            await supabase.from("exercise_sets").delete().in("id", idsToRemove);
+          }
+        }
+      }
+    }
+
+    await loadAll();
+    setSaving(false);
+    alert(`✅ Estructura del Mc ${currentMc.number} copiada a ${otherMcs.length} microciclo(s).`);
+  };
+
   const filteredCatalog = catalog.filter(e =>
     e.name.toLowerCase().includes(exSearch.toLowerCase()) || e.muscle_group.toLowerCase().includes(exSearch.toLowerCase())
   );
@@ -260,26 +358,41 @@ export default function ProgramEditor({ programId, onBack }: Props) {
 
       {/* Microciclos */}
       {currentDay && (
-        <div className="px-4 pb-4 max-w-3xl mx-auto">
-          <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Microciclo</p>
-          <div className="flex flex-wrap gap-2 items-center">
-            {currentDay.microcycles.map(mc => (
-              <button key={mc.id} onClick={() => setSelectedMcNum(mc.number)}
-                className={"w-10 h-10 rounded-lg text-sm font-medium transition-colors " + (mc.number === selectedMcNum ? "bg-white text-black" : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700")}>
-                {mc.number}
+        <div className="px-4 pb-4 max-w-3xl mx-auto space-y-3">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Microciclo</p>
+            <div className="flex flex-wrap gap-2 items-center">
+              {currentDay.microcycles.map(mc => (
+                <button key={mc.id} onClick={() => setSelectedMcNum(mc.number)}
+                  className={"w-10 h-10 rounded-lg text-sm font-medium transition-colors " + (mc.number === selectedMcNum ? "bg-white text-black" : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700")}>
+                  {mc.number}
+                </button>
+              ))}
+              <button onClick={addMicrocycle} disabled={saving}
+                className="w-10 h-10 rounded-lg bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 hover:bg-emerald-900/70 text-xl font-bold flex items-center justify-center disabled:opacity-40" title="Añadir microciclo">
+                +
               </button>
-            ))}
-            <button onClick={addMicrocycle} disabled={saving}
-              className="w-10 h-10 rounded-lg bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 hover:bg-emerald-900/70 text-xl font-bold flex items-center justify-center disabled:opacity-40" title="Añadir microciclo">
-              +
-            </button>
-            {currentDay.microcycles.length > 1 && (
-              <button onClick={removeMicrocycle} disabled={saving}
-                className="w-10 h-10 rounded-lg bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-950/70 text-lg font-bold flex items-center justify-center disabled:opacity-40" title="Eliminar microciclo actual">
-                −
-              </button>
-            )}
+              {currentDay.microcycles.length > 1 && (
+                <button onClick={removeMicrocycle} disabled={saving}
+                  className="w-10 h-10 rounded-lg bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-950/70 text-lg font-bold flex items-center justify-center disabled:opacity-40" title="Eliminar microciclo actual">
+                  −
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Botón sincronizar estructura */}
+          {currentDay.microcycles.length > 1 && (
+            <button
+              onClick={syncStructureToAll}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-950/50 text-blue-300 border border-blue-800/40 hover:bg-blue-950/80 text-xs font-medium transition-colors disabled:opacity-40"
+              title="Copia los ejercicios y el número de series de este microciclo al resto. No sobreescribe los valores de reps/RIR que ya existan."
+            >
+              <span>📋</span>
+              <span>Copiar estructura del Mc {selectedMcNum} a todos los microciclos</span>
+            </button>
+          )}
         </div>
       )}
 
