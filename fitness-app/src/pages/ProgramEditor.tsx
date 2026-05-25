@@ -29,6 +29,11 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   // Edición inline de reps/RIR por serie: setId → { target_reps, target_rpe }
   const [setEdits, setSetEdits] = useState<Record<number, { target_reps: string; target_rpe: string }>>({});
 
+  // Cuando está activo, guardar un campo lo replica en el mismo ejercicio+serie de todos los Mcs
+  const [autoSync, setAutoSync] = useState(true);
+  // Feedback visual breve tras sincronizar
+  const [syncFlash, setSyncFlash] = useState(false);
+
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
@@ -196,14 +201,63 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     setSaving(false);
   };
 
-  // Guarda reps/RIR de una serie al perder el foco
+  // Guarda reps/RIR de una serie al perder el foco.
+  // Si autoSync está activo, propaga el valor al mismo ejercicio+serie en todos los Mcs del día.
   const saveSetField = async (setId: number) => {
     const edit = setEdits[setId];
     if (!edit) return;
+
+    const newReps = edit.target_reps.trim() || null;
+    const newRpe  = edit.target_rpe.trim()  || null;
+
+    // Guardar el campo actual
     await supabase.from("exercise_sets").update({
-      target_reps: edit.target_reps.trim() || null,
-      target_rpe: edit.target_rpe.trim() || null,
+      target_reps: newReps,
+      target_rpe:  newRpe,
     }).eq("id", setId);
+
+    // Propagar a los demás microciclos si autoSync está ON
+    if (autoSync && currentDay) {
+      // Buscar a qué ejercicio y número de serie pertenece este setId
+      let exerciseId: number | null = null;
+      let setNumber:  number | null = null;
+
+      outer: for (const mc of currentDay.microcycles) {
+        for (const ex of mc.exercises) {
+          const found = ex.sets.find(s => s.id === setId);
+          if (found) { exerciseId = ex.exercise_id; setNumber = found.set_number; break outer; }
+        }
+      }
+
+      if (exerciseId !== null && setNumber !== null) {
+        const otherMcs = currentDay.microcycles.filter(m => m.id !== currentMc?.id);
+        let synced = 0;
+
+        for (const mc of otherMcs) {
+          const sameEx = mc.exercises.find(e => e.exercise_id === exerciseId);
+          if (!sameEx) continue;
+          const sameSet = sameEx.sets.find(s => s.set_number === setNumber);
+          if (!sameSet) continue;
+
+          await supabase.from("exercise_sets").update({
+            target_reps: newReps,
+            target_rpe:  newRpe,
+          }).eq("id", sameSet.id);
+
+          // Actualizar estado local para que los inputs reflejen el nuevo valor
+          setSetEdits(prev => ({
+            ...prev,
+            [sameSet.id]: { target_reps: edit.target_reps, target_rpe: edit.target_rpe },
+          }));
+          synced++;
+        }
+
+        if (synced > 0) {
+          setSyncFlash(true);
+          setTimeout(() => setSyncFlash(false), 1500);
+        }
+      }
+    }
   };
 
   // ── Sincronizar estructura al resto de microciclos ──────────────
@@ -392,6 +446,31 @@ export default function ProgramEditor({ programId, onBack }: Props) {
               <span>📋</span>
               <span>Copiar estructura del Mc {selectedMcNum} a todos los microciclos</span>
             </button>
+          )}
+        </div>
+      )}
+
+      {/* Toggle auto-sync + flash de confirmación */}
+      {currentDay && currentDay.microcycles.length > 1 && (
+        <div className="px-4 pb-3 max-w-3xl mx-auto flex items-center justify-between gap-3">
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <button
+              onClick={() => setAutoSync(v => !v)}
+              className={"w-10 h-6 rounded-full transition-colors relative flex-shrink-0 " +
+                (autoSync ? "bg-blue-600" : "bg-neutral-700")}
+              role="switch" aria-checked={autoSync}
+            >
+              <span className={"absolute top-1 w-4 h-4 rounded-full bg-white transition-all " +
+                (autoSync ? "left-5" : "left-1")} />
+            </button>
+            <span className="text-xs text-neutral-400">
+              Aplicar reps/RIR a <span className="font-semibold text-neutral-200">todos los microciclos</span>
+            </span>
+          </label>
+          {syncFlash && (
+            <span className="text-xs text-blue-400 font-medium animate-pulse">
+              ✓ Sincronizado
+            </span>
           )}
         </div>
       )}
