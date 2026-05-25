@@ -348,6 +348,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // ── BORRADO ───────────────────────────────────────────────────
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
@@ -514,6 +517,39 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     setSavingF(false);
   };
 
+  // ── Borrado de registros ──────────────────────────────────────
+  const deleteWeight = async (id: number) => {
+    if (!confirm("¿Eliminar este registro de peso?")) return;
+    setDeletingId(id);
+    await supabase.from("weight_logs").delete().eq("id", id);
+    setWeightLogs(prev => prev.filter(r => r.id !== id));
+    setDeletingId(null);
+  };
+
+  const deletePerim = async (id: number) => {
+    if (!confirm("¿Eliminar este registro de perímetros?")) return;
+    setDeletingId(id);
+    await supabase.from("perimeter_logs").delete().eq("id", id);
+    setPerimLogs(prev => prev.filter(r => r.id !== id));
+    setDeletingId(null);
+  };
+
+  const deleteFold = async (id: number) => {
+    if (!confirm("¿Eliminar este registro de pliegues?")) return;
+    setDeletingId(id);
+    await supabase.from("fold_logs").delete().eq("id", id);
+    setFoldLogs(prev => prev.filter(r => r.id !== id));
+    setDeletingId(null);
+  };
+
+  const deleteFatigue = async (id: number) => {
+    if (!confirm("¿Eliminar este registro de fatiga?")) return;
+    setDeletingId(id);
+    await supabase.from("fatigue_logs").delete().eq("id", id);
+    setFatigueLogs(prev => prev.filter(r => r.id !== id));
+    setDeletingId(null);
+  };
+
   // ── Render helpers ────────────────────────────────────────────
   const dateInput = (val: string, set: (v: string) => void) => (
     <div className="flex flex-col gap-1">
@@ -608,7 +644,14 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                         {log.weight_fasting != null && <span className="text-white text-sm font-medium">{log.weight_fasting} <span className="text-neutral-500 text-xs font-normal">kg ayunas</span></span>}
                         {log.weight_evening != null && <span className="text-white text-sm font-medium">{log.weight_evening} <span className="text-neutral-500 text-xs font-normal">kg noche</span></span>}
                       </div>
-                      {log.notes && <span className="text-neutral-500 text-xs truncate max-w-[100px]">{log.notes}</span>}
+                      {log.notes && <span className="text-neutral-500 text-xs truncate max-w-[80px]">{log.notes}</span>}
+                      <button
+                        onClick={() => deleteWeight(log.id)}
+                        disabled={deletingId === log.id}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:text-red-300 disabled:opacity-40 shrink-0 transition-colors"
+                        style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
+                        {deletingId === log.id ? "…" : "🗑️"}
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -661,7 +704,16 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                 <div className="space-y-2">
                   {perimLogs.map(log => (
                     <div key={log.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
-                      <p className="text-neutral-400 text-xs mb-2">{fmtDate(log.date)}</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-neutral-400 text-xs">{fmtDate(log.date)}</p>
+                        <button
+                          onClick={() => deletePerim(log.id)}
+                          disabled={deletingId === log.id}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-red-300 disabled:opacity-40 transition-colors"
+                          style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
+                          {deletingId === log.id ? "…" : "🗑️"}
+                        </button>
+                      </div>
                       <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs">
                         {[
                           ["Bíceps D (C/R)", log.bicep_r_c, log.bicep_r_r],
@@ -744,10 +796,10 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                     const sum = FOLD_KEYS.reduce((s, k) => s + (parseFloat(log[k]) || 0), 0);
                     return (
                       <div key={log.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-neutral-400 text-xs">{fmtDate(log.date)}</p>
+                        <div className="flex items-center justify-between mb-2 gap-2">
+                          <p className="text-neutral-400 text-xs shrink-0">{fmtDate(log.date)}</p>
                           {sum > 0 && (
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-neutral-500 text-xs">Σ {sum.toFixed(1)} mm</span>
                               <span className="text-white text-xs font-bold">{(sum / 10).toFixed(2)}% grasa</span>
                               {log.fat_pct_real != null && (
@@ -755,6 +807,13 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                               )}
                             </div>
                           )}
+                          <button
+                            onClick={() => deleteFold(log.id)}
+                            disabled={deletingId === log.id}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-red-300 disabled:opacity-40 shrink-0 transition-colors"
+                            style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
+                            {deletingId === log.id ? "…" : "🗑️"}
+                          </button>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-xs">
                           {FOLD_KEYS.filter(k => log[k] != null).map(k => (
@@ -818,6 +877,14 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                         <span className="text-neutral-400 text-xs">{fmtDate(log.date)}</span>
                         {log.session_type && <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300">{log.session_type}</span>}
                         {log.microcycle && <span className="text-neutral-600 text-xs">Mc {log.microcycle}</span>}
+                        <div className="flex-1" />
+                        <button
+                          onClick={() => deleteFatigue(log.id)}
+                          disabled={deletingId === log.id}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-red-300 disabled:opacity-40 transition-colors"
+                          style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
+                          {deletingId === log.id ? "…" : "🗑️"}
+                        </button>
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {muscleGroups.map(([key, label]) => {
