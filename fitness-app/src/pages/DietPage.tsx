@@ -240,11 +240,11 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 pb-20">
+    <div className="min-h-dvh bg-neutral-950 pb-28">
       {/* Header */}
-      <header className="bg-neutral-900 border-b border-neutral-800 px-4 py-3 flex items-center gap-3 sticky top-0 z-20">
+      <header className="header-safe bg-neutral-900 border-b border-neutral-800 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-20">
         <button onClick={onBack}
-          className="w-9 h-9 rounded-lg bg-neutral-800 text-neutral-300 hover:bg-neutral-700 flex items-center justify-center text-lg shrink-0">←</button>
+          className="w-10 h-10 rounded-xl bg-neutral-800 text-neutral-300 active:bg-neutral-700 flex items-center justify-center text-lg shrink-0">←</button>
         <div className="flex-1 min-w-0">
           <h1 className="text-white font-bold text-base">Mi Dieta</h1>
           {plan && <p className="text-neutral-500 text-xs truncate">{plan.name}</p>}

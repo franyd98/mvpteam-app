@@ -2,11 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos globales mínimos. Tailwind se encarga del resto. */
+/* ── Base ──────────────────────────────────────────────────── */
 html,
 body,
 #root {
   height: 100%;
+}
+
+html {
+  /* Evita que iOS agrande el texto al girar */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -18,4 +24,54 @@ body {
     "Segoe UI",
     Roboto,
     sans-serif;
+  /* Scroll suave global */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+/* ── Safe areas (notch / Dynamic Island / home bar) ───────── */
+.pt-safe  { padding-top:    max(env(safe-area-inset-top),    0px); }
+.pb-safe  { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+.pl-safe  { padding-left:   max(env(safe-area-inset-left),   0px); }
+.pr-safe  { padding-right:  max(env(safe-area-inset-right),  0px); }
+
+/* Header fijo con safe area encima */
+.header-safe {
+  padding-top: max(env(safe-area-inset-top), 0px);
+}
+
+/* Padding inferior para home bar de iPhone */
+.footer-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+
+/* ── Scrollbar invisible (para barras de tabs horizontales) ── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Touch targets mínimos ────────────────────────────────── */
+button, [role="button"] {
+  /* iOS recomienda 44×44 px mínimo */
+  min-height: 36px;
+}
+
+/* Evitar doble-tap zoom en botones en iOS */
+button {
+  touch-action: manipulation;
+}
+
+/* ── Inputs: deshabilitar zoom automático en iOS ──────────── */
+/* iOS hace zoom si el font-size del input < 16px */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* Pero en desktop queremos que hereden el tamaño normal */
+@media (min-width: 640px) {
+  input, select, textarea {
+    font-size: inherit !important;
+  }
 }

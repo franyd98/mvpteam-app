@@ -555,29 +555,29 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 pb-10">
+    <div className="min-h-dvh bg-neutral-950 pb-28">
       {/* Cabecera */}
-      <header className="bg-neutral-900 border-b border-neutral-800 px-4 py-3 flex items-center gap-3">
+      <header className="header-safe bg-neutral-900 border-b border-neutral-800 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-20">
         <button onClick={onBack}
-          className="w-9 h-9 rounded-lg bg-neutral-800 text-neutral-300 hover:bg-neutral-700 flex items-center justify-center text-lg shrink-0">←</button>
-        <div>
+          className="w-10 h-10 rounded-xl bg-neutral-800 text-neutral-300 active:bg-neutral-700 flex items-center justify-center text-xl shrink-0">←</button>
+        <div className="flex-1 min-w-0">
           <h1 className="text-white font-bold text-base">Punto de Control</h1>
-          <p className="text-neutral-500 text-xs">{profile.full_name}</p>
+          <p className="text-neutral-500 text-xs truncate">{profile.full_name}</p>
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="flex gap-1 p-3 max-w-2xl mx-auto overflow-x-auto">
+      {/* Tabs — scrollables, sin scrollbar visible */}
+      <div className="flex gap-1.5 px-3 py-3 max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
         {TABS.map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
-            className={"shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition-colors " +
-              (tab === t ? "bg-white text-black" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white")}>
+            className={"shrink-0 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors " +
+              (tab === t ? "bg-white text-black" : "bg-neutral-800 text-neutral-400 active:bg-neutral-700")}>
             {label}
           </button>
         ))}
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 space-y-4">
+      <div className="max-w-2xl mx-auto px-4 space-y-4 pb-8">
 
         {/* ── PESO ── */}
         {tab === "peso" && (
@@ -935,7 +935,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
             className="max-w-full max-h-full object-contain p-4"
           />
           <button
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center text-lg hover:bg-white/20">
+            className="absolute right-4 w-11 h-11 rounded-full bg-white/15 text-white flex items-center justify-center text-lg active:bg-white/30"
+            style={{ top: "max(env(safe-area-inset-top), 16px)" }}
+            onClick={e => { e.stopPropagation(); setPreviewUrl(null); }}>
             ✕
           </button>
         </div>

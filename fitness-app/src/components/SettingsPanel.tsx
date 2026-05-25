@@ -9,6 +9,7 @@ type Props = {
   settings: Settings;
   onChange: (next: Settings) => void;
   onClose: () => void;
+  onLogout?: () => void;
 };
 
 // Opciones predefinidas para el menú de descanso.
@@ -21,7 +22,7 @@ const REST_OPTIONS: { label: string; seconds: number }[] = [
   { label: "4:00", seconds: 240 },
 ];
 
-export default function SettingsPanel({ settings, onChange, onClose }: Props) {
+export default function SettingsPanel({ settings, onChange, onClose, onLogout }: Props) {
   const setUnit = (unit: WeightUnit) =>
     onChange({ ...settings, weightUnit: unit });
   const setRest = (seconds: number) =>
@@ -35,7 +36,7 @@ export default function SettingsPanel({ settings, onChange, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-neutral-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
+        className="bg-neutral-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto footer-safe"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="px-4 py-4 border-b border-neutral-800 flex items-center justify-between sticky top-0 bg-neutral-900">
@@ -140,13 +141,21 @@ export default function SettingsPanel({ settings, onChange, onClose }: Props) {
           </section>
         </div>
 
-        <footer className="px-4 py-3 border-t border-neutral-800 bg-neutral-950 sticky bottom-0">
+        <footer className="px-4 py-3 border-t border-neutral-800 bg-neutral-950 sticky bottom-0 space-y-2">
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-xl text-sm font-bold bg-white text-black"
+            className="w-full py-3.5 rounded-xl text-sm font-bold bg-white text-black active:bg-neutral-200"
           >
             Hecho
           </button>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="w-full py-3 rounded-xl text-sm font-medium bg-neutral-800 text-neutral-400 active:bg-neutral-700"
+            >
+              Cerrar sesión
+            </button>
+          )}
         </footer>
       </div>
     </div>

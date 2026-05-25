@@ -15,6 +15,8 @@ import { MVPWordmark } from "../components/MVPLogo";
 
 type Profile = { id: string; full_name: string; role: string };
 
+type ActiveTab = "workout" | "diet" | "checkin";
+
 type EditingTarget = {
   dayId: string;
   microcycleNumber: number;
@@ -24,7 +26,6 @@ type EditingTarget = {
 
 type RestState = { endAt: number; totalSeconds: number } | null;
 
-// Entrada del mapa inverso: exercise_set_id → claves del SetLog
 type SetIdEntry = {
   dayId: string;
   microcycleNumber: number;
@@ -39,18 +40,14 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [microcycleNumber, setMicrocycleNumber] = useState<number>(1);
   const [editing, setEditing] = useState<EditingTarget>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [showCheckIn, setShowCheckIn] = useState(false);
-  const [showDiet, setShowDiet] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("workout");
   const [rest, setRest] = useState<RestState>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
-  // Logs en memoria (cargados desde Supabase, no localStorage)
   const [logs, setLogs] = useState<SetLog[]>([]);
   const [settings, setSettings] = useSettings();
 
-  // setKey(dayId,mc,exIdx,setNum) → exercise_set_id de Supabase
   const setKeyToIdRef = useRef(new Map<string, number>());
-  // exercise_set_id → entradas para reconstruir SetLog
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
 
   useEffect(() => {
@@ -88,7 +85,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
     const raw = (data as any).programs;
 
-    // Limpiar mapas anteriores
     setKeyToIdRef.current.clear();
     idToEntryRef.current.clear();
 
@@ -117,7 +113,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   sets: (me.exercise_sets ?? [])
                     .sort((a: any, b: any) => a.set_number - b.set_number)
                     .map((s: any) => {
-                      // Construir mapas bidireccionales
                       const k = setKey(String(day.id), mc.number, exIdx, s.set_number);
                       setKeyToIdRef.current.set(k, s.id);
                       idToEntryRef.current.set(s.id, {
@@ -141,7 +136,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     setProgram(transformed);
     if (transformed.days.length > 0) setDayId(transformed.days[0].id);
 
-    // Cargar logs desde Supabase (después de construir los mapas)
     const { data: logsData } = await supabase
       .from("set_logs")
       .select("*")
@@ -178,7 +172,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     [day, microcycleNumber],
   );
 
-  // Convierte URL de Drive (view) a URL embebible (preview)
   const openVideo = (url: string) => {
     const match = url.match(/\/file\/d\/([^/]+)/);
     if (match) {
@@ -206,7 +199,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const k = setKey(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber);
     const exerciseSetId = setKeyToIdRef.current.get(k);
 
-    // Guardar en Supabase
     if (exerciseSetId) {
       await supabase.from("set_logs").upsert(
         {
@@ -222,7 +214,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       );
     }
 
-    // Actualizar estado local
     const newLog: SetLog = {
       ...editing,
       weight: data.weight,
@@ -253,7 +244,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const k = setKey(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber);
     const exerciseSetId = setKeyToIdRef.current.get(k);
 
-    // Borrar de Supabase
     if (exerciseSetId) {
       await supabase
         .from("set_logs")
@@ -262,7 +252,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         .eq("exercise_set_id", exerciseSetId);
     }
 
-    // Actualizar estado local
     setLogs((prev) =>
       prev.filter(
         (l) =>
@@ -286,15 +275,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     ? findPreviousMicrocycleLog(logs, editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
     : undefined;
 
-  if (showCheckIn)
-    return <CheckInPage profile={profile} onBack={() => setShowCheckIn(false)} />;
-
-  if (showDiet)
-    return <DietPage profile={profile} onBack={() => setShowDiet(false)} />;
+  // ── Pantallas de carga / sin programa ──────────────────────────
 
   if (loadingProgram)
     return (
-      <div className="min-h-screen flex items-center justify-center"
+      <div className="min-h-dvh flex items-center justify-center"
         style={{ background: "linear-gradient(160deg, #0A0A0A 60%, #1A0810 100%)" }}>
         <p className="text-neutral-500 text-sm">Cargando tu programa...</p>
       </div>
@@ -302,7 +287,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   if (!program)
     return (
-      <div className="min-h-screen flex items-center justify-center p-6"
+      <div className="min-h-dvh flex items-center justify-center p-6"
         style={{ background: "linear-gradient(160deg, #0A0A0A 60%, #1A0810 100%)" }}>
         <div className="text-center">
           <p className="text-4xl mb-4">💪</p>
@@ -310,7 +295,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           <p className="text-neutral-400 text-sm">Dile a tu entrenador que te asigne uno.</p>
           <button
             onClick={() => supabase.auth.signOut()}
-            className="mt-6 px-4 py-2 rounded-lg bg-neutral-800 text-neutral-300 text-sm hover:bg-neutral-700"
+            className="mt-6 px-4 py-2 rounded-lg bg-neutral-800 text-neutral-300 text-sm active:bg-neutral-700"
           >
             Cerrar sesión
           </button>
@@ -318,187 +303,223 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       </div>
     );
 
-  return (
-    <div className="min-h-screen p-4 sm:p-6 max-w-2xl mx-auto pb-32"
-      style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
-      <header className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <MVPWordmark className="mb-1" />
-          <p className="text-sm text-neutral-500 pl-1">
-            <span className="font-medium text-neutral-300">{profile.full_name}</span>
-            {" · "}{program.programName}
-          </p>
-        </div>
-        <div className="flex gap-2 shrink-0 mt-1">
-          <button
-            onClick={() => setShowDiet(true)}
-            className="w-10 h-10 rounded-lg text-neutral-300 flex items-center justify-center text-lg transition-colors"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "#8B1A2F")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#2A2A2A")}
-            title="Mi dieta"
-          >🥗</button>
-          <button
-            onClick={() => setShowCheckIn(true)}
-            className="w-10 h-10 rounded-lg text-neutral-300 flex items-center justify-center text-lg transition-colors"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "#8B1A2F")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#2A2A2A")}
-            title="Punto de control"
-          >📋</button>
-          <button
-            onClick={startRestTimer}
-            className="w-10 h-10 rounded-lg text-neutral-300 flex items-center justify-center text-lg transition-colors"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "#8B1A2F")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#2A2A2A")}
-            title="Cronómetro"
-          >⏱</button>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="w-10 h-10 rounded-lg text-neutral-300 flex items-center justify-center text-lg transition-colors"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "#8B1A2F")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#2A2A2A")}
-            title="Ajustes"
-          >⚙</button>
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="w-10 h-10 rounded-lg text-neutral-300 flex items-center justify-center text-lg transition-colors"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "#8B1A2F")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#2A2A2A")}
-            title="Salir"
-          >🚪</button>
-        </div>
-      </header>
+  // ── Shell principal ────────────────────────────────────────────
 
-      <section className="mb-4">
-        <label className="text-xs uppercase tracking-wider text-neutral-500 mb-2 block">Día</label>
-        <div className="flex flex-wrap gap-2">
-          {program.days.map((d) => (
+  return (
+    <div className="min-h-dvh" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
+
+      {/* ── Tab: Entrenamiento ── */}
+      {activeTab === "workout" && (
+        <div className="max-w-2xl mx-auto px-4">
+
+          {/* Header sticky con safe area */}
+          <header
+            className="header-safe sticky top-0 z-10 flex items-center justify-between gap-3 pt-4 pb-3 mb-2"
+            style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}
+          >
+            <div className="min-w-0 flex-1">
+              <MVPWordmark className="mb-0.5" />
+              <p className="text-xs text-neutral-500 pl-1 truncate">
+                <span className="font-medium text-neutral-300">{profile.full_name}</span>
+                <span className="hidden xs:inline"> · {program.programName}</span>
+              </p>
+            </div>
+
+            {/* Acciones del header: solo timer + ajustes */}
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={startRestTimer}
+                className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
+                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                title="Cronómetro"
+              >⏱</button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
+                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                title="Ajustes"
+              >⚙</button>
+            </div>
+          </header>
+
+          {/* Nombre del programa (debajo del header) */}
+          <p className="text-[10px] text-neutral-600 uppercase tracking-wider mb-4 pl-0.5 truncate">
+            {program.programName}
+          </p>
+
+          {/* Selector de día */}
+          <section className="mb-4">
+            <label className="text-xs uppercase tracking-wider text-neutral-500 mb-2 block">Día</label>
+            <div className="flex flex-wrap gap-2">
+              {program.days.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
+                  className={"px-3 py-2 rounded-xl text-sm font-medium transition-colors active:scale-95 " +
+                    (d.id === dayId ? "text-white" : "text-neutral-300")}
+                  style={d.id === dayId
+                    ? { background: "#8B1A2F", border: "1px solid #A01F38" }
+                    : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                >
+                  {d.name}{d.optional && <span className="ml-1 text-[10px] opacity-60">(opc.)</span>}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Selector de microciclo */}
+          {day && (
+            <section className="mb-5">
+              <label className="text-xs uppercase tracking-wider text-neutral-500 mb-2 block">Semana</label>
+              <div className="flex flex-wrap gap-2">
+                {day.microcycles.map((m) => (
+                  <button
+                    key={m.number}
+                    onClick={() => setMicrocycleNumber(m.number)}
+                    className={"w-10 h-10 rounded-xl text-sm font-medium transition-colors active:scale-95 " +
+                      (m.number === microcycleNumber ? "text-white" : "text-neutral-300")}
+                    style={m.number === microcycleNumber
+                      ? { background: "#8B1A2F", border: "1px solid #A01F38" }
+                      : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                  >
+                    {m.number}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Lista de ejercicios — espacio extra para el bottom nav */}
+          {microcycle && (
+            <section className="space-y-3 pb-28">
+              {microcycle.exercises.map((ex, idx) => (
+                <article key={idx} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
+                  <div className="flex justify-between items-start gap-2 mb-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">{ex.muscleGroup}</p>
+                      <h2 className="text-sm font-semibold text-white leading-snug line-clamp-2" title={ex.name}>{ex.name}</h2>
+                    </div>
+                    {ex.videoRef && ex.videoRef !== "-" && (
+                      ex.videoRef.startsWith("http") ? (
+                        <button
+                          onClick={() => openVideo(ex.videoRef!)}
+                          className="shrink-0 w-9 h-9 rounded-xl bg-neutral-800 active:bg-blue-900 flex items-center justify-center transition-colors"
+                          title="Ver vídeo"
+                        >
+                          📹
+                        </button>
+                      ) : (
+                        <span className="shrink-0 w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center opacity-40" title={ex.videoRef}>
+                          📹
+                        </span>
+                      )
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    {ex.sets.map((s) => {
+                      const log = findLatestLog(logs, dayId, microcycleNumber, idx, s.number);
+                      const prevLog = findPreviousMicrocycleLog(logs, dayId, microcycleNumber, idx, s.number);
+                      const prog =
+                        log && prevLog
+                          ? log.weight * log.reps > prevLog.weight * prevLog.reps
+                            ? "↑"
+                            : log.weight * log.reps === prevLog.weight * prevLog.reps
+                            ? "="
+                            : "↓"
+                          : null;
+                      return (
+                        <div key={setKey(dayId, microcycleNumber, idx, s.number)}>
+                          <button
+                            onClick={() => setEditing({ dayId, microcycleNumber, exerciseIndex: idx, setNumber: s.number })}
+                            className={"w-full flex items-center gap-3 text-sm rounded-xl px-3 py-3 text-left transition-colors active:scale-[0.98] " +
+                              (log
+                                ? "bg-emerald-950 border border-emerald-800 active:bg-emerald-900"
+                                : "bg-neutral-950 border border-neutral-800 active:bg-neutral-900")}
+                          >
+                            <span className="text-neutral-500 w-14 shrink-0 text-xs">Serie {s.number}</span>
+                            <span className="text-neutral-400 text-xs flex-1 truncate">
+                              Obj: {s.targetReps ?? "-"}
+                              {s.targetRpe && !(s.targetReps ?? "").includes("(")
+                                ? ` (${s.targetRpe})`
+                                : ""}
+                            </span>
+                            {log ? (
+                              <span className="font-bold text-emerald-200 tabular-nums flex items-center gap-1.5 text-sm">
+                                {log.weight} {log.unit} × {log.reps}
+                                {log.rpe > 0 && (
+                                  <span className="text-emerald-400 font-normal text-xs">RPE {log.rpe}</span>
+                                )}
+                                {prog && (
+                                  <span className={"text-sm font-bold " +
+                                    (prog === "↑" ? "text-emerald-300" : prog === "=" ? "text-yellow-400" : "text-red-400")}>
+                                    {prog}
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-neutral-500 text-xs">Registrar →</span>
+                            )}
+                          </button>
+                          {!log && prevLog && (
+                            <p className="text-[10px] text-blue-400 px-3 pt-0.5 pb-1">
+                              Ant (Mc {prevLog.microcycleNumber}): {prevLog.weight} {prevLog.unit} × {prevLog.reps}
+                              {prevLog.rpe > 0 ? ` · RPE ${prevLog.rpe}` : ""}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {ex.note && <p className="mt-3 text-xs text-amber-400">{ex.note}</p>}
+                </article>
+              ))}
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab: Dieta ── */}
+      {activeTab === "diet" && (
+        <DietPage profile={profile} onBack={() => setActiveTab("workout")} />
+      )}
+
+      {/* ── Tab: Check-in ── */}
+      {activeTab === "checkin" && (
+        <CheckInPage profile={profile} onBack={() => setActiveTab("workout")} />
+      )}
+
+      {/* ── Barra de navegación inferior ── */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 footer-safe"
+        style={{ background: "#0F0F0F", borderTop: "1px solid #1E1E1E" }}
+      >
+        <div className="flex items-stretch max-w-2xl mx-auto">
+          {([
+            { tab: "workout" as const, icon: "🏋️", label: "Entreno" },
+            { tab: "diet"    as const, icon: "🥗",  label: "Dieta" },
+            { tab: "checkin" as const, icon: "📋",  label: "Check-in" },
+          ] as const).map(({ tab, icon, label }) => (
             <button
-              key={d.id}
-              onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
-              className={"px-3 py-2 rounded-lg text-sm font-medium transition-colors " +
-                (d.id === dayId ? "text-white" : "text-neutral-300")}
-              style={d.id === dayId
-                ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-                : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={"flex-1 flex flex-col items-center justify-center py-3 gap-0.5 transition-colors active:scale-95 " +
+                (activeTab === tab ? "" : "opacity-40 active:opacity-60")}
+              style={{ color: activeTab === tab ? "#C0394F" : "#888" }}
             >
-              {d.name}{d.optional && <span className="ml-1 text-[10px] opacity-60">(opc.)</span>}
+              <span className="text-xl leading-none">{icon}</span>
+              <span className={"text-[10px] font-semibold tracking-wide mt-0.5 " +
+                (activeTab === tab ? "" : "text-neutral-500")}>
+                {label}
+              </span>
+              {activeTab === tab && (
+                <span className="w-4 h-0.5 rounded-full mt-0.5" style={{ background: "#C0394F" }} />
+              )}
             </button>
           ))}
         </div>
-      </section>
+      </nav>
 
-      {day && (
-        <section className="mb-6">
-          <label className="text-xs uppercase tracking-wider text-neutral-500 mb-2 block">Microciclo (semana)</label>
-          <div className="flex flex-wrap gap-2">
-            {day.microcycles.map((m) => (
-              <button
-                key={m.number}
-                onClick={() => setMicrocycleNumber(m.number)}
-                className={"w-10 h-10 rounded-lg text-sm font-medium transition-colors " +
-                  (m.number === microcycleNumber ? "text-white" : "text-neutral-300")}
-                style={m.number === microcycleNumber
-                  ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-                  : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-              >
-                {m.number}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {microcycle && (
-        <section className="space-y-3">
-          {microcycle.exercises.map((ex, idx) => (
-            <article key={idx} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
-              <div className="flex justify-between items-start gap-2 mb-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">{ex.muscleGroup}</p>
-                  <h2 className="text-sm font-semibold text-white leading-snug line-clamp-2" title={ex.name}>{ex.name}</h2>
-                </div>
-                {ex.videoRef && ex.videoRef !== "-" && (
-                  ex.videoRef.startsWith("http") ? (
-                    <button
-                      onClick={() => openVideo(ex.videoRef!)}
-                      className="shrink-0 w-8 h-8 rounded-lg bg-neutral-800 hover:bg-blue-900 flex items-center justify-center transition-colors"
-                      title="Ver vídeo"
-                    >
-                      📹
-                    </button>
-                  ) : (
-                    <span className="shrink-0 w-8 h-8 rounded-lg bg-neutral-800 flex items-center justify-center opacity-40" title={ex.videoRef}>
-                      📹
-                    </span>
-                  )
-                )}
-              </div>
-              <div className="space-y-1.5">
-                {ex.sets.map((s) => {
-                  const log = findLatestLog(logs, dayId, microcycleNumber, idx, s.number);
-                  const prevLog = findPreviousMicrocycleLog(logs, dayId, microcycleNumber, idx, s.number);
-                  const prog =
-                    log && prevLog
-                      ? log.weight * log.reps > prevLog.weight * prevLog.reps
-                        ? "↑"
-                        : log.weight * log.reps === prevLog.weight * prevLog.reps
-                        ? "="
-                        : "↓"
-                      : null;
-                  return (
-                    <div key={setKey(dayId, microcycleNumber, idx, s.number)}>
-                      <button
-                        onClick={() => setEditing({ dayId, microcycleNumber, exerciseIndex: idx, setNumber: s.number })}
-                        className={"w-full flex items-center gap-3 text-sm rounded-lg px-3 py-3 text-left transition-colors " +
-                          (log
-                            ? "bg-emerald-950 border border-emerald-800 hover:bg-emerald-900"
-                            : "bg-neutral-950 border border-neutral-800 hover:bg-neutral-900")}
-                      >
-                        <span className="text-neutral-500 w-14 shrink-0">Serie {s.number}</span>
-                        <span className="text-neutral-400 text-xs flex-1 truncate">
-                          Obj: {s.targetReps ?? "-"}
-                          {s.targetRpe && !(s.targetReps ?? "").includes("(")
-                            ? ` (${s.targetRpe})`
-                            : ""}
-                        </span>
-                        {log ? (
-                          <span className="font-bold text-emerald-200 tabular-nums flex items-center gap-1.5">
-                            {log.weight} {log.unit} × {log.reps}
-                            {log.rpe > 0 && (
-                              <span className="text-emerald-400 font-normal text-xs">RPE {log.rpe}</span>
-                            )}
-                            {prog && (
-                              <span className={"text-sm font-bold " +
-                                (prog === "↑" ? "text-emerald-300" : prog === "=" ? "text-yellow-400" : "text-red-400")}>
-                                {prog}
-                              </span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-neutral-500 text-xs">Registrar →</span>
-                        )}
-                      </button>
-                      {!log && prevLog && (
-                        <p className="text-[10px] text-blue-400 px-3 pt-0.5 pb-1">
-                          Ant (Mc {prevLog.microcycleNumber}): {prevLog.weight} {prevLog.unit} × {prevLog.reps}
-                          {prevLog.rpe > 0 ? ` · RPE ${prevLog.rpe}` : ""}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              {ex.note && <p className="mt-3 text-xs text-amber-400">{ex.note}</p>}
-            </article>
-          ))}
-        </section>
-      )}
-
+      {/* ── Modales (siempre por encima de todo) ── */}
       {editing && editingExercise && editingTargetSet && (
         <SetLogger
           exerciseName={editingExercise.name}
@@ -513,7 +534,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         />
       )}
       {showSettings && (
-        <SettingsPanel settings={settings} onChange={setSettings} onClose={() => setShowSettings(false)} />
+        <SettingsPanel
+          settings={settings}
+          onChange={setSettings}
+          onClose={() => setShowSettings(false)}
+          onLogout={() => supabase.auth.signOut()}
+        />
       )}
       {rest && (
         <RestTimer
@@ -538,7 +564,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               <p className="text-white text-sm font-medium">Vídeo del ejercicio</p>
               <button
                 onClick={() => setVideoUrl(null)}
-                className="w-7 h-7 rounded-lg bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 flex items-center justify-center text-sm"
+                className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 active:text-white active:bg-neutral-700 flex items-center justify-center text-sm"
               >
                 ✕
               </button>

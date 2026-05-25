@@ -117,7 +117,7 @@ export default function SetLogger({
       onClick={onCancel}
     >
       <div
-        className="bg-neutral-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden"
+        className="bg-neutral-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden footer-safe"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera */}
@@ -242,14 +242,14 @@ function FieldTab({
     <button
       onClick={onClick}
       className={
-        "rounded-xl px-2 py-3 text-center transition-colors " +
+        "rounded-xl px-2 py-3.5 text-center transition-colors active:scale-95 " +
         (active
           ? "bg-white text-black"
-          : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700")
+          : "bg-neutral-800 text-neutral-300 active:bg-neutral-700")
       }
     >
       <p className="text-[10px] uppercase tracking-wider opacity-70">{label}</p>
-      <p className="text-xl font-bold mt-0.5 tabular-nums min-h-[1.75rem]">
+      <p className="text-2xl font-bold mt-0.5 tabular-nums min-h-[2rem]">
         {value || "—"}
       </p>
     </button>
@@ -269,7 +269,7 @@ function Key({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="py-4 rounded-xl text-xl font-medium bg-neutral-800 text-white hover:bg-neutral-700 active:bg-neutral-600 disabled:opacity-30 disabled:cursor-not-allowed"
+      className="py-5 rounded-xl text-2xl font-medium bg-neutral-800 text-white active:bg-neutral-600 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-transform"
     >
       {label}
     </button>

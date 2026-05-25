@@ -399,15 +399,15 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
     return (
       <>
-      <div className="min-h-screen pb-10" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
-        <header className="px-4 py-3 flex items-center gap-3"
+      <div className="min-h-screen footer-safe" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
+        <header className="px-4 py-3 flex items-center gap-3 sticky top-0 z-20 header-safe"
           style={{ background: "#0F0F0F", borderBottom: "1px solid #8B1A2F40" }}>
           <button
             onClick={() => { setViewingClient(null); setSelectedTrainingDay(null); setClientCheckIn(null); }}
-            className="w-9 h-9 rounded-lg text-neutral-300 flex items-center justify-center shrink-0 text-lg"
+            className="w-11 h-11 rounded-xl text-neutral-300 flex items-center justify-center shrink-0 text-xl"
             style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-bold text-base">{viewingClient.full_name}</h1>
+            <h1 className="text-white font-bold text-base truncate">{viewingClient.full_name}</h1>
             <p className="text-neutral-500 text-xs">
               {clientViewTab === "entreno"
                 ? selectedTrainingDay ? selectedTrainingDay : `${trainingDays.length} días · ${clientLogs.length} registros`
@@ -416,58 +416,34 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           </div>
           {clientViewTab === "entreno" && selectedTrainingDay && (
             <button onClick={() => setSelectedTrainingDay(null)}
-              className="text-xs text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700">
+              className="text-xs text-neutral-400 px-3 py-2 rounded-lg bg-neutral-800 shrink-0">
               ← Días
             </button>
           )}
         </header>
 
         {/* Sub-tabs + botón Visita Presencial */}
-        <div className="flex items-center gap-1 px-4 py-3 max-w-3xl mx-auto border-b border-neutral-800 overflow-x-auto">
-          <button
-            onClick={() => { setClientViewTab("entreno"); setSelectedTrainingDay(null); }}
-            className={"px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap " +
-              (clientViewTab === "entreno" ? "text-white" : "text-neutral-400")}
-            style={clientViewTab === "entreno"
-              ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-            🏋️ Entreno
-          </button>
-          <button
-            onClick={() => {
-              setClientViewTab("checkin");
-              if (!clientCheckIn && !loadingCheckIn) loadClientCheckIn(viewingClient.id);
-            }}
-            className={"px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap " +
-              (clientViewTab === "checkin" ? "text-white" : "text-neutral-400")}
-            style={clientViewTab === "checkin"
-              ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-            📊 Control
-          </button>
-          <button
-            onClick={() => setClientViewTab("dieta")}
-            className={"px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap " +
-              (clientViewTab === "dieta" ? "text-white" : "text-neutral-400")}
-            style={clientViewTab === "dieta"
-              ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-            🥗 Dieta
-          </button>
-          <button
-            onClick={() => setClientViewTab("calculadora")}
-            className={"px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap " +
-              (clientViewTab === "calculadora" ? "text-white" : "text-neutral-400")}
-            style={clientViewTab === "calculadora"
-              ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-            🧮 Calc.
-          </button>
+        <div className="flex items-center gap-1.5 px-3 py-2.5 max-w-3xl mx-auto border-b border-neutral-800 overflow-x-auto scrollbar-hide">
+          {[
+            { id: "entreno",     label: "🏋️ Entreno",  action: () => { setClientViewTab("entreno"); setSelectedTrainingDay(null); } },
+            { id: "checkin",     label: "📊 Control",  action: () => { setClientViewTab("checkin"); if (!clientCheckIn && !loadingCheckIn) loadClientCheckIn(viewingClient.id); } },
+            { id: "dieta",       label: "🥗 Dieta",    action: () => setClientViewTab("dieta") },
+            { id: "calculadora", label: "🧮 Calc.",    action: () => setClientViewTab("calculadora") },
+          ].map(({ id, label, action }) => (
+            <button key={id} onClick={action}
+              className={"px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 " +
+                (clientViewTab === id ? "text-white" : "text-neutral-400")}
+              style={clientViewTab === id
+                ? { background: "#8B1A2F", border: "1px solid #A01F38" }
+                : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+              {label}
+            </button>
+          ))}
           <div className="flex-1" />
           <button
             onClick={() => setShowVisita(true)}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shrink-0">
-            📋 Visita Presencial
+            className="px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white shrink-0">
+            📋 Visita
           </button>
         </div>
 
@@ -728,8 +704,9 @@ export default function AdminPage({ profile }: { profile: Profile }) {
             className="max-w-full max-h-full object-contain p-4"
           />
           <button
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center text-lg hover:bg-white/20"
-            onClick={() => setAdminPreviewUrl(null)}>
+            className="absolute right-4 w-11 h-11 rounded-full bg-white/15 text-white flex items-center justify-center text-lg active:bg-white/30"
+            style={{ top: "max(env(safe-area-inset-top), 16px)" }}
+            onClick={e => { e.stopPropagation(); setAdminPreviewUrl(null); }}>
             ✕
           </button>
         </div>
@@ -751,8 +728,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   );
 
   return (
-    <div className="min-h-screen pb-10" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
-      <header className="px-4 py-3 flex items-center justify-between"
+    <div className="min-h-screen footer-safe" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
+      <header className="px-4 py-3 flex items-center justify-between sticky top-0 z-20 header-safe"
         style={{ background: "#0F0F0F", borderBottom: "1px solid #8B1A2F40" }}>
         <div className="flex items-center gap-3">
           <MVPWordmark />
@@ -763,22 +740,23 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           </div>
         </div>
         <button onClick={() => supabase.auth.signOut()}
-          className="px-3 py-2 rounded-lg text-neutral-400 text-sm hover:text-white transition-colors"
+          className="px-3 py-2.5 rounded-xl text-neutral-400 text-sm"
           style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
           Salir
         </button>
       </header>
 
       {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg border border-neutral-700 whitespace-nowrap">
+        <div className="fixed left-1/2 -translate-x-1/2 z-50 bg-neutral-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg border border-neutral-700 whitespace-nowrap"
+          style={{ top: "max(env(safe-area-inset-top), 16px)" }}>
           {toast}
         </div>
       )}
 
-      <div className="flex gap-1 p-4 max-w-3xl mx-auto overflow-x-auto">
+      <div className="flex gap-1.5 px-3 py-3 max-w-3xl mx-auto overflow-x-auto scrollbar-hide">
         {([["programas", "📋 Programas"], ["clientes", "👥 Clientes"], ["dietas", "🥗 Dietas"], ["ejercicios", "🏋️ Ejercicios"]] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
-            className={"px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap " + (tab === t ? "text-white" : "text-neutral-400")}
+            className={"px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 " + (tab === t ? "text-white" : "text-neutral-400")}
             style={tab === t
               ? { background: "#8B1A2F", border: "1px solid #A01F38" }
               : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
