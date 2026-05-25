@@ -54,17 +54,18 @@ const ACTIVITY_LEVELS = [
   { value: 1.8, label: "1.8 – 5 días gym y más de 10.000 pasos y atleta en forma" },
 ];
 
-// Objetivo calórico — se multiplica sobre el TDEE de mantenimiento
+// Objetivo calórico — incluye los multiplicadores recomendados para cada objetivo.
+// El cliente solo elige su objetivo; proteína y grasa se asignan automáticamente.
 const GOAL_OPTIONS = [
-  { label: "Pérdida grasa −20%", value: -0.20, color: "text-red-400" },
-  { label: "Pérdida grasa −15%", value: -0.15, color: "text-orange-400" },
-  { label: "Pérdida grasa −10%", value: -0.10, color: "text-yellow-400" },
-  { label: "Mantenimiento",      value:  0.00, color: "text-neutral-300" },
-  { label: "Ganancia +5%",       value:  0.05, color: "text-emerald-400" },
-  { label: "Ganancia +10%",      value:  0.10, color: "text-blue-400" },
+  { label: "Pérdida de grasa intensa",  sublabel: "−20% · máx. déficit",   value: -0.20, color: "text-red-400",     protein: 2.0, fat: 0.5 },
+  { label: "Pérdida de grasa",          sublabel: "−15% · déficit moderado", value: -0.15, color: "text-orange-400",  protein: 1.8, fat: 0.5 },
+  { label: "Pérdida de grasa suave",    sublabel: "−10% · déficit leve",    value: -0.10, color: "text-yellow-400",  protein: 1.8, fat: 0.6 },
+  { label: "Mantenimiento",             sublabel: "0% · sostener peso",     value:  0.00, color: "text-neutral-300", protein: 1.7, fat: 0.7 },
+  { label: "Ganancia muscular",         sublabel: "+5% · ligero superávit", value:  0.05, color: "text-emerald-400", protein: 1.8, fat: 0.7 },
+  { label: "Volumen / masa",            sublabel: "+10% · superávit amplio",value:  0.10, color: "text-blue-400",    protein: 1.9, fat: 0.8 },
 ];
 
-// Rangos exactos del entrenador
+// Rangos exactos del entrenador (solo visibles en Configuración avanzada)
 const PROTEIN_MULTIPLIERS = [1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2];
 const FAT_MULTIPLIERS     = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
 
@@ -216,10 +217,18 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
   const [height,         setHeight]         = useState("");
   const [weight,         setWeight]         = useState("");
   const [activityFactor, setActivityFactor] = useState(1.4);
-  const [goal,           setGoal]           = useState(-0.15);      // −15% déficit por defecto
-  // Defaults calibrados al plan del entrenador (~1.7 prot, ~0.4 grasa)
-  const [proteinMult,    setProteinMult]    = useState(1.7);
-  const [fatMult,        setFatMult]        = useState(0.4);
+  const [goal,           setGoal]           = useState(-0.15);
+  // Multiplicadores inicializados según el objetivo por defecto (−15%)
+  const [proteinMult,    setProteinMult]    = useState(1.8);
+  const [fatMult,        setFatMult]        = useState(0.5);
+
+  // Al cambiar el objetivo, auto-asigna los multiplicadores recomendados
+  // (el admin puede sobrescribir manualmente en Configuración avanzada)
+  const handleGoalChange = (value: number) => {
+    const opt = GOAL_OPTIONS.find(o => o.value === value);
+    if (opt) { setProteinMult(opt.protein); setFatMult(opt.fat); }
+    setGoal(value);
+  };
   const [offReduction,   setOffReduction]   = useState(0.13);
   const [trainDays,      setTrainDays]      = useState(4);
 
@@ -402,27 +411,42 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
           </select>
         </div>
 
-        {/* Objetivo — visible siempre, clave para ajustar el déficit */}
+        {/* Objetivo — el cliente solo elige esto; proteína y grasa se asignan solos */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">Objetivo</label>
-          <div className="grid grid-cols-2 gap-2">
-            {GOAL_OPTIONS.map(o => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => setGoal(o.value)}
-                className={"py-2.5 rounded-lg text-xs font-medium transition-colors text-left px-3 " +
-                  (goal === o.value
-                    ? "bg-white text-black"
-                    : "bg-neutral-800 text-neutral-400 active:bg-neutral-700")}>
-                {o.label}
-              </button>
-            ))}
+          <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">¿Cuál es tu objetivo?</label>
+          <div className="grid grid-cols-1 gap-2">
+            {GOAL_OPTIONS.map(o => {
+              const active = goal === o.value;
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => handleGoalChange(o.value)}
+                  className={"py-3 rounded-xl text-sm transition-colors text-left px-4 flex items-center justify-between " +
+                    (active
+                      ? "bg-white text-black"
+                      : "bg-neutral-800 text-neutral-300 active:bg-neutral-700")}>
+                  <div>
+                    <p className="font-semibold">{o.label}</p>
+                    <p className={"text-[10px] mt-0.5 " + (active ? "text-neutral-500" : "text-neutral-500")}>
+                      {o.sublabel}
+                    </p>
+                  </div>
+                  {active && <span className="text-emerald-500 text-lg ml-2">✓</span>}
+                </button>
+              );
+            })}
           </div>
-          {/* Nota aclaratoria */}
-          <p className="text-[10px] text-neutral-600 mt-1.5 px-1">
-            El entrenador ajusta el déficit real de cada cliente. Como referencia, un plan de pérdida de grasa suele estar entre −10% y −20%.
-          </p>
+          {/* Los multiplicadores se asignan automáticamente */}
+          {(() => {
+            const opt = GOAL_OPTIONS.find(o => o.value === goal);
+            return opt ? (
+              <p className="text-[10px] text-neutral-600 mt-2 px-1">
+                Se aplica automáticamente: proteína {opt.protein} g/kg · grasa {opt.fat} g/kg · hidratos = residuo calórico.
+                El entrenador puede ajustar en Configuración avanzada.
+              </p>
+            ) : null;
+          })()}
         </div>
 
         {/* Configuración avanzada */}
@@ -437,6 +461,9 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
 
           {showAdvanced && (
             <div className="space-y-3 mt-3">
+              <p className="text-[10px] text-amber-600 bg-amber-950/30 border border-amber-900/30 rounded-lg px-3 py-2">
+                ⚠ Estos valores se asignan automáticamente según el objetivo. Modifícalos solo si el entrenador te lo indica.
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
@@ -609,18 +636,42 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
             </>
           )}
 
-          {/* Fórmula del hidrato — el hidrato es el RESIDUO calórico */}
+          {/* Cómo se calculan los tres macros */}
           {activeResult && (
-            <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 space-y-1.5">
-              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Cómo se calcula el hidrato</p>
-              <div className="flex items-center gap-2 text-xs flex-wrap">
-                <span className="text-white font-bold">{activeResult.tdee} kcal</span>
-                <span className="text-neutral-600">−</span>
-                <span className="text-blue-400">{activeResult.protein_g}g prot × 4 = {activeResult.protein_kcal} kcal</span>
-                <span className="text-neutral-600">−</span>
-                <span className="text-rose-400">{activeResult.fat_g}g grasa × 9 = {activeResult.fat_kcal} kcal</span>
-                <span className="text-neutral-600">=</span>
-                <span className="text-amber-400 font-bold">{activeResult.carbs_kcal} kcal ÷ 4 = {activeResult.carbs_g}g HC</span>
+            <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 space-y-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Cómo se calculan tus macros</p>
+
+              {/* Proteína */}
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                <div className="text-xs text-neutral-400 leading-relaxed">
+                  <span className="text-blue-400 font-semibold">Proteína: </span>
+                  {weight} kg × {proteinMult} g/kg
+                  {" = "}<span className="text-white font-bold">{activeResult.protein_g} g</span>
+                  <span className="text-neutral-600"> ({activeResult.protein_kcal} kcal)</span>
+                </div>
+              </div>
+
+              {/* Grasa */}
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0" />
+                <div className="text-xs text-neutral-400 leading-relaxed">
+                  <span className="text-rose-400 font-semibold">Grasa: </span>
+                  {weight} kg × {fatMult} g/kg
+                  {" = "}<span className="text-white font-bold">{activeResult.fat_g} g</span>
+                  <span className="text-neutral-600"> ({activeResult.fat_kcal} kcal)</span>
+                </div>
+              </div>
+
+              {/* Hidratos — residuo */}
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
+                <div className="text-xs text-neutral-400 leading-relaxed">
+                  <span className="text-amber-400 font-semibold">Hidratos: </span>
+                  ({activeResult.tdee} − {activeResult.protein_kcal} − {activeResult.fat_kcal}) ÷ 4
+                  {" = "}<span className="text-white font-bold">{activeResult.carbs_g} g</span>
+                  <span className="text-neutral-600"> ({activeResult.carbs_kcal} kcal · residuo calórico)</span>
+                </div>
               </div>
             </div>
           )}
