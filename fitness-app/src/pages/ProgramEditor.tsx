@@ -218,19 +218,27 @@ export default function ProgramEditor({ programId, onBack }: Props) {
 
     // Propagar a los demás microciclos si autoSync está ON
     if (autoSync && currentDay) {
-      // Buscar a qué ejercicio y número de serie pertenece este setId
+      // Buscar exactamente en qué microciclo/ejercicio/serie está este setId
+      let srcMcId:    number | null = null;
       let exerciseId: number | null = null;
       let setNumber:  number | null = null;
 
-      outer: for (const mc of currentDay.microcycles) {
+      for (const mc of currentDay.microcycles) {
         for (const ex of mc.exercises) {
           const found = ex.sets.find(s => s.id === setId);
-          if (found) { exerciseId = ex.exercise_id; setNumber = found.set_number; break outer; }
+          if (found) {
+            srcMcId    = mc.id;
+            exerciseId = ex.exercise_id;
+            setNumber  = found.set_number;
+            break;
+          }
         }
+        if (srcMcId !== null) break;
       }
 
-      if (exerciseId !== null && setNumber !== null) {
-        const otherMcs = currentDay.microcycles.filter(m => m.id !== currentMc?.id);
+      if (srcMcId !== null && exerciseId !== null && setNumber !== null) {
+        // Excluir el microciclo que contiene el setId editado (no el currentMc del selector)
+        const otherMcs = currentDay.microcycles.filter(m => m.id !== srcMcId);
         let synced = 0;
 
         for (const mc of otherMcs) {
