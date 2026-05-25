@@ -190,16 +190,17 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   ).values()].sort((a, b) => a.localeCompare(b, "es"));
 
   // Cambia el exercise_id de un microcycle_exercise sin borrar sus series.
-  // Propaga el cambio a TODOS los microciclos del mismo día con una sola query.
+  // Sincroniza por POSICIÓN (order_index): actualiza el ejercicio que esté
+  // en la misma posición en TODOS los demás microciclos del día.
   const swapExercise = async () => {
     if (!swapping || !swapping.selectedExId || !currentDay) return;
     setSaving(true);
 
-    // 1. Obtener el exercise_id ANTIGUO antes de modificar nada
-    let oldExerciseId: number | null = null;
+    // 1. Buscar el order_index del ejercicio que se está cambiando
+    let orderIndex: number | null = null;
     for (const mc of currentDay.microcycles) {
       const found = mc.exercises.find(e => e.id === swapping.meId);
-      if (found) { oldExerciseId = found.exercise_id; break; }
+      if (found) { orderIndex = found.order_index; break; }
     }
 
     // 2. Actualizar el microcycle_exercise concreto que editó el admin
@@ -207,15 +208,19 @@ export default function ProgramEditor({ programId, onBack }: Props) {
       .update({ exercise_id: swapping.selectedExId })
       .eq("id", swapping.meId);
 
-    // 3. Propagar a TODOS los demás microciclos del día en una sola query
-    if (oldExerciseId !== null) {
-      const allMcIds = currentDay.microcycles.map(m => m.id);
-      await supabase
-        .from("microcycle_exercises")
-        .update({ exercise_id: swapping.selectedExId })
-        .in("microcycle_id", allMcIds)
-        .eq("exercise_id", oldExerciseId)
-        .neq("id", swapping.meId);
+    // 3. Propagar a TODOS los demás microciclos por posición (order_index)
+    if (orderIndex !== null) {
+      for (const mc of currentDay.microcycles) {
+        // Buscar el ejercicio en la misma posición de este microciclo
+        const atSamePosition = mc.exercises.find(
+          e => e.order_index === orderIndex && e.id !== swapping.meId
+        );
+        if (atSamePosition) {
+          await supabase.from("microcycle_exercises")
+            .update({ exercise_id: swapping.selectedExId })
+            .eq("id", atSamePosition.id);
+        }
+      }
     }
 
     setSwapping(null);
