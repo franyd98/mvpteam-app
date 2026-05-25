@@ -1,15 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// DietGenerator.tsx
-// Genera un plan de dieta ON/OFF automáticamente a partir de las macros del
-// cliente guardadas en client_macros. El admin puede intercambiar alimentos
-// individuales y guardar el resultado en diet_plans + diet_meals + diet_options.
+// DietGenerator.tsx  v2
+// Genera plan ON/OFF con 3 opciones por comida. Cada opción agrupa alimentos
+// con sentido culinario (lácteos+avena, ISO+cereales, etc.).
+// El admin puede cambiar cualquier ingrediente dentro de cada opción via select.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { ingredients, type Ingredient, type IngredientCategory } from "../data/ingredients";
+import { ingredients, type Ingredient } from "../data/ingredients";
 
-// ── Tipos ────────────────────────────────────────────────────────────────────
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface DailyMacros {
   protein_g: number;
@@ -20,179 +20,291 @@ interface DailyMacros {
 
 type MacroKey = "protein" | "carbs" | "fat";
 
-interface SlotDef {
+interface ProfileSlotDef {
   id:        string;
   label:     string;
-  cats:      IngredientCategory[];
+  ingIds:    string[];          // pool de ingredientes coherentes para este slot
   macro:     MacroKey | "fixed";
-  pct:       number;   // % del macro diario o gramos fijos si macro="fixed"
-  fixedG?:   number;   // gramos fijos cuando macro="fixed"
-  noteText?: string;   // nota adicional (ej. "🥦 Verdura variada libre")
-}
-
-interface MealDef {
-  id:     string;
-  name:   string;
-  emoji:  string;
-  slots:  SlotDef[];
-}
-
-interface GeneratedFood {
-  slotId:   string;
-  label:    string;
-  ing:      Ingredient;
-  poolIdx:  number;
-  grams:    number;
-  macro:    MacroKey | "fixed";
-  targetG:  number;
+  pct:       number;            // % del macro diario, o gramos si macro="fixed"
+  fixedG?:   number;
   noteText?: string;
 }
 
-interface GeneratedMeal {
-  mealId: string;
-  name:   string;
-  emoji:  string;
-  foods:  GeneratedFood[];
+interface MealProfileDef {
+  id:    string;
+  label: string;                // etiqueta corta, ej. "Lácteos + Avena"
+  slots: ProfileSlotDef[];
 }
 
-// ── Plantillas de comidas ─────────────────────────────────────────────────────
-// Basadas en el plan nutricional real del entrenador (PDF):
-// 5 comidas × slots de categorías de ingredientes × % del macro diario
+interface MealDef {
+  id:       string;
+  name:     string;
+  emoji:    string;
+  profiles: MealProfileDef[];  // siempre 3 opciones
+}
+
+interface GeneratedFood {
+  slotId:        string;
+  label:         string;
+  ing:           Ingredient;
+  grams:         number;
+  macro:         MacroKey | "fixed";
+  targetG:       number;
+  availablePool: Ingredient[];  // opciones del desplegable para este slot
+  noteText?:     string;
+}
+
+interface GeneratedOption {
+  profileId:    string;
+  profileLabel: string;
+  foods:        GeneratedFood[];
+}
+
+interface GeneratedMeal {
+  mealId:  string;
+  name:    string;
+  emoji:   string;
+  options: GeneratedOption[];   // 3 opciones
+}
+
+// ── Definición de perfiles por comida ─────────────────────────────────────────
+// Cada comida tiene 3 perfiles con combinaciones culinariamente coherentes.
+// Los ingIds son los IDs exactos de ingredients.ts.
 
 const MEAL_DEFS: MealDef[] = [
+  // ── COMIDA 1 — Desayuno ────────────────────────────────────────────────────
   {
     id: "c1", name: "Comida 1 — Desayuno", emoji: "🌅",
-    slots: [
+    profiles: [
       {
-        id: "c1_prot", label: "Proteína",
-        cats: ["lean_protein"],
-        macro: "protein", pct: 20,
+        id: "c1_a", label: "Lácteos + Avena",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+            ingIds: ["yogur_griego","yogur_prot","qso_batido","qso_fresco","mousse_prot","leche_prot"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 25,
+            ingIds: ["avena_copos","harina_avena","avena_crunchy"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 10,
+            ingIds: ["aceite_coco","aceite_oliva","chocolate85"] },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
+            ingIds: ["fresas","frambuesas","arandanos","arandanos_cong","frutos_rojos","kiwi","melocoton"] },
+        ],
       },
       {
-        id: "c1_hc", label: "Hidratos",
-        cats: ["protein_carb", "clean_carb"],
-        macro: "carbs", pct: 25,
+        id: "c1_b", label: "Proteína + Cereales",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+            ingIds: ["iso","whey"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 25,
+            ingIds: ["corn_flakes","weetabix","copos_trigo","rice_krispies","cereal_mix","crema_arroz","choco_zero"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 10,
+            ingIds: ["aceite_coco","chocolate85","crema_cacah"] },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
+            ingIds: ["platano","manzana","pera","uva","melocoton"] },
+        ],
       },
       {
-        id: "c1_fat", label: "Grasa",
-        cats: ["fat"],
-        macro: "fat", pct: 10,
-      },
-      {
-        id: "c1_fruit", label: "Fruta",
-        cats: ["fruit"],
-        macro: "fixed", pct: 0, fixedG: 150,
+        id: "c1_c", label: "Pan + Cremas",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+            ingIds: ["yogur_griego","qso_batido","iso","leche_prot","qso_fresco"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 25,
+            ingIds: ["pan_centeno","pan_tostado","pan_fibra","pan_wasa","pan_molde","pan_integral_pan"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 10,
+            ingIds: ["crema_cacah","almendras","nuez","chocolate85","aceite_coco"] },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
+            ingIds: ["platano","manzana","arandanos","fresas","pera"] },
+        ],
       },
     ],
   },
+
+  // ── COMIDA 2 — Almuerzo ────────────────────────────────────────────────────
   {
     id: "c2", name: "Comida 2 — Almuerzo", emoji: "☕",
-    slots: [
+    profiles: [
       {
-        id: "c2_prot", label: "Proteína",
-        cats: ["fatty_protein"],
-        macro: "protein", pct: 15,
+        id: "c2_a", label: "Embutido + Pan",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 15,
+            ingIds: ["lomo_embuchado","lomo_curado_pavo","jamon","fiambre_pavo"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 20,
+            ingIds: ["pan_wasa","pan_fibra","pan_tostado","pan_integral_pan"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 5,
+            ingIds: ["aceite_oliva","aceitunas","aguacate","guacamole"] },
+        ],
       },
       {
-        id: "c2_hc", label: "Hidratos",
-        cats: ["protein_carb", "fatty_carb"],
-        macro: "carbs", pct: 20,
+        id: "c2_b", label: "Atún + Tortas",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 15,
+            ingIds: ["atun_lata","fiambre_pavo","salchi_pavo_3","salchi_pavo_ff","lomo_cerdo"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 20,
+            ingIds: ["tortas_legumbre","tortas_arroz","tortas_maiz","pan_wasa"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 5,
+            ingIds: ["aceite_oliva","aguacate","guacamole","aceitunas"] },
+        ],
       },
       {
-        id: "c2_fat", label: "Grasa",
-        cats: ["fat"],
-        macro: "fat", pct: 5,
+        id: "c2_c", label: "Queso + Fajitas",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 15,
+            ingIds: ["qso_eatlean","mozza_light","havarti","qso_pizza","qso_fresco"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 20,
+            ingIds: ["fajitas","pan_molde","pan_blanco","pan_centeno","pizza_int"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 5,
+            ingIds: ["aceite_oliva","aceitunas","aguacate"] },
+        ],
       },
     ],
   },
+
+  // ── COMIDA 3 — Comida principal ────────────────────────────────────────────
   {
     id: "c3", name: "Comida 3 — Comida principal", emoji: "🍽️",
-    slots: [
+    profiles: [
       {
-        id: "c3_prot", label: "Proteína",
-        cats: ["lean_protein"],
-        macro: "protein", pct: 25,
+        id: "c3_a", label: "Pollo / Pavo + Pasta / Arroz",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 25,
+            ingIds: ["pollo","pavo","picada_pollo","hamburguesa","lomo_cerdo"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 30,
+            ingIds: ["pasta","pasta_integral","arroz","arroz_int","cuscus","arroz_3del","arroz_bolsita"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 35,
+            ingIds: ["aceite_oliva"],
+            noteText: "🥦 Verdura variada a gusto (libre)" },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
+            ingIds: ["manzana","pera","melocoton","naranja","kiwi","platano"] },
+        ],
       },
       {
-        id: "c3_hc", label: "Hidratos",
-        cats: ["clean_carb"],
-        macro: "carbs", pct: 30,
+        id: "c3_b", label: "Pescado + Patata / Boniato",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 25,
+            ingIds: ["merluza","tilapia","lenguado","lubina","sepia","gambas","calamar"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 30,
+            ingIds: ["patata","patata_bote","boniato","boniato_rojo","noquis"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 35,
+            ingIds: ["aceite_oliva"],
+            noteText: "🥦 Verdura variada a gusto (libre)" },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
+            ingIds: ["pera","manzana","melocoton","kiwi","fresas"] },
+        ],
       },
       {
-        id: "c3_fat", label: "Grasa",
-        cats: ["fat"],
-        macro: "fat", pct: 35,
-        noteText: "🥦 Verdura variada a gusto (libre)",
-      },
-      {
-        id: "c3_fruit", label: "Fruta",
-        cats: ["fruit"],
-        macro: "fixed", pct: 0, fixedG: 150,
+        id: "c3_c", label: "Ternera / Salmón + Arroz / Pasta",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 25,
+            ingIds: ["ternera","salmon","trucha","lomo_atun"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 30,
+            ingIds: ["arroz","pasta","noodles_arroz","cuscus","arroz_int"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 35,
+            ingIds: ["aceite_oliva"],
+            noteText: "🥦 Verdura variada a gusto (libre)" },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
+            ingIds: ["fresas","arandanos","kiwi","frambuesas","pera"] },
+        ],
       },
     ],
   },
+
+  // ── COMIDA 4 — Merienda ────────────────────────────────────────────────────
   {
     id: "c4", name: "Comida 4 — Merienda", emoji: "🫐",
-    slots: [
+    profiles: [
       {
-        id: "c4_prot", label: "Proteína",
-        cats: ["lean_protein"],
-        macro: "protein", pct: 20,
+        id: "c4_a", label: "Yogur + Cereales",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+            ingIds: ["yogur_prot","yogur_griego","mousse_prot","qso_batido","leche_prot"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 15,
+            ingIds: ["weetabix","corn_flakes","cereal_mix","avena_crunchy","rice_krispies","copos_trigo"] },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 100,
+            ingIds: ["platano","fresas","arandanos","manzana"] },
+        ],
       },
       {
-        id: "c4_hc", label: "Hidratos",
-        cats: ["clean_carb", "protein_carb"],
-        macro: "carbs", pct: 15,
+        id: "c4_b", label: "Proteína ISO + Avena",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+            ingIds: ["iso","whey"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 15,
+            ingIds: ["avena_copos","harina_avena","crema_arroz","avena_crunchy"] },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 100,
+            ingIds: ["platano","manzana","pera","kiwi"] },
+        ],
       },
       {
-        id: "c4_fruit", label: "Fruta",
-        cats: ["fruit"],
-        macro: "fixed", pct: 0, fixedG: 100,
+        id: "c4_c", label: "Queso batido + Pan",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+            ingIds: ["qso_batido","qso_fresco","yogur_prot","leche_prot","yogur_sln"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 15,
+            ingIds: ["pan_tostado","pan_fibra","pan_wasa","tortas_legumbre","pan_centeno"] },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 100,
+            ingIds: ["platano","manzana","pera","fresas","melocoton"] },
+        ],
       },
     ],
   },
+
+  // ── COMIDA 5 — Cena ────────────────────────────────────────────────────────
   {
     id: "c5", name: "Comida 5 — Cena", emoji: "🌙",
-    slots: [
+    profiles: [
       {
-        id: "c5_prot", label: "Proteína",
-        cats: ["lean_protein"],
-        macro: "protein", pct: 20,
+        id: "c5_a", label: "Pescado + Patata / Boniato",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+            ingIds: ["merluza","tilapia","lenguado","lubina","gambas","sepia","calamar"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 10,
+            ingIds: ["patata","patata_bote","boniato","boniato_rojo","noquis"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 50,
+            ingIds: ["aceite_oliva"],
+            noteText: "🥦 Verdura variada a gusto (libre)" },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
+            ingIds: ["fresas","frambuesas","arandanos","melocoton","pera","kiwi"] },
+        ],
       },
       {
-        id: "c5_hc", label: "Hidratos",
-        cats: ["clean_carb"],
-        macro: "carbs", pct: 10,
+        id: "c5_b", label: "Pollo / Pavo + Arroz / Pasta",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+            ingIds: ["pollo","pavo","picada_pollo","salchi_pavo_3"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 10,
+            ingIds: ["arroz","arroz_int","pasta","pasta_integral","arroz_bolsita"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 50,
+            ingIds: ["aceite_oliva"],
+            noteText: "🥦 Verdura variada a gusto (libre)" },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
+            ingIds: ["manzana","pera","kiwi","sandia","melon"] },
+        ],
       },
       {
-        id: "c5_fat", label: "Grasa",
-        cats: ["fat"],
-        macro: "fat", pct: 50,
-        noteText: "🥦 Verdura variada a gusto (libre)",
-      },
-      {
-        id: "c5_fruit", label: "Fruta",
-        cats: ["fruit"],
-        macro: "fixed", pct: 0, fixedG: 150,
+        id: "c5_c", label: "Marisco / Atún + Noodles / Cuscús",
+        slots: [
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+            ingIds: ["calamar","sepia","gambas","lomo_atun","atun_lata","merluza"] },
+          { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 10,
+            ingIds: ["noodles_arroz","cuscus","arroz_3del","noquis","arroz_bolsita"] },
+          { id: "fat",  label: "Grasa",    macro: "fat",     pct: 50,
+            ingIds: ["aceite_oliva"],
+            noteText: "🥦 Verdura variada a gusto (libre)" },
+          { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
+            ingIds: ["sandia","melon","cerezas","uva","melocoton"] },
+        ],
       },
     ],
   },
 ];
 
-// Índices de inicio distintos para ON y OFF → distintos alimentos por defecto
-const POOL_OFFSETS_ON:  Record<string, number> = {};
-const POOL_OFFSETS_OFF: Record<string, number> = {};
-MEAL_DEFS.forEach((m, mi) => {
-  m.slots.forEach((s, si) => {
-    POOL_OFFSETS_ON[`${m.id}_${s.id}`]  = (mi * 3 + si) % 20;
-    POOL_OFFSETS_OFF[`${m.id}_${s.id}`] = (mi * 3 + si + 2) % 20;
-  });
-});
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// ── Algoritmo de generación ───────────────────────────────────────────────────
+function round1(n: number) { return Math.round(n * 10) / 10; }
 
-function buildPool(cats: IngredientCategory[]): Ingredient[] {
-  return ingredients.filter(i => cats.includes(i.category));
+function poolFromIds(ids: string[]): Ingredient[] {
+  return ids
+    .map(id => ingredients.find(i => i.id === id))
+    .filter((i): i is Ingredient => !!i);
 }
 
 function calcGrams(ing: Ingredient, macro: MacroKey, targetG: number): number {
@@ -201,93 +313,96 @@ function calcGrams(ing: Ingredient, macro: MacroKey, targetG: number): number {
   return Math.round((targetG / per100) * 100);
 }
 
-function generatePlan(
-  macros: DailyMacros,
-  offsets: Record<string, number>,
-): GeneratedMeal[] {
+// ── Generación ────────────────────────────────────────────────────────────────
+
+function generatePlan(macros: DailyMacros): GeneratedMeal[] {
   return MEAL_DEFS.map(meal => {
-    const foods: GeneratedFood[] = [];
+    const options: GeneratedOption[] = meal.profiles.map(profile => {
+      const foods: GeneratedFood[] = [];
 
-    meal.slots.forEach(slot => {
-      const pool = buildPool(slot.cats);
-      if (!pool.length) return;
+      profile.slots.forEach((slot, slotIdx) => {
+        const pool = poolFromIds(slot.ingIds);
+        if (!pool.length) return;
 
-      const key     = `${meal.id}_${slot.id}`;
-      const poolIdx = (offsets[key] ?? 0) % pool.length;
-      const ing     = pool[poolIdx];
+        // Rotar arranque según slot para variar ingredientes entre opciones
+        const ing = pool[slotIdx % pool.length];
 
-      let grams   = 0;
-      let targetG = 0;
+        let grams   = 0;
+        let targetG = 0;
 
-      if (slot.macro === "fixed") {
-        grams   = slot.fixedG ?? 100;
-        targetG = grams;
-      } else {
-        const dailyTotal =
-          slot.macro === "protein" ? macros.protein_g :
-          slot.macro === "carbs"   ? macros.carbs_g   :
-                                     macros.fat_g;
-        targetG = Math.round(dailyTotal * slot.pct / 100 * 10) / 10;
-        grams   = calcGrams(ing, slot.macro, targetG);
-      }
+        if (slot.macro === "fixed") {
+          grams   = slot.fixedG ?? 100;
+          targetG = grams;
+        } else {
+          const daily =
+            slot.macro === "protein" ? macros.protein_g :
+            slot.macro === "carbs"   ? macros.carbs_g   :
+                                       macros.fat_g;
+          targetG = Math.round(daily * slot.pct / 100 * 10) / 10;
+          grams   = calcGrams(ing, slot.macro, targetG);
+        }
 
-      // Descartar cantidades absurdas
-      if (grams <= 0 || grams > 3000) return;
+        if (grams <= 0 || grams > 3000) return;
 
-      foods.push({
-        slotId:   slot.id,
-        label:    slot.label,
-        ing,
-        poolIdx,
-        grams,
-        macro:    slot.macro,
-        targetG,
-        noteText: slot.noteText,
+        foods.push({
+          slotId:        slot.id,
+          label:         slot.label,
+          ing,
+          grams,
+          macro:         slot.macro,
+          targetG,
+          availablePool: pool,
+          noteText:      slot.noteText,
+        });
       });
+
+      return { profileId: profile.id, profileLabel: profile.label, foods };
     });
 
-    return { mealId: meal.id, name: meal.name, emoji: meal.emoji, foods };
+    return { mealId: meal.id, name: meal.name, emoji: meal.emoji, options };
   });
 }
 
-// ── Swap de alimento ──────────────────────────────────────────────────────────
+// ── Cambiar un ingrediente dentro de un option ────────────────────────────────
 
-function swapFood(
+function selectFood(
   plan: GeneratedMeal[],
   mealId: string,
+  profileIdx: number,
   slotId: string,
+  newIngId: string,
 ): GeneratedMeal[] {
   return plan.map(meal => {
     if (meal.mealId !== mealId) return meal;
 
     return {
       ...meal,
-      foods: meal.foods.map(food => {
-        if (food.slotId !== slotId) return food;
+      options: meal.options.map((opt, oIdx) => {
+        if (oIdx !== profileIdx) return opt;
 
-        const mealDef = MEAL_DEFS.find(m => m.id === mealId)!;
-        const slotDef = mealDef.slots.find(s => s.id === slotId)!;
-        const pool    = buildPool(slotDef.cats);
-        if (pool.length < 2) return food;
+        return {
+          ...opt,
+          foods: opt.foods.map(food => {
+            if (food.slotId !== slotId) return food;
 
-        const nextIdx = (food.poolIdx + 1) % pool.length;
-        const ing     = pool[nextIdx];
+            const ing = food.availablePool.find(i => i.id === newIngId);
+            if (!ing) return food;
 
-        let grams = food.grams;
-        if (food.macro !== "fixed") {
-          grams = calcGrams(ing, food.macro, food.targetG);
-          if (grams <= 0 || grams > 3000) grams = 100;
-        }
+            let grams = food.grams;
+            if (food.macro !== "fixed") {
+              grams = calcGrams(ing, food.macro, food.targetG);
+              if (grams <= 0 || grams > 3000) grams = 100;
+            }
 
-        return { ...food, ing, poolIdx: nextIdx, grams };
+            return { ...food, ing, grams };
+          }),
+        };
       }),
     };
   });
 }
 
-// ── Helpers de macros calculados ──────────────────────────────────────────────
-
-function round1(n: number) { return Math.round(n * 10) / 10; }
+// ── Macro helpers ─────────────────────────────────────────────────────────────
 
 function foodMacros(food: GeneratedFood) {
   const f = food.grams / 100;
@@ -299,8 +414,8 @@ function foodMacros(food: GeneratedFood) {
   };
 }
 
-function mealMacros(meal: GeneratedMeal) {
-  return meal.foods.reduce(
+function optionMacros(opt: GeneratedOption) {
+  return opt.foods.reduce(
     (acc, food) => {
       const m = foodMacros(food);
       return {
@@ -314,10 +429,13 @@ function mealMacros(meal: GeneratedMeal) {
   );
 }
 
-function planMacros(plan: GeneratedMeal[]) {
+function planTotalMacros(plan: GeneratedMeal[], activeOptions: Record<string, number>) {
   return plan.reduce(
     (acc, meal) => {
-      const m = mealMacros(meal);
+      const oIdx = activeOptions[meal.mealId] ?? 0;
+      const opt  = meal.options[oIdx];
+      if (!opt) return acc;
+      const m = optionMacros(opt);
       return {
         kcal:    round1(acc.kcal    + m.kcal),
         protein: round1(acc.protein + m.protein),
@@ -338,32 +456,35 @@ interface Props {
 }
 
 export default function DietGenerator({ clientId, clientName, onBack }: Props) {
-  // ── Macros ────────────────────────────────────────────────────────
+  // ── Macros del cliente ────────────────────────────────────────────
   const [macrosOn,  setMacrosOn]  = useState<DailyMacros | null>(null);
   const [macrosOff, setMacrosOff] = useState<DailyMacros | null>(null);
   const [loadingMacros, setLoadingMacros] = useState(true);
   const [macroError,    setMacroError]    = useState(false);
 
-  // ── Planes generados ──────────────────────────────────────────────
+  // ── Planes ON/OFF ─────────────────────────────────────────────────
   const [planOn,  setPlanOn]  = useState<GeneratedMeal[]>([]);
   const [planOff, setPlanOff] = useState<GeneratedMeal[]>([]);
 
-  // ── Estado UI ─────────────────────────────────────────────────────
-  const [activeTab,  setActiveTab]  = useState<"on" | "off">("on");
-  const [planName,   setPlanName]   = useState("");
-  const [planNotes,  setPlanNotes]  = useState("");
-  const [offPct,     setOffPct]     = useState(13);   // % reducción OFF
-  const [generated,  setGenerated]  = useState(false);
-  const [saving,     setSaving]     = useState(false);
-  const [toast,      setToast]      = useState<string | null>(null);
-  const [expandedMeals, setExpandedMeals] = useState<Set<string>>(new Set(MEAL_DEFS.map(m => m.id)));
+  // ── UI ────────────────────────────────────────────────────────────
+  const [activeTab,     setActiveTab]     = useState<"on" | "off">("on");
+  const [activeOptions, setActiveOptions] = useState<Record<string, number>>({});
+  const [planName,      setPlanName]      = useState("");
+  const [planNotes,     setPlanNotes]     = useState("");
+  const [offPct,        setOffPct]        = useState(13);
+  const [generated,     setGenerated]     = useState(false);
+  const [saving,        setSaving]        = useState(false);
+  const [toast,         setToast]         = useState<string | null>(null);
+  const [expandedMeals, setExpandedMeals] = useState<Set<string>>(
+    new Set(MEAL_DEFS.map(m => m.id)),
+  );
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Cargar macros del cliente ─────────────────────────────────────
+  // ── Cargar macros ─────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       setLoadingMacros(true);
@@ -380,15 +501,12 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
           fat_g:     data.fat_g,
           kcal:      data.tdee,
         };
-        // OFF: misma proteína y grasa; hidratos reducidos
-        const offFactor = 1 - offPct / 100;
-        const offCarbs  = round1(data.carbs_g * offFactor);
-        const offKcal   = Math.round(data.protein_g * 4 + offCarbs * 4 + data.fat_g * 9);
+        const offCarbs = round1(data.carbs_g * (1 - offPct / 100));
         const off: DailyMacros = {
           protein_g: data.protein_g,
           carbs_g:   offCarbs,
           fat_g:     data.fat_g,
-          kcal:      offKcal,
+          kcal:      Math.round(data.protein_g * 4 + offCarbs * 4 + data.fat_g * 9),
         };
         setMacrosOn(on);
         setMacrosOff(off);
@@ -402,70 +520,64 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
-  // Recalcular macros OFF cuando cambia offPct
+  // Recalcular OFF al cambiar %
   useEffect(() => {
     if (!macrosOn) return;
-    const offFactor = 1 - offPct / 100;
-    const offCarbs  = round1(macrosOn.carbs_g * offFactor);
-    const offKcal   = Math.round(macrosOn.protein_g * 4 + offCarbs * 4 + macrosOn.fat_g * 9);
+    const offCarbs = round1(macrosOn.carbs_g * (1 - offPct / 100));
     setMacrosOff({
       protein_g: macrosOn.protein_g,
       carbs_g:   offCarbs,
       fat_g:     macrosOn.fat_g,
-      kcal:      offKcal,
+      kcal:      Math.round(macrosOn.protein_g * 4 + offCarbs * 4 + macrosOn.fat_g * 9),
     });
   }, [offPct, macrosOn]);
 
-  // ── Generar plan ──────────────────────────────────────────────────
+  // ── Generar ───────────────────────────────────────────────────────
   const handleGenerate = () => {
     if (!macrosOn || !macrosOff) return;
-    setPlanOn(generatePlan(macrosOn, POOL_OFFSETS_ON));
-    setPlanOff(generatePlan(macrosOff, POOL_OFFSETS_OFF));
+    const initOn  = generatePlan(macrosOn);
+    const initOff = generatePlan(macrosOff);
+    setPlanOn(initOn);
+    setPlanOff(initOff);
+    // Opción 0 activa por defecto en todas las comidas
+    const init: Record<string, number> = {};
+    initOn.forEach(m => { init[m.mealId] = 0; });
+    setActiveOptions(init);
     setGenerated(true);
     setActiveTab("on");
   };
 
-  // ── Swap ──────────────────────────────────────────────────────────
-  const doSwap = (mealId: string, slotId: string) => {
-    setPlanOn( p => swapFood(p, mealId, slotId));
-    setPlanOff(p => swapFood(p, mealId, slotId));
+  // ── Cambio de ingrediente ─────────────────────────────────────────
+  const doSelect = (mealId: string, profileIdx: number, slotId: string, newIngId: string) => {
+    setPlanOn( p => selectFood(p, mealId, profileIdx, slotId, newIngId));
+    setPlanOff(p => selectFood(p, mealId, profileIdx, slotId, newIngId));
   };
 
-  // ── Guardar en Supabase ───────────────────────────────────────────
+  // ── Guardar ───────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!macrosOn || !macrosOff || !planOn.length) return;
     if (!planName.trim()) { showToast("⚠️ El plan necesita un nombre"); return; }
-
     setSaving(true);
     try {
-      // 1. Crear diet_plan
       const { data: planRow, error: planErr } = await supabase
         .from("diet_plans")
         .insert({
-          name:       planName.trim(),
-          kcal_on:    macrosOn.kcal,
-          kcal_off:   macrosOff.kcal,
-          protein_on: macrosOn.protein_g,
-          protein_off:macrosOff.protein_g,
-          carbs_on:   macrosOn.carbs_g,
-          carbs_off:  macrosOff.carbs_g,
-          fat_on:     macrosOn.fat_g,
-          fat_off:    macrosOff.fat_g,
-          notes:      planNotes,
+          name:        planName.trim(),
+          kcal_on:     macrosOn.kcal,    kcal_off:     macrosOff.kcal,
+          protein_on:  macrosOn.protein_g, protein_off: macrosOff.protein_g,
+          carbs_on:    macrosOn.carbs_g,   carbs_off:   macrosOff.carbs_g,
+          fat_on:      macrosOn.fat_g,     fat_off:     macrosOff.fat_g,
+          notes:       planNotes,
         })
-        .select("id")
-        .single();
+        .select("id").single();
 
       if (planErr || !planRow) throw planErr ?? new Error("No plan id");
-
       const pid = planRow.id;
 
-      // 2. Crear diet_meals + diet_options para el plan ON
-      //    Cada comida = 1 opción con los alimentos generados
+      // Para cada comida → guardar las 3 opciones como diet_options
       for (let i = 0; i < planOn.length; i++) {
         const meal = planOn[i];
-
-        const { data: mealRow, error: mealErr } = await supabase
+        const { data: mealRow, error: mErr } = await supabase
           .from("diet_meals")
           .insert({
             plan_id:    pid,
@@ -474,32 +586,33 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
             day_type:   "both",
             sort_order: i,
           })
-          .select("id")
-          .single();
+          .select("id").single();
 
-        if (mealErr || !mealRow) throw mealErr ?? new Error("No meal id");
+        if (mErr || !mealRow) throw mErr ?? new Error("No meal id");
 
-        // Grupos por slot (proteína, hidratos, grasa, fruta…)
-        const content = meal.foods.map(food => ({
-          label:    food.label,
-          slot:     food.macro === "protein" ? "proteina"
-                  : food.macro === "carbs"   ? "hidrato"
-                  : food.macro === "fat"     ? "grasa"
-                  :                            "extra",
-          isChoice: false,
-          note:     food.noteText ?? "",
-          items:    [{ ingId: food.ing.id, grams: food.grams }],
-        }));
+        for (let j = 0; j < meal.options.length; j++) {
+          const opt     = meal.options[j];
+          const content = opt.foods.map(food => ({
+            label:    food.label,
+            slot:
+              food.macro === "protein" ? "proteina" :
+              food.macro === "carbs"   ? "hidrato"  :
+              food.macro === "fat"     ? "grasa"    : "extra",
+            isChoice: false,
+            note:     food.noteText ?? "",
+            items:    [{ ingId: food.ing.id, grams: food.grams }],
+          }));
 
-        await supabase.from("diet_options").insert({
-          meal_id:    mealRow.id,
-          name:       "Plan generado",
-          content,
-          sort_order: 0,
-        });
+          await supabase.from("diet_options").insert({
+            meal_id:    mealRow.id,
+            name:       opt.profileLabel,
+            content,
+            sort_order: j,
+          });
+        }
       }
 
-      // 3. Asignar automáticamente al cliente
+      // Asignar al cliente
       await supabase.from("diet_assignments").upsert(
         { client_id: clientId, plan_id: pid, active: true },
         { onConflict: "client_id" },
@@ -513,24 +626,25 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
     setSaving(false);
   };
 
-  // ── Render helpers ────────────────────────────────────────────────
-  const activePlan = activeTab === "on" ? planOn : planOff;
+  // ── Datos del tab activo ──────────────────────────────────────────
+  const activePlan   = activeTab === "on" ? planOn : planOff;
   const activeMacros = activeTab === "on" ? macrosOn : macrosOff;
-  const totalGen = activePlan.length ? planMacros(activePlan) : null;
+  const totalGen     = activePlan.length
+    ? planTotalMacros(activePlan, activeOptions)
+    : null;
 
   const toggleMeal = (id: string) =>
     setExpandedMeals(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  // ── Loading ───────────────────────────────────────────────────────
+  // ── Loading / error ───────────────────────────────────────────────
   if (loadingMacros) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A0A0A" }}>
-        <p className="text-neutral-500 text-sm">Cargando macros del cliente…</p>
+        <p className="text-neutral-500 text-sm">Cargando macros…</p>
       </div>
     );
   }
 
-  // ── Sin macros → aviso ────────────────────────────────────────────
   if (macroError || !macrosOn) {
     return (
       <div className="min-h-screen" style={{ background: "#0A0A0A" }}>
@@ -545,20 +659,18 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
           <span className="text-5xl mb-4">⚠️</span>
           <p className="text-white font-semibold mb-2">Sin requerimientos calóricos</p>
           <p className="text-neutral-500 text-sm leading-relaxed">
-            Este cliente aún no tiene macros calculadas.<br />
             Ve a la pestaña <strong className="text-white">Calculadora</strong> del cliente,
-            introduce sus datos y guarda los requerimientos.
+            introduce sus datos y guarda los requerimientos antes de generar la dieta.
           </p>
         </div>
       </div>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────
+  // ── Render principal ──────────────────────────────────────────────
   return (
     <div className="min-h-screen pb-28" style={{ background: "linear-gradient(160deg,#0A0A0A 80%,#1A0810 100%)" }}>
 
-      {/* Toast */}
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg whitespace-nowrap"
           style={{ background: "#1A1A1A", border: "1px solid #333" }}>
@@ -566,7 +678,7 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
         </div>
       )}
 
-      {/* ── Header ── */}
+      {/* Header */}
       <header className="px-4 py-3 flex items-center gap-3 sticky top-0 z-10"
         style={{ background: "#0F0F0F", borderBottom: "1px solid #8B1A2F40" }}>
         <button onClick={onBack}
@@ -576,9 +688,7 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
           <p className="text-white font-bold text-sm truncate">
             {generated ? (planName || "Plan generado") : "Generar Dieta"}
           </p>
-          {clientName && (
-            <p className="text-neutral-500 text-xs truncate">para {clientName}</p>
-          )}
+          {clientName && <p className="text-neutral-500 text-xs truncate">para {clientName}</p>}
         </div>
         {generated && (
           <button onClick={handleSave} disabled={saving}
@@ -591,42 +701,36 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
 
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
 
-        {/* ── MACROS DEL CLIENTE ── */}
+        {/* ── Resumen macros ON/OFF ── */}
         <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: "1px solid #222" }}>
-          <div className="px-4 py-3">
-            <p className="text-white font-semibold text-sm mb-3">📊 Macros del cliente</p>
-
-            {/* ON / OFF summary */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="px-4 py-3 space-y-3">
+            <p className="text-white font-semibold text-sm">📊 Macros del cliente</p>
+            <div className="grid grid-cols-2 gap-2">
               {([
-                { label: "💪 Día ON", macros: macrosOn,  color: "text-emerald-400" },
-                { label: "😴 Día OFF", macros: macrosOff, color: "text-blue-400" },
-              ] as const).map(({ label, macros, color }) => (
+                { label: "💪 Día ON",  m: macrosOn,  color: "text-emerald-400" },
+                { label: "😴 Día OFF", m: macrosOff, color: "text-blue-400" },
+              ] as const).map(({ label, m, color }) => (
                 <div key={label} className="rounded-lg p-3 text-center"
                   style={{ background: "#0A0A0A", border: "1px solid #1E1E1E" }}>
                   <p className={`text-xs font-semibold mb-1 ${color}`}>{label}</p>
-                  <p className="text-white text-lg font-bold">{macros!.kcal} <span className="text-neutral-500 text-xs">kcal</span></p>
+                  <p className="text-white text-lg font-bold">{m!.kcal} <span className="text-neutral-500 text-xs">kcal</span></p>
                   <div className="flex justify-center gap-2 mt-1 text-[10px]">
-                    <span className="text-red-400">{macros!.protein_g}g P</span>
-                    <span className="text-amber-400">{macros!.carbs_g}g HC</span>
-                    <span className="text-blue-400">{macros!.fat_g}g G</span>
+                    <span className="text-red-400">{m!.protein_g}g P</span>
+                    <span className="text-amber-400">{m!.carbs_g}g HC</span>
+                    <span className="text-blue-400">{m!.fat_g}g G</span>
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Reducción OFF */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
-                Reducción Hidratos OFF
+                Reducción HC en días OFF
               </label>
               <div className="flex gap-2">
                 {[10, 13, 15, 20].map(pct => (
                   <button key={pct} onClick={() => setOffPct(pct)}
                     className={"flex-1 py-2 rounded-lg text-xs font-medium transition-colors " +
-                      (offPct === pct
-                        ? "bg-white text-black"
-                        : "text-neutral-400")}
+                      (offPct === pct ? "bg-white text-black" : "text-neutral-400")}
                     style={offPct !== pct ? { background: "#1A1A1A", border: "1px solid #2A2A2A" } : {}}>
                     −{pct}%
                   </button>
@@ -636,7 +740,7 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
           </div>
         </div>
 
-        {/* ── CONFIGURACIÓN NOMBRE / NOTAS (siempre visible) ── */}
+        {/* ── Nombre y notas ── */}
         <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: "1px solid #222" }}>
           <div className="px-4 py-3 space-y-3">
             <p className="text-white font-semibold text-sm">📋 Datos del plan</p>
@@ -648,84 +752,81 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
                 style={{ background: "#1A1A1A", border: "1px solid #333" }} />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1">Notas para el cliente</label>
+              <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1">Notas</label>
               <textarea value={planNotes} onChange={e => setPlanNotes(e.target.value)}
-                rows={2} placeholder="Indicaciones generales, ajustes…"
+                rows={2} placeholder="Indicaciones generales…"
                 className="w-full rounded-lg px-3 py-2 text-white text-sm focus:outline-none resize-none"
                 style={{ background: "#1A1A1A", border: "1px solid #333" }} />
             </div>
           </div>
         </div>
 
-        {/* ── BOTÓN GENERAR ── */}
+        {/* ── Botón generar ── */}
         {!generated ? (
           <button onClick={handleGenerate}
-            className="w-full py-4 rounded-xl text-white font-bold text-sm active:opacity-80 transition-opacity"
-            style={{ background: "linear-gradient(135deg, #8B1A2F, #C0392B)" }}>
+            className="w-full py-4 rounded-xl text-white font-bold text-sm"
+            style={{ background: "linear-gradient(135deg,#8B1A2F,#C0392B)" }}>
             ✨ Generar plan automáticamente
           </button>
         ) : (
           <button onClick={handleGenerate}
-            className="w-full py-3 rounded-xl text-sm font-medium text-neutral-400 active:opacity-80"
+            className="w-full py-3 rounded-xl text-sm font-medium text-neutral-400"
             style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-            🔄 Regenerar plan desde cero
+            🔄 Regenerar desde cero
           </button>
         )}
 
-        {/* ── PLAN GENERADO ── */}
+        {/* ── Plan generado ── */}
         {generated && (
           <>
             {/* Tabs ON / OFF */}
             <div className="flex gap-1 p-1 rounded-xl"
               style={{ background: "#111", border: "1px solid #222" }}>
-              {(["on", "off"] as const).map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
+              {(["on", "off"] as const).map(t => (
+                <button key={t} onClick={() => setActiveTab(t)}
                   className={"flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors " +
-                    (activeTab === tab ? "bg-white text-black" : "text-neutral-400")}>
-                  {tab === "on" ? "💪 Día ON" : "😴 Día OFF"}
+                    (activeTab === t ? "bg-white text-black" : "text-neutral-400")}>
+                  {t === "on" ? "💪 Día ON" : "😴 Día OFF"}
                   <span className="block text-xs font-normal mt-0.5 text-neutral-500">
-                    {tab === "on" ? macrosOn.kcal : macrosOff?.kcal} kcal
+                    {t === "on" ? macrosOn.kcal : macrosOff?.kcal} kcal
                   </span>
                 </button>
               ))}
             </div>
 
-            {/* Resumen total generado */}
+            {/* Resumen total */}
             {totalGen && activeMacros && (
               <div className="rounded-xl px-4 py-3"
                 style={{ background: "#111", border: "1px solid #222" }}>
-                <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">
-                  Total generado vs. objetivo
-                </p>
+                <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">Total generado vs. objetivo</p>
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[
-                    { label: "Kcal",    gen: totalGen.kcal,    target: activeMacros.kcal,      color: "text-white" },
-                    { label: "Prot",    gen: totalGen.protein, target: activeMacros.protein_g, color: "text-red-400" },
-                    { label: "HC",      gen: totalGen.carbs,   target: activeMacros.carbs_g,   color: "text-amber-400" },
-                    { label: "Grasa",   gen: totalGen.fat,     target: activeMacros.fat_g,     color: "text-blue-400" },
-                  ].map(({ label, gen, target, color }) => (
+                    { label: "Kcal",  gen: totalGen.kcal,    tgt: activeMacros.kcal,      color: "text-white" },
+                    { label: "Prot",  gen: totalGen.protein, tgt: activeMacros.protein_g, color: "text-red-400" },
+                    { label: "HC",    gen: totalGen.carbs,   tgt: activeMacros.carbs_g,   color: "text-amber-400" },
+                    { label: "Grasa", gen: totalGen.fat,     tgt: activeMacros.fat_g,     color: "text-blue-400" },
+                  ].map(({ label, gen, tgt, color }) => (
                     <div key={label} className="rounded-lg py-2"
                       style={{ background: "#0A0A0A", border: "1px solid #1E1E1E" }}>
                       <p className={`text-sm font-bold ${color}`}>{gen}</p>
-                      <p className="text-[9px] text-neutral-600">/ {target}</p>
+                      <p className="text-[9px] text-neutral-600">/ {tgt}</p>
                       <p className="text-[9px] text-neutral-500 mt-0.5">{label}</p>
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-neutral-600 mt-2 text-center">
-                  La fruta y verdura libre no cuentan en el objetivo. Ajusta cambiando alimentos.
-                </p>
               </div>
             )}
 
             {/* Comidas */}
             <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-1">
-              Comidas — toca 🔄 para cambiar un alimento
+              Comidas — 3 opciones por comida, personaliza con los desplegables
             </p>
 
             {activePlan.map(meal => {
-              const mt      = mealMacros(meal);
-              const isOpen  = expandedMeals.has(meal.mealId);
+              const activeOptIdx = activeOptions[meal.mealId] ?? 0;
+              const activeOpt    = meal.options[activeOptIdx];
+              const mt           = activeOpt ? optionMacros(activeOpt) : null;
+              const isOpen       = expandedMeals.has(meal.mealId);
 
               return (
                 <div key={meal.mealId} className="rounded-xl overflow-hidden"
@@ -736,87 +837,113 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
                     className="w-full flex items-center gap-3 px-4 py-3 text-left">
                     <span className="text-xl shrink-0">{meal.emoji}</span>
                     <span className="flex-1 text-white font-semibold text-sm">{meal.name}</span>
-                    <span className="text-neutral-500 text-xs tabular-nums">{mt.kcal} kcal</span>
+                    {mt && <span className="text-neutral-500 text-xs tabular-nums">{mt.kcal} kcal</span>}
                     <span className="text-neutral-500 text-sm">{isOpen ? "▲" : "▼"}</span>
                   </button>
 
                   {isOpen && (
-                    <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: "#1A1A1A" }}>
+                    <div className="border-t" style={{ borderColor: "#1A1A1A" }}>
 
-                      {/* Macro totales de la comida */}
-                      <div className="flex gap-3 pt-2 text-[10px]">
-                        <span className="text-red-400">{mt.protein}g P</span>
-                        <span className="text-amber-400">{mt.carbs}g HC</span>
-                        <span className="text-blue-400">{mt.fat}g G</span>
+                      {/* Pestañas de opción */}
+                      <div className="flex gap-1 p-2">
+                        {meal.options.map((opt, oIdx) => (
+                          <button key={opt.profileId}
+                            onClick={() => setActiveOptions(prev => ({ ...prev, [meal.mealId]: oIdx }))}
+                            className={"flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors " +
+                              (activeOptIdx === oIdx ? "text-white" : "text-neutral-500")}
+                            style={activeOptIdx === oIdx
+                              ? { background: "#8B1A2F", border: "1px solid #A01F38" }
+                              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                            {oIdx + 1}
+                          </button>
+                        ))}
                       </div>
 
-                      {meal.foods.map(food => {
-                        const fm     = foodMacros(food);
-                        const isFixed = food.macro === "fixed";
-                        const pool   = buildPool(
-                          MEAL_DEFS.find(m => m.id === meal.mealId)!
-                            .slots.find(s => s.id === food.slotId)!.cats
-                        );
+                      {/* Label de la opción activa */}
+                      {activeOpt && (
+                        <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-3 pb-2">
+                          {activeOpt.profileLabel}
+                        </p>
+                      )}
 
-                        return (
-                          <div key={food.slotId} className="rounded-lg p-3"
-                            style={{ background: "#0A0A0A", border: "1px solid #1E1E1E" }}>
+                      {/* Slots de la opción activa */}
+                      {activeOpt && (
+                        <div className="px-3 pb-3 space-y-2">
+                          {activeOpt.foods.map(food => {
+                            const fm       = foodMacros(food);
+                            const isFixed  = food.macro === "fixed";
+                            const slotColor =
+                              food.macro === "protein" ? "#F87171" :
+                              food.macro === "carbs"   ? "#FBBF24" :
+                              food.macro === "fat"     ? "#60A5FA" : "#A78BFA";
 
-                            <div className="flex items-center gap-2">
-                              {/* Etiqueta slot */}
-                              <span className="text-[10px] font-bold uppercase tracking-wider shrink-0 w-14"
-                                style={{
-                                  color: food.macro === "protein" ? "#F87171"
-                                       : food.macro === "carbs"   ? "#FBBF24"
-                                       : food.macro === "fat"     ? "#60A5FA"
-                                       :                            "#A78BFA",
-                                }}>
-                                {food.label}
-                              </span>
+                            return (
+                              <div key={food.slotId} className="rounded-lg p-3 space-y-2"
+                                style={{ background: "#0A0A0A", border: "1px solid #1E1E1E" }}>
 
-                              <div className="flex-1 min-w-0">
-                                <p className="text-white text-sm font-medium truncate">{food.ing.name}</p>
-                                <p className="text-neutral-500 text-xs">{food.grams} g</p>
+                                {/* Etiqueta + gramos */}
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider"
+                                    style={{ color: slotColor }}>
+                                    {food.label}
+                                  </span>
+                                  <span className="text-neutral-400 text-xs font-mono">
+                                    {food.grams} g
+                                  </span>
+                                </div>
+
+                                {/* Select */}
+                                {food.availablePool.length > 1 ? (
+                                  <select
+                                    value={food.ing.id}
+                                    onChange={e => doSelect(meal.mealId, activeOptIdx, food.slotId, e.target.value)}
+                                    className="w-full rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none"
+                                    style={{ background: "#1A1A1A", border: `1px solid ${slotColor}35` }}>
+                                    {food.availablePool.map(ing => (
+                                      <option key={ing.id} value={ing.id}>{ing.name}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <p className="text-white text-sm">{food.ing.name}</p>
+                                )}
+
+                                {/* Macros del alimento */}
+                                {!isFixed && (
+                                  <div className="flex gap-3 text-[10px]">
+                                    <span className="text-neutral-500">{fm.kcal} kcal</span>
+                                    <span className="text-red-400">{fm.protein}g P</span>
+                                    <span className="text-amber-400">{fm.carbs}g HC</span>
+                                    <span className="text-blue-400">{fm.fat}g G</span>
+                                  </div>
+                                )}
+
+                                {/* Nota libre */}
+                                {food.noteText && (
+                                  <p className="text-neutral-600 text-[10px]">{food.noteText}</p>
+                                )}
                               </div>
+                            );
+                          })}
 
-                              {/* Botón swap */}
-                              {pool.length > 1 && (
-                                <button
-                                  onClick={() => doSwap(meal.mealId, food.slotId)}
-                                  title="Cambiar alimento"
-                                  className="w-8 h-8 rounded-lg text-neutral-400 text-base flex items-center justify-center shrink-0 active:scale-95 transition-transform"
-                                  style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-                                  🔄
-                                </button>
-                              )}
+                          {/* Macros totales opción */}
+                          {mt && (
+                            <div className="flex gap-3 px-1 pt-1 text-[10px]">
+                              <span className="text-neutral-500 font-medium">Total opción:</span>
+                              <span className="text-red-400">{mt.protein}g P</span>
+                              <span className="text-amber-400">{mt.carbs}g HC</span>
+                              <span className="text-blue-400">{mt.fat}g G</span>
+                              <span className="text-neutral-500">{mt.kcal} kcal</span>
                             </div>
-
-                            {/* Macros del alimento */}
-                            {!isFixed && (
-                              <div className="flex gap-3 mt-2 pl-[4.25rem] text-[10px]">
-                                <span className="text-neutral-500">{fm.kcal} kcal</span>
-                                <span className="text-red-400">{fm.protein}g P</span>
-                                <span className="text-amber-400">{fm.carbs}g HC</span>
-                                <span className="text-blue-400">{fm.fat}g G</span>
-                              </div>
-                            )}
-
-                            {/* Nota de slot (verdura libre…) */}
-                            {food.noteText && (
-                              <p className="text-neutral-600 text-[10px] mt-1 pl-[4.25rem]">
-                                {food.noteText}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
 
-            {/* Guardar (bottom) */}
+            {/* Guardar bottom */}
             <div className="pt-2">
               <button onClick={handleSave} disabled={saving}
                 className="w-full py-4 rounded-xl text-white font-bold text-sm disabled:opacity-40"
@@ -824,7 +951,7 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
                 {saving ? "Guardando…" : "💾 Guardar y asignar al cliente"}
               </button>
               <p className="text-[10px] text-neutral-600 text-center mt-2">
-                El plan se guardará y se asignará automáticamente a {clientName ?? "este cliente"}.
+                Se guardan las 3 opciones por comida. El cliente ve todas y elige la que prefiera.
               </p>
             </div>
           </>
