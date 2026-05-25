@@ -203,6 +203,7 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
   const [savedAt,        setSavedAt]        = useState<string | null>(null);
   const [loadingData,    setLoadingData]    = useState(false);
   const [saveMsg,        setSaveMsg]        = useState<string | null>(null);
+  const [showAdvanced,   setShowAdvanced]   = useState(false);
 
   // ── Cargar datos guardados al montar ──────────────────────────
   useEffect(() => {
@@ -239,14 +240,15 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
   const canCalc = !!age && !!height && !!weight
     && Number(age) > 0 && Number(height) > 0 && Number(weight) > 0;
 
-  const handleCalc = () => {
-    if (!canCalc) return;
+  // Recalcular automáticamente cada vez que cambia cualquier input
+  useEffect(() => {
+    if (!canCalc) { setResult(null); setPlan(null); return; }
     const r = calcMacros(sex, Number(age), Number(height), Number(weight),
       activityFactor, proteinMult, fatMult);
     setResult(r);
     setPlan(generatePlan(r));
     setShowPlan(false);
-  };
+  }, [sex, age, height, weight, activityFactor, proteinMult, fatMult]);
 
   const handleSave = async () => {
     if (!result || !clientId) return;
@@ -361,42 +363,59 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
           </select>
         </div>
 
-        {/* Multiplicadores */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
-              Proteína <span className="text-neutral-600">(g/kg · 1.6–2.2)</span>
-            </label>
-            <select
-              value={proteinMult}
-              onChange={e => setProteinMult(Number(e.target.value))}
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500">
-              {PROTEIN_MULTIPLIERS.map(m => (
-                <option key={m} value={m}>{m} g/kg</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
-              Grasa <span className="text-neutral-600">(g/kg · 0.5–1.0)</span>
-            </label>
-            <select
-              value={fatMult}
-              onChange={e => setFatMult(Number(e.target.value))}
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500">
-              {FAT_MULTIPLIERS.map(m => (
-                <option key={m} value={m}>{m} g/kg</option>
-              ))}
-            </select>
-          </div>
+        {/* Configuración avanzada — oculta por defecto */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(v => !v)}
+            className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-neutral-500 hover:text-neutral-300 transition-colors">
+            <span>{showAdvanced ? "▾" : "▸"}</span>
+            <span>⚙ Configuración avanzada</span>
+          </button>
+
+          {showAdvanced && (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
+                  Proteína <span className="text-neutral-600">(g/kg)</span>
+                </label>
+                <select
+                  value={proteinMult}
+                  onChange={e => setProteinMult(Number(e.target.value))}
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500">
+                  {PROTEIN_MULTIPLIERS.map(m => (
+                    <option key={m} value={m}>{m} g/kg</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
+                  Grasa <span className="text-neutral-600">(g/kg)</span>
+                </label>
+                <select
+                  value={fatMult}
+                  onChange={e => setFatMult(Number(e.target.value))}
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500">
+                  {FAT_MULTIPLIERS.map(m => (
+                    <option key={m} value={m}>{m} g/kg</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
-        <button
-          onClick={handleCalc}
-          disabled={!canCalc}
-          className="w-full py-3 rounded-xl bg-white text-black text-sm font-bold hover:bg-neutral-200 disabled:opacity-40 transition-colors">
-          Calcular requerimientos
-        </button>
+        {/* Indicador de que el cálculo es en tiempo real */}
+        {!canCalc && (
+          <p className="text-neutral-600 text-xs text-center">
+            Rellena todos los datos para ver los resultados
+          </p>
+        )}
+        {canCalc && (
+          <p className="text-emerald-600 text-xs text-center flex items-center justify-center gap-1">
+            <span>✓</span> Calculando automáticamente
+          </p>
+        )}
       </div>
 
       {/* ── Resultado ── */}
