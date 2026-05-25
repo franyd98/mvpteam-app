@@ -4,6 +4,7 @@ import ProgramEditor from "./ProgramEditor";
 import { AntroTable } from "./CheckInPage";
 import VisitaPresencial from "./VisitaPresencial";
 import DietEditor from "./DietEditor";
+import DietGenerator from "../components/DietGenerator";
 import { MVPWordmark } from "../components/MVPLogo";
 import MacroCalculator from "../components/MacroCalculator";
 import IngredientsAdmin from "../components/IngredientsAdmin";
@@ -62,6 +63,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   // "__none__" = cerrado; null = nuevo plan; string = editar plan existente
   const [editingDietPlanId, setEditingDietPlanId] = useState<string | null | "__none__">("__none__");
   const [assigningDietPlan, setAssigningDietPlan] = useState<string | null>(null);
+  // Generador automático de dietas por cliente
+  const [generatingDietForClient, setGeneratingDietForClient] = useState<Profile | null>(null);
 
   // Añadir ejercicio al catálogo
   const [newExName, setNewExName] = useState("");
@@ -355,6 +358,20 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     );
   }
 
+  // Generador automático de dieta para un cliente específico
+  if (generatingDietForClient !== null) {
+    return (
+      <DietGenerator
+        clientId={generatingDietForClient.id}
+        clientName={generatingDietForClient.full_name}
+        onBack={async () => {
+          setGeneratingDietForClient(null);
+          await Promise.all([loadDietPlans(), loadDietAssignments()]);
+        }}
+      />
+    );
+  }
+
   // Editor de dieta (standalone desde pestaña Dietas)
   if (editingDietPlanId !== "__none__") {
     return (
@@ -624,8 +641,20 @@ export default function AdminPage({ profile }: { profile: Profile }) {
             const da = dietAssignments.find(a => a.client_id === viewingClient.id);
             return (
               <div className="space-y-4">
+
+                {/* Generar nueva dieta automática */}
+                <button
+                  onClick={() => setGeneratingDietForClient(viewingClient)}
+                  className="w-full py-4 rounded-xl text-white font-bold text-sm active:opacity-80 transition-opacity flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #8B1A2F, #C0392B)" }}>
+                  ✨ Generar nueva dieta automática
+                </button>
+                <p className="text-[10px] text-neutral-600 text-center -mt-2 px-4">
+                  Genera ON + OFF automáticamente a partir de los macros de la calculadora
+                </p>
+
                 {/* Plan asignado actualmente */}
-                <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+                <div className="rounded-xl p-4" style={{ background: "#111", border: "1px solid #222" }}>
                   <p className="text-xs uppercase tracking-wider text-neutral-500 mb-3">Plan asignado</p>
                   {da ? (
                     <div className="flex items-center gap-3">
@@ -640,13 +669,13 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                       </div>
                       <button
                         onClick={() => setEditingDietPlanId(da.plan_id)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-300 hover:text-white"
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-300"
                         style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-                        ✏️ Editar plan
+                        ✏️ Editar
                       </button>
                       <button
                         onClick={() => handleUnassignDiet(viewingClient.id, viewingClient.full_name)}
-                        className="px-3 py-1.5 rounded-lg text-xs text-red-400 hover:text-red-300"
+                        className="px-3 py-1.5 rounded-lg text-xs text-red-400"
                         style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
                         ✕
                       </button>
@@ -656,12 +685,10 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                   )}
                 </div>
 
-                {/* Lista de planes para asignar */}
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Asignar plan</p>
-                  {dietPlans.length === 0 ? (
-                    <p className="text-neutral-600 text-sm">No hay planes creados todavía. Créalos en la pestaña 🥗 Dietas.</p>
-                  ) : (
+                {/* Lista de planes existentes para asignar */}
+                {dietPlans.length > 0 && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Asignar plan existente</p>
                     <div className="space-y-2">
                       {dietPlans.map(plan => {
                         const isAssigned = da?.plan_id === plan.id;
@@ -681,8 +708,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                         );
                       })}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             );
           })()}
