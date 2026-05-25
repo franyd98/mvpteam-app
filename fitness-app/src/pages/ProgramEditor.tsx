@@ -204,21 +204,29 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     }
 
     // 2. Actualizar el microcycle_exercise concreto que editó el admin
-    await supabase.from("microcycle_exercises")
+    const { error: errMain } = await supabase.from("microcycle_exercises")
       .update({ exercise_id: swapping.selectedExId })
       .eq("id", swapping.meId);
 
+    if (errMain) {
+      alert(`Error al guardar: ${errMain.message}`);
+      setSaving(false);
+      return;
+    }
+
     // 3. Propagar a TODOS los demás microciclos por posición (order_index)
+    let synced = 0;
     if (orderIndex !== null) {
       for (const mc of currentDay.microcycles) {
-        // Buscar el ejercicio en la misma posición de este microciclo
         const atSamePosition = mc.exercises.find(
           e => e.order_index === orderIndex && e.id !== swapping.meId
         );
         if (atSamePosition) {
-          await supabase.from("microcycle_exercises")
+          const { error } = await supabase.from("microcycle_exercises")
             .update({ exercise_id: swapping.selectedExId })
             .eq("id", atSamePosition.id);
+          if (!error) synced++;
+          else console.error("Error sync mc", mc.number, error);
         }
       }
     }
@@ -226,6 +234,13 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     setSwapping(null);
     await loadAll();
     setSaving(false);
+
+    if (synced > 0) {
+      setSyncFlash(true);
+      setTimeout(() => setSyncFlash(false), 2000);
+    } else if (orderIndex === null) {
+      alert("⚠️ No se encontró la posición del ejercicio. Recarga la página e inténtalo de nuevo.");
+    }
   };
 
   // Guarda reps/RIR de una serie al perder el foco.
