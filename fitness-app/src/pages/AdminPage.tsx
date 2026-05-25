@@ -6,6 +6,7 @@ import VisitaPresencial from "./VisitaPresencial";
 import DietEditor from "./DietEditor";
 import { MVPWordmark } from "../components/MVPLogo";
 import MacroCalculator from "../components/MacroCalculator";
+import IngredientsAdmin from "../components/IngredientsAdmin";
 
 type Profile = { id: string; full_name: string; role: string };
 type CatalogEx = { id: number; muscle_group: string; name: string; video_ref: string | null };
@@ -13,7 +14,7 @@ type ProgramRow = { id: number; name: string; description: string | null };
 type Assignment = { client_id: string; program_id: number; program_name: string };
 type DietPlan = { id: string; name: string; kcal_on: number | null; kcal_off: number | null; notes: string | null };
 type DietAssignment = { client_id: string; plan_id: string; plan_name: string };
-type Tab = "programas" | "clientes" | "ejercicios" | "dietas";
+type Tab = "programas" | "clientes" | "ejercicios" | "dietas" | "alimentos";
 
 type ClientLog = {
   id: number;
@@ -754,7 +755,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       )}
 
       <div className="flex gap-1.5 px-3 py-3 max-w-3xl mx-auto overflow-x-auto scrollbar-hide">
-        {([["programas", "📋 Programas"], ["clientes", "👥 Clientes"], ["dietas", "🥗 Dietas"], ["ejercicios", "🏋️ Ejercicios"]] as [Tab, string][]).map(([t, label]) => (
+        {([["programas", "📋 Programas"], ["clientes", "👥 Clientes"], ["dietas", "🥗 Dietas"], ["alimentos", "🍗 Alimentos"], ["ejercicios", "🏋️ Ejercicios"]] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={"px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 " + (tab === t ? "text-white" : "text-neutral-400")}
             style={tab === t
@@ -1011,6 +1012,11 @@ export default function AdminPage({ profile }: { profile: Profile }) {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── TAB ALIMENTOS ── */}
+        {tab === "alimentos" && (
+          <IngredientsAdmin />
         )}
 
         {/* ── TAB EJERCICIOS ── */}

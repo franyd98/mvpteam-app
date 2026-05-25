@@ -43,6 +43,13 @@ export interface Ingredient {
 export const ingredients: Ingredient[] = [
 
   // ── PROTEÍNAS MAGRAS ─────────────────────────────────────────────
+  // Nuevos — extraídos del PDF del plan nutricional (macros USDA / etiqueta producto)
+  { id: "yogur_griego",    name: "Yogur Griego Ligero Natural",                    category: "lean_protein",   kcal: 66,    protein: 10.0,  carbs: 4.0,  fat: 0.2  },
+  { id: "yogur_sln",       name: "Yogur Sin Lactosa",                              category: "lean_protein",   kcal: 62,    protein: 3.5,   carbs: 4.7,  fat: 3.3  },
+  { id: "mousse_prot",     name: "Mousse Proteico Hacendado",                      category: "lean_protein",   kcal: 70,    protein: 11.0,  carbs: 4.0,  fat: 1.5  },
+  { id: "salchi_pavo_3",   name: "Salchichas de Pavo 3% MG (Hacendado)",          category: "lean_protein",   kcal: 109,   protein: 14.0,  carbs: 2.0,  fat: 3.0  },
+  { id: "leche_almendra",  name: "Leche de Almendra Sin Azúcar",                  category: "lean_protein",   kcal: 13,    protein: 0.4,   carbs: 0.1,  fat: 1.1  },
+  { id: "leche_avena",     name: "Leche de Avena Sin Azúcar",                     category: "lean_protein",   kcal: 40,    protein: 1.0,   carbs: 6.5,  fat: 1.5  },
   { id: "iso",             name: "Proteína ISO",                                   category: "lean_protein",   kcal: 379,   protein: 90,    carbs: 2.1,  fat: 1.2  },
   { id: "whey",            name: "Proteína Whey",                                  category: "lean_protein",   kcal: 386,   protein: 75,    carbs: 8.4,  fat: 5.6  },
   { id: "yogur_prot",      name: "Yogur Proteico (Hacendado)",                     category: "lean_protein",   kcal: 52,    protein: 10,    carbs: 3.1,  fat: 0.5  },
@@ -112,6 +119,7 @@ export const ingredients: Ingredient[] = [
   { id: "patata",          name: "Patata",                                         category: "clean_carb",     kcal: 78,    protein: 2.86,  carbs: 17.2, fat: 0.1  },
   { id: "patata_bote",     name: "Patata en Conserva (bote)",                      category: "clean_carb",     kcal: 57,    protein: 1.2,   carbs: 12,   fat: 0.5  },
   { id: "boniato",         name: "Boniato Naranja",                                category: "clean_carb",     kcal: 107,   protein: 1.61,  carbs: 24,   fat: 0.1  },
+  { id: "boniato_rojo",    name: "Boniato Rojo",                                  category: "clean_carb",     kcal: 86,    protein: 1.6,   carbs: 20,   fat: 0.1  },
   { id: "noquis",          name: "Ñoquis de Patata",                               category: "clean_carb",     kcal: 174,   protein: 4.5,   carbs: 37.6, fat: 0.4  },
   { id: "pan_blanco",      name: "Pan Blanco de Panadería",                        category: "clean_carb",     kcal: 261,   protein: 8.5,   carbs: 51.5, fat: 1.6  },
   { id: "pan_integral_pan",name: "Pan Integral de Panadería",                      category: "clean_carb",     kcal: 234,   protein: 7,     carbs: 45,   fat: 2.9  },
@@ -121,6 +129,7 @@ export const ingredients: Ingredient[] = [
   { id: "arroz_bolsita",   name: "Arroz Congelado Hacendado (bolsitas)",           category: "clean_carb",     kcal: 127,   protein: 2.7,   carbs: 28,   fat: 0.3  },
   { id: "tortas_arroz",    name: "Tortas de Arroz",                                category: "clean_carb",     kcal: 382,   protein: 8.2,   carbs: 81,   fat: 2.0  },
   { id: "tortas_maiz",     name: "Tortas de Maíz",                                 category: "clean_carb",     kcal: 368,   protein: 7.5,   carbs: 80,   fat: 1.8  },
+  { id: "weetabix",        name: "Weetabix 95% Trigo Integral",                   category: "clean_carb",     kcal: 362,   protein: 11.0,  carbs: 68,   fat: 2.0  },
   { id: "corn_flakes",     name: "Corn Flakes Sin Azúcar",                         category: "clean_carb",     kcal: 377,   protein: 8.5,   carbs: 82,   fat: 1.1  },
   { id: "copos_trigo",     name: "Copos de Trigo y Arroz Integral Sin Azúcar",     category: "clean_carb",     kcal: 364,   protein: 9.6,   carbs: 76,   fat: 1.7  },
   { id: "rice_krispies",   name: "Rice Krispies Kellogg's",                        category: "clean_carb",     kcal: 377,   protein: 8,     carbs: 84,   fat: 1.0  },
@@ -140,12 +149,14 @@ export const ingredients: Ingredient[] = [
   { id: "fajitas",         name: "Tortillas de Trigo (Fajitas)",                   category: "fatty_carb",     kcal: 308,   protein: 7.1,   carbs: 55,   fat: 6.2  },
   { id: "patatas_fritas",  name: "Patatas Fritas Congeladas (corte grueso)",        category: "fatty_carb",     kcal: 116,   protein: 2.1,   carbs: 20,   fat: 2.4  },
   { id: "muesli",          name: "Muesli Sin Azúcares (Hacendado)",                category: "fatty_carb",     kcal: 409,   protein: 9.3,   carbs: 64,   fat: 13.0 },
+  { id: "pan_centeno",     name: "Pan de Centeno / Espelta",                      category: "fatty_carb",     kcal: 243,   protein: 8.5,   carbs: 42,   fat: 3.5  },
 
   // ── FRUTA ─────────────────────────────────────────────────────────
   { id: "fresas",          name: "Fresas",                                         category: "fruit",          kcal: 34.9,  protein: 0.65,  carbs: 6.14, fat: 0.2  },
   { id: "frambuesas",      name: "Frambuesas",                                     category: "fruit",          kcal: 51,    protein: 1.2,   carbs: 11.94,fat: 0.65 },
   { id: "arandanos",       name: "Arándanos",                                      category: "fruit",          kcal: 57,    protein: 0.74,  carbs: 14.49,fat: 0.33 },
   { id: "frutos_rojos",    name: "Frutos Rojos Congelados (Hacendado)",            category: "fruit",          kcal: 39,    protein: 0,     carbs: 5.5,  fat: 0.9  },
+  { id: "arandanos_cong",  name: "Arándanos Congelados",                          category: "fruit",          kcal: 44,    protein: 0.5,   carbs: 10.5, fat: 0.4  },
   { id: "pina",            name: "Piña",                                           category: "fruit",          kcal: 48,    protein: 0.54,  carbs: 12.63,fat: 0.12 },
   { id: "kiwi",            name: "Kiwi",                                           category: "fruit",          kcal: 61,    protein: 1.14,  carbs: 14.66,fat: 0.62 },
   { id: "platano",         name: "Plátano",                                        category: "fruit",          kcal: 89,    protein: 1.09,  carbs: 22.84,fat: 0.33 },
