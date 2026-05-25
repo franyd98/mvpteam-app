@@ -173,7 +173,7 @@ const MEAL_DEFS: MealDef[] = [
             ingIds: ["aceite_oliva"],
             noteText: "🥦 Verdura variada a gusto (libre)" },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
-            ingIds: ["manzana","pera","melocoton","naranja","kiwi","platano"] },
+            ingIds: ["manzana","pera","melocoton","kiwi","platano","cerezas"] },
         ],
       },
       {
@@ -887,10 +887,15 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
                                     style={{ color: slotColor }}>
                                     {food.label}
                                   </span>
-                                  <span className="text-neutral-400 text-xs font-mono">
-                                    {food.grams} g
+                                  <span className={`text-xs font-mono ${food.grams > 350 ? "text-amber-400" : "text-neutral-400"}`}>
+                                    {food.grams} g{food.grams > 350 ? " ⚠" : ""}
                                   </span>
                                 </div>
+                                {food.grams > 350 && food.macro !== "fixed" && (
+                                  <p className="text-[10px] text-amber-600">
+                                    Porción grande — normal en alimentos de baja densidad (patata, boniato…)
+                                  </p>
+                                )}
 
                                 {/* Select */}
                                 {food.availablePool.length > 1 ? (
