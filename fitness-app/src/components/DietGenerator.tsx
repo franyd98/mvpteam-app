@@ -72,47 +72,54 @@ interface GeneratedMeal {
 // Los ingIds son los IDs exactos de ingredients.ts.
 
 const MEAL_DEFS: MealDef[] = [
+
   // ── COMIDA 1 — Desayuno ────────────────────────────────────────────────────
   {
     id: "c1", name: "Comida 1 — Desayuno", emoji: "🌅",
     profiles: [
       {
-        id: "c1_a", label: "Lácteos + Avena",
+        // Lácteos (yogur/queso/mousse) + CUALQUIER cereal o avena
+        id: "c1_a", label: "Lácteos + Cereal",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
-            ingIds: ["yogur_griego","yogur_prot","qso_batido","qso_fresco","mousse_prot","leche_prot"] },
+            ingIds: ["yogur_prot","yogur_griego","mousse_prot","qso_batido","qso_fresco","leche_prot","yogur_sln"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 25,
-            ingIds: ["avena_copos","harina_avena","avena_crunchy"] },
+            // Todos los cereales/avenas funcionan igual de bien con lácteos
+            ingIds: ["avena_copos","harina_avena","avena_crunchy",
+                     "corn_flakes","weetabix","copos_trigo","rice_krispies","cereal_mix","crema_arroz","choco_zero"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 10,
-            ingIds: ["aceite_coco","aceite_oliva","chocolate85"] },
+            ingIds: ["aceite_coco","chocolate85","crema_cacah","almendras","nuez"] },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
-            ingIds: ["fresas","frambuesas","arandanos","arandanos_cong","frutos_rojos","kiwi","melocoton"] },
+            ingIds: ["fresas","frambuesas","arandanos","arandanos_cong","frutos_rojos","kiwi","melocoton","manzana","platano","pera"] },
         ],
       },
       {
-        id: "c1_b", label: "Proteína + Cereales",
+        // ISO/Whey en batido + CUALQUIER cereal o avena
+        id: "c1_b", label: "ISO / Whey + Cereal",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
             ingIds: ["iso","whey"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 25,
-            ingIds: ["corn_flakes","weetabix","copos_trigo","rice_krispies","cereal_mix","crema_arroz","choco_zero"] },
+            ingIds: ["avena_copos","harina_avena","avena_crunchy",
+                     "corn_flakes","weetabix","copos_trigo","rice_krispies","cereal_mix","crema_arroz","choco_zero"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 10,
-            ingIds: ["aceite_coco","chocolate85","crema_cacah"] },
+            ingIds: ["aceite_coco","chocolate85","crema_cacah","almendras","nuez"] },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
-            ingIds: ["platano","manzana","pera","uva","melocoton"] },
+            ingIds: ["platano","manzana","pera","fresas","arandanos","melocoton","kiwi"] },
         ],
       },
       {
-        id: "c1_c", label: "Pan + Cremas",
+        // Pan / tostadas con proteína láctea o ISO + grasa saludable
+        id: "c1_c", label: "Pan + Proteína + Grasa",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
-            ingIds: ["yogur_griego","qso_batido","iso","leche_prot","qso_fresco"] },
+            ingIds: ["yogur_griego","qso_batido","qso_fresco","leche_prot","iso","yogur_prot","mousse_prot"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 25,
             ingIds: ["pan_centeno","pan_tostado","pan_fibra","pan_wasa","pan_molde","pan_integral_pan"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 10,
-            ingIds: ["crema_cacah","almendras","nuez","chocolate85","aceite_coco"] },
+            ingIds: ["crema_cacah","almendras","nuez","chocolate85","aceite_coco","aguacate"] },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
-            ingIds: ["platano","manzana","arandanos","fresas","pera"] },
+            ingIds: ["platano","manzana","fresas","arandanos","pera","kiwi","melocoton"] },
         ],
       },
     ],
@@ -123,36 +130,42 @@ const MEAL_DEFS: MealDef[] = [
     id: "c2", name: "Comida 2 — Almuerzo", emoji: "☕",
     profiles: [
       {
+        // Embutido curado (jamón/lomo) sobre pan o tortas
         id: "c2_a", label: "Embutido + Pan",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 15,
-            ingIds: ["lomo_embuchado","lomo_curado_pavo","jamon","fiambre_pavo"] },
+            ingIds: ["lomo_embuchado","jamon","fiambre_pavo","lomo_curado_pavo"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 20,
-            ingIds: ["pan_wasa","pan_fibra","pan_tostado","pan_integral_pan"] },
+            ingIds: ["pan_wasa","pan_fibra","pan_tostado","pan_integral_pan","pan_centeno",
+                     "tortas_arroz","tortas_maiz","tortas_legumbre"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 5,
             ingIds: ["aceite_oliva","aceitunas","aguacate","guacamole"] },
         ],
       },
       {
-        id: "c2_b", label: "Atún + Tortas",
+        // Proteína baja en grasa (atún/fiambre/salchicha) + tortas o pan ligero
+        id: "c2_b", label: "Atún / Fiambre + Tortas",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 15,
-            ingIds: ["atun_lata","fiambre_pavo","salchi_pavo_3","salchi_pavo_ff","lomo_cerdo"] },
+            ingIds: ["atun_lata","fiambre_pavo","salchi_pavo_3","salchi_pavo_ff","lomo_curado_pavo","lomo_cerdo"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 20,
-            ingIds: ["tortas_legumbre","tortas_arroz","tortas_maiz","pan_wasa"] },
+            ingIds: ["tortas_arroz","tortas_maiz","tortas_legumbre",
+                     "pan_wasa","pan_fibra","pan_tostado","pan_integral_pan"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 5,
             ingIds: ["aceite_oliva","aguacate","guacamole","aceitunas"] },
         ],
       },
       {
-        id: "c2_c", label: "Queso + Fajitas",
+        // Queso light en pan tipo sandwich o fajitas
+        id: "c2_c", label: "Queso + Pan / Fajitas",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 15,
-            ingIds: ["qso_eatlean","mozza_light","havarti","qso_pizza","qso_fresco"] },
+            ingIds: ["qso_eatlean","mozza_light","havarti","qso_fresco","qso_pizza"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 20,
-            ingIds: ["fajitas","pan_molde","pan_blanco","pan_centeno","pizza_int"] },
+            ingIds: ["fajitas","pan_molde","pan_blanco","pan_centeno","pan_integral_pan",
+                     "pizza_int","pan_wasa","pan_fibra"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 5,
-            ingIds: ["aceite_oliva","aceitunas","aguacate"] },
+            ingIds: ["aceite_oliva","aceitunas","aguacate","guacamole"] },
         ],
       },
     ],
@@ -163,45 +176,51 @@ const MEAL_DEFS: MealDef[] = [
     id: "c3", name: "Comida 3 — Comida principal", emoji: "🍽️",
     profiles: [
       {
-        id: "c3_a", label: "Pollo / Pavo + Pasta / Arroz",
+        // Aves o cerdo + carbohidrato de gramíneas (pasta/arroz/cuscús)
+        id: "c3_a", label: "Ave / Cerdo + Pasta / Arroz",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 25,
-            ingIds: ["pollo","pavo","picada_pollo","hamburguesa","lomo_cerdo"] },
+            ingIds: ["pollo","pavo","picada_pollo","hamburguesa","lomo_cerdo","ternera"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 30,
-            ingIds: ["pasta","pasta_integral","arroz","arroz_int","cuscus","arroz_3del","arroz_bolsita"] },
+            ingIds: ["pasta","pasta_integral","arroz","arroz_int","cuscus","noodles_arroz",
+                     "arroz_3del","arroz_bolsita","noquis"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 35,
             ingIds: ["aceite_oliva"],
             noteText: "🥦 Verdura variada a gusto (libre)" },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
-            ingIds: ["manzana","pera","melocoton","kiwi","platano","cerezas"] },
+            ingIds: ["manzana","pera","melocoton","kiwi","platano","cerezas","fresas"] },
         ],
       },
       {
+        // Pescado blanco o marisco + tubérculo (patata/boniato/ñoquis)
         id: "c3_b", label: "Pescado + Patata / Boniato",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 25,
-            ingIds: ["merluza","tilapia","lenguado","lubina","sepia","gambas","calamar"] },
+            ingIds: ["merluza","tilapia","lenguado","lubina","sepia","gambas","calamar","salmon","trucha"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 30,
-            ingIds: ["patata","patata_bote","boniato","boniato_rojo","noquis"] },
+            ingIds: ["patata","patata_bote","boniato","boniato_rojo","noquis",
+                     "arroz","arroz_int","cuscus"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 35,
             ingIds: ["aceite_oliva"],
             noteText: "🥦 Verdura variada a gusto (libre)" },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
-            ingIds: ["pera","manzana","melocoton","kiwi","fresas"] },
+            ingIds: ["pera","manzana","melocoton","kiwi","fresas","cerezas"] },
         ],
       },
       {
-        id: "c3_c", label: "Ternera / Salmón + Arroz / Pasta",
+        // Ternera/salmón/pescado azul + cualquier HC (más flexible)
+        id: "c3_c", label: "Ternera / Salmón + HC libre",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 25,
-            ingIds: ["ternera","salmon","trucha","lomo_atun"] },
+            ingIds: ["ternera","salmon","trucha","lomo_atun","pollo","pavo","lomo_cerdo"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 30,
-            ingIds: ["arroz","pasta","noodles_arroz","cuscus","arroz_int"] },
+            ingIds: ["arroz","pasta","patata","boniato","noodles_arroz","cuscus",
+                     "arroz_int","pasta_integral","noquis"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 35,
             ingIds: ["aceite_oliva"],
             noteText: "🥦 Verdura variada a gusto (libre)" },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
-            ingIds: ["fresas","arandanos","kiwi","frambuesas","pera"] },
+            ingIds: ["fresas","arandanos","kiwi","frambuesas","pera","manzana"] },
         ],
       },
     ],
@@ -212,36 +231,43 @@ const MEAL_DEFS: MealDef[] = [
     id: "c4", name: "Comida 4 — Merienda", emoji: "🫐",
     profiles: [
       {
-        id: "c4_a", label: "Yogur + Cereales",
+        // Lácteos + CUALQUIER cereal (mismo principio que C1_a pero sin grasa)
+        id: "c4_a", label: "Yogur / Queso + Cereal",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
-            ingIds: ["yogur_prot","yogur_griego","mousse_prot","qso_batido","leche_prot"] },
+            ingIds: ["yogur_prot","yogur_griego","mousse_prot","qso_batido","leche_prot","yogur_sln","qso_fresco"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 15,
-            ingIds: ["weetabix","corn_flakes","cereal_mix","avena_crunchy","rice_krispies","copos_trigo"] },
+            // Todos los cereales son válidos con lácteos
+            ingIds: ["weetabix","corn_flakes","cereal_mix","avena_crunchy","rice_krispies",
+                     "copos_trigo","harina_avena","avena_copos","crema_arroz","choco_zero"] },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 100,
-            ingIds: ["platano","fresas","arandanos","manzana"] },
+            ingIds: ["platano","fresas","arandanos","manzana","frambuesas","melocoton","pera"] },
         ],
       },
       {
-        id: "c4_b", label: "Proteína ISO + Avena",
+        // ISO/Whey + CUALQUIER cereal o avena (batido/porridge)
+        id: "c4_b", label: "ISO / Whey + Cereal / Avena",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
             ingIds: ["iso","whey"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 15,
-            ingIds: ["avena_copos","harina_avena","crema_arroz","avena_crunchy"] },
+            ingIds: ["avena_copos","harina_avena","crema_arroz","avena_crunchy",
+                     "corn_flakes","weetabix","cereal_mix","rice_krispies","copos_trigo"] },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 100,
-            ingIds: ["platano","manzana","pera","kiwi"] },
+            ingIds: ["platano","manzana","pera","kiwi","fresas","arandanos"] },
         ],
       },
       {
-        id: "c4_c", label: "Queso batido + Pan",
+        // Lácteos ligeros + pan/tortas (merienda más sólida/masticable)
+        id: "c4_c", label: "Lácteos + Pan / Tortas",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
-            ingIds: ["qso_batido","qso_fresco","yogur_prot","leche_prot","yogur_sln"] },
+            ingIds: ["qso_batido","qso_fresco","yogur_prot","leche_prot","yogur_sln","mousse_prot","yogur_griego"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 15,
-            ingIds: ["pan_tostado","pan_fibra","pan_wasa","tortas_legumbre","pan_centeno"] },
+            ingIds: ["pan_tostado","pan_fibra","pan_wasa","tortas_arroz","tortas_maiz",
+                     "pan_centeno","pan_integral_pan","tortas_legumbre"] },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 100,
-            ingIds: ["platano","manzana","pera","fresas","melocoton"] },
+            ingIds: ["platano","manzana","pera","fresas","melocoton","arandanos","kiwi"] },
         ],
       },
     ],
@@ -252,12 +278,14 @@ const MEAL_DEFS: MealDef[] = [
     id: "c5", name: "Comida 5 — Cena", emoji: "🌙",
     profiles: [
       {
-        id: "c5_a", label: "Pescado + Patata / Boniato",
+        // Pescado blanco/marisco + tubérculo (más digestivo para noche)
+        id: "c5_a", label: "Pescado blanco + Patata / Boniato",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
             ingIds: ["merluza","tilapia","lenguado","lubina","gambas","sepia","calamar"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 10,
-            ingIds: ["patata","patata_bote","boniato","boniato_rojo","noquis"] },
+            ingIds: ["patata","patata_bote","boniato","boniato_rojo","noquis",
+                     "arroz","arroz_int","cuscus"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 50,
             ingIds: ["aceite_oliva"],
             noteText: "🥦 Verdura variada a gusto (libre)" },
@@ -266,31 +294,35 @@ const MEAL_DEFS: MealDef[] = [
         ],
       },
       {
-        id: "c5_b", label: "Pollo / Pavo + Arroz / Pasta",
+        // Aves + gramíneas (arroz/pasta/cuscús)
+        id: "c5_b", label: "Ave + Arroz / Pasta",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
-            ingIds: ["pollo","pavo","picada_pollo","salchi_pavo_3"] },
+            ingIds: ["pollo","pavo","picada_pollo","salchi_pavo_3","lomo_cerdo","hamburguesa"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 10,
-            ingIds: ["arroz","arroz_int","pasta","pasta_integral","arroz_bolsita"] },
+            ingIds: ["arroz","arroz_int","pasta","pasta_integral","cuscus",
+                     "noodles_arroz","arroz_bolsita","noquis"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 50,
             ingIds: ["aceite_oliva"],
             noteText: "🥦 Verdura variada a gusto (libre)" },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
-            ingIds: ["manzana","pera","kiwi","sandia","melon"] },
+            ingIds: ["manzana","pera","kiwi","sandia","melon","cerezas"] },
         ],
       },
       {
-        id: "c5_c", label: "Marisco / Atún + Noodles / Cuscús",
+        // Salmón / ternera / atún + cualquier HC (más variedad)
+        id: "c5_c", label: "Salmón / Ternera + HC libre",
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
-            ingIds: ["calamar","sepia","gambas","lomo_atun","atun_lata","merluza"] },
+            ingIds: ["salmon","ternera","trucha","lomo_atun","atun_lata","calamar","sepia","gambas"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 10,
-            ingIds: ["noodles_arroz","cuscus","arroz_3del","noquis","arroz_bolsita"] },
+            ingIds: ["arroz","patata","boniato","noodles_arroz","cuscus","noquis",
+                     "arroz_int","pasta","pasta_integral"] },
           { id: "fat",  label: "Grasa",    macro: "fat",     pct: 50,
             ingIds: ["aceite_oliva"],
             noteText: "🥦 Verdura variada a gusto (libre)" },
           { id: "fruta",label: "Fruta",    macro: "fixed",   pct: 0, fixedG: 150,
-            ingIds: ["sandia","melon","cerezas","uva","melocoton"] },
+            ingIds: ["sandia","melon","cerezas","uva","melocoton","fresas","pera"] },
         ],
       },
     ],
