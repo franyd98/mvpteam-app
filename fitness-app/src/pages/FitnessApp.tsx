@@ -12,7 +12,8 @@ import RestTimer from "../components/RestTimer";
 import CheckInPage from "./CheckInPage";
 import DietPage from "./DietPage";
 import { MVPWordmark } from "../components/MVPLogo";
-import MiniChart, { type ChartPoint } from "../components/MiniChart";
+import MiniChart from "../components/MiniChart";
+import type { ChartPoint } from "../components/MiniChart";
 
 type Profile = { id: string; full_name: string; role: string };
 
@@ -408,6 +409,68 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     );
   };
 
+  // ── Render del widget streak + semana ────────────────────────
+  const renderStreakWidget = () => {
+    const trainedDates = new Set(logs.map(l => l.loggedAt.slice(0, 10)));
+    if (trainedDates.size === 0) return null;
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let streak = 0;
+    let checkDate = new Date();
+    if (!trainedDates.has(todayStr)) checkDate.setDate(checkDate.getDate() - 1);
+    for (let i = 0; i < 365; i++) {
+      const ds = checkDate.toISOString().slice(0, 10);
+      if (trainedDates.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+      else break;
+    }
+
+    const now = new Date();
+    const dow = now.getDay();
+    const mondayOffset = dow === 0 ? -6 : 1 - dow;
+    const weekDays = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(now.getDate() + mondayOffset + i);
+      return d.toISOString().slice(0, 10);
+    });
+    const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
+
+    return (
+      <div className="mb-4 rounded-2xl p-3 space-y-2" style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
+        <div className="flex items-center justify-between px-1">
+          <p className="text-[10px] uppercase tracking-wider text-neutral-600">Esta semana</p>
+          {streak > 0 && (
+            <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>
+              🔥 {streak} {streak === 1 ? "día seguido" : "días seguidos"}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-1.5">
+          {weekDays.map((ds, i) => {
+            const trained = trainedDates.has(ds);
+            const isToday = ds === todayStr;
+            return (
+              <div key={ds} className="flex-1 flex flex-col items-center gap-1">
+                <span className="text-[9px] font-semibold" style={{ color: isToday ? "#fff" : "#555" }}>
+                  {DAY_LABELS[i]}
+                </span>
+                <div
+                  className="w-full rounded-lg flex items-center justify-center"
+                  style={{
+                    height: 28,
+                    background: trained ? "#8B1A2F" : isToday ? "#1E1E1E" : "#131313",
+                    border: isToday ? "1px solid #333" : "1px solid transparent",
+                  }}
+                >
+                  {trained && <span className="text-white text-xs">✓</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   // ── Shell principal ────────────────────────────────────────────
 
   return (
@@ -448,75 +511,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           </header>
 
           {/* ── Streak + Vista semanal ── */}
-          {(() => {
-            // Fechas únicas donde hay al menos 1 log
-            const trainedDates = new Set(
-              logs.map(l => l.loggedAt.slice(0, 10))
-            );
-
-            // Streak: días consecutivos hacia atrás desde hoy
-            let streak = 0;
-            const todayStr = new Date().toISOString().slice(0, 10);
-            let checkDate = new Date();
-            // Si hoy no hay entrenamiento, empezamos desde ayer
-            if (!trainedDates.has(todayStr)) checkDate.setDate(checkDate.getDate() - 1);
-            for (let i = 0; i < 365; i++) {
-              const ds = checkDate.toISOString().slice(0, 10);
-              if (trainedDates.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
-              else break;
-            }
-
-            // Semana actual (Lun → Dom)
-            const now = new Date();
-            const dow = now.getDay(); // 0=Dom...6=Sab
-            const mondayOffset = dow === 0 ? -6 : 1 - dow;
-            const weekDays = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date(now);
-              d.setDate(now.getDate() + mondayOffset + i);
-              return d.toISOString().slice(0, 10);
-            });
-            const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
-
-            if (trainedDates.size === 0) return null;
-
-            return (
-              <div className="mb-4 rounded-2xl p-3 space-y-2" style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
-                {/* Streak */}
-                <div className="flex items-center justify-between px-1">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-600">Esta semana</p>
-                  {streak > 0 && (
-                    <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>
-                      🔥 {streak} {streak === 1 ? "día seguido" : "días seguidos"}
-                    </span>
-                  )}
-                </div>
-                {/* Días de la semana */}
-                <div className="flex gap-1.5">
-                  {weekDays.map((ds, i) => {
-                    const trained = trainedDates.has(ds);
-                    const isToday = ds === todayStr;
-                    return (
-                      <div key={ds} className="flex-1 flex flex-col items-center gap-1">
-                        <span className="text-[9px] font-semibold" style={{ color: isToday ? "#fff" : "#555" }}>
-                          {DAY_LABELS[i]}
-                        </span>
-                        <div
-                          className="w-full rounded-lg flex items-center justify-center"
-                          style={{
-                            height: 28,
-                            background: trained ? "#8B1A2F" : isToday ? "#1E1E1E" : "#131313",
-                            border: isToday ? "1px solid #333" : "1px solid transparent",
-                          }}
-                        >
-                          {trained && <span className="text-white text-xs">✓</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
+          {renderStreakWidget()}
 
           {/* Nombre del programa (debajo del header) */}
           <p className="text-[10px] text-neutral-600 uppercase tracking-wider mb-4 pl-0.5 truncate">

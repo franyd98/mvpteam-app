@@ -636,9 +636,11 @@ interface Props {
   clientId:    string;
   clientName?: string;
   onBack:      () => void;
+  /** Modo cliente: oculta nombre/notas/guardar. Solo generación y exploración. */
+  clientMode?: boolean;
 }
 
-export default function DietGenerator({ clientId, clientName, onBack }: Props) {
+export default function DietGenerator({ clientId, clientName, onBack, clientMode = false }: Props) {
   // ── Macros del cliente ────────────────────────────────────────────
   const [macrosOn,  setMacrosOn]  = useState<DailyMacros | null>(null);
   const [macrosOff, setMacrosOff] = useState<DailyMacros | null>(null);
@@ -869,11 +871,15 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
           style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
         <div className="flex-1 min-w-0">
           <p className="text-white font-bold text-sm truncate">
-            {generated ? (planName || "Plan generado") : "Generar Dieta"}
+            {clientMode
+              ? "🎲 Genera tu menú del día"
+              : generated ? (planName || "Plan generado") : "Generar Dieta"}
           </p>
-          {clientName && <p className="text-neutral-500 text-xs truncate">para {clientName}</p>}
+          {!clientMode && clientName && (
+            <p className="text-neutral-500 text-xs truncate">para {clientName}</p>
+          )}
         </div>
-        {generated && (
+        {!clientMode && generated && (
           <button onClick={handleSave} disabled={saving}
             className="px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-40"
             style={{ background: "#8B1A2F" }}>
@@ -923,26 +929,28 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
           </div>
         </div>
 
-        {/* ── Nombre y notas ── */}
-        <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: "1px solid #222" }}>
-          <div className="px-4 py-3 space-y-3">
-            <p className="text-white font-semibold text-sm">📋 Datos del plan</p>
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1">Nombre del plan</label>
-              <input value={planName} onChange={e => setPlanName(e.target.value)}
-                placeholder="Ej: Definición verano — Fran"
-                className="w-full rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
-                style={{ background: "#1A1A1A", border: "1px solid #333" }} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1">Notas</label>
-              <textarea value={planNotes} onChange={e => setPlanNotes(e.target.value)}
-                rows={2} placeholder="Indicaciones generales…"
-                className="w-full rounded-lg px-3 py-2 text-white text-sm focus:outline-none resize-none"
-                style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+        {/* ── Nombre y notas (solo admin) ── */}
+        {!clientMode && (
+          <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: "1px solid #222" }}>
+            <div className="px-4 py-3 space-y-3">
+              <p className="text-white font-semibold text-sm">📋 Datos del plan</p>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1">Nombre del plan</label>
+                <input value={planName} onChange={e => setPlanName(e.target.value)}
+                  placeholder="Ej: Definición verano — Fran"
+                  className="w-full rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                  style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1">Notas</label>
+                <textarea value={planNotes} onChange={e => setPlanNotes(e.target.value)}
+                  rows={2} placeholder="Indicaciones generales…"
+                  className="w-full rounded-lg px-3 py-2 text-white text-sm focus:outline-none resize-none"
+                  style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* ── Botón generar ── */}
         {!generated ? (
@@ -1131,17 +1139,19 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
               );
             })}
 
-            {/* Guardar bottom */}
-            <div className="pt-2">
-              <button onClick={handleSave} disabled={saving}
-                className="w-full py-4 rounded-xl text-white font-bold text-sm disabled:opacity-40"
-                style={{ background: "#8B1A2F" }}>
-                {saving ? "Guardando…" : "💾 Guardar y asignar al cliente"}
-              </button>
-              <p className="text-[10px] text-neutral-600 text-center mt-2">
-                Se guardan las 3 opciones por comida. El cliente ve todas y elige la que prefiera.
-              </p>
-            </div>
+            {/* Guardar bottom (solo admin) */}
+            {!clientMode && (
+              <div className="pt-2">
+                <button onClick={handleSave} disabled={saving}
+                  className="w-full py-4 rounded-xl text-white font-bold text-sm disabled:opacity-40"
+                  style={{ background: "#8B1A2F" }}>
+                  {saving ? "Guardando…" : "💾 Guardar y asignar al cliente"}
+                </button>
+                <p className="text-[10px] text-neutral-600 text-center mt-2">
+                  Se guardan las 3 opciones por comida. El cliente ve todas y elige la que prefiera.
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>

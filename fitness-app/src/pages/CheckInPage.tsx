@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import heic2any from "heic2any";
-import MiniChart, { type ChartPoint } from "../components/MiniChart";
+import MiniChart from "../components/MiniChart";
+import type { ChartPoint } from "../components/MiniChart";
 type Profile = { id: string; full_name: string; role: string };
 type Tab = "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos" | "progreso";
 
