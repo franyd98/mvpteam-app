@@ -287,6 +287,70 @@ export function AntroTable({ weightLogs, perimLogs, foldLogs }: {
   );
 }
 
+// ── Sub-componente: Pestaña Progreso ─────────────────────────────
+function ProgresoTab({ weightLogs, foldLogs, perimLogs, foldKeys }: {
+  weightLogs: any[]; foldLogs: any[]; perimLogs: any[]; foldKeys: string[];
+}) {
+  const fmtLbl = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+
+  const wSorted  = [...weightLogs].filter(l => l.weight_fasting != null).sort((a, b) => a.date.localeCompare(b.date));
+  const flSorted = [...foldLogs].filter(l => l.fat_pct_real != null || foldKeys.some(k => l[k] != null)).sort((a, b) => a.date.localeCompare(b.date));
+  const pSorted  = [...perimLogs].filter(l => l.abd_navel_r != null).sort((a, b) => a.date.localeCompare(b.date));
+
+  const weightPts: ChartPoint[] = wSorted.map(l => ({ label: fmtLbl(l.date), value: parseFloat(l.weight_fasting) }));
+  const fatPts: ChartPoint[]    = flSorted.map(l => {
+    const real = l.fat_pct_real;
+    const calc = foldKeys.reduce((s: number, k: string) => s + (parseFloat(l[k]) || 0), 0) / 10;
+    return { label: fmtLbl(l.date), value: real != null ? parseFloat(real) : parseFloat(calc.toFixed(2)) };
+  });
+  const abdPts: ChartPoint[] = pSorted.map(l => ({ label: fmtLbl(l.date), value: parseFloat(l.abd_navel_r) }));
+
+  if (weightPts.length < 2 && fatPts.length < 2 && abdPts.length < 2) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <p className="text-4xl mb-3">📈</p>
+        <p className="text-white font-semibold mb-1">Sin datos suficientes</p>
+        <p className="text-neutral-500 text-sm px-8">Registra al menos 2 mediciones de peso, pliegues o perímetros para ver tu evolución.</p>
+      </div>
+    );
+  }
+
+  const charts: { title: string; pts: ChartPoint[]; color: string; unit: string }[] = [
+    { title: "⚖️ Peso corporal",       pts: weightPts, color: "#C0394F", unit: " kg" },
+    { title: "📌 % Grasa corporal",    pts: fatPts,    color: "#F59E0B", unit: "%"   },
+    { title: "📏 Perímetro abdominal", pts: abdPts,    color: "#3B82F6", unit: " cm" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <p className="text-[10px] uppercase tracking-wider text-neutral-500">Evolución en el tiempo</p>
+      {charts.map(({ title, pts, color, unit }) => {
+        if (pts.length < 2) return null;
+        const first = pts[0].value;
+        const last  = pts[pts.length - 1].value;
+        const delta = last - first;
+        const deltaColor = delta < 0 ? "#4ADE80" : delta > 0 ? "#F87171" : "#FBBF24";
+        return (
+          <div key={title} className="rounded-2xl p-4 space-y-2" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-neutral-300">{title}</p>
+              <span className="text-xs font-bold tabular-nums" style={{ color: deltaColor }}>
+                {delta > 0 ? "+" : ""}{delta.toFixed(1)}{unit} total
+              </span>
+            </div>
+            <MiniChart data={pts} color={color} unit={unit} height={100} />
+            <div className="flex justify-between text-[10px] text-neutral-600 px-1 pt-1">
+              <span>Inicio: <span className="text-neutral-400 font-medium">{first.toFixed(1)}{unit}</span></span>
+              <span>{pts.length} mediciones</span>
+              <span>Actual: <span className="text-neutral-400 font-medium">{last.toFixed(1)}{unit}</span></span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Componente principal ─────────────────────────────────────────
 export default function CheckInPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("peso");
@@ -615,65 +679,12 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
       <div className="max-w-2xl mx-auto px-4 space-y-4 pb-8">
 
         {/* ── PROGRESO ── */}
-        {tab === "progreso" && (() => {
-          // Preparar series ordenadas por fecha
-          const wSorted = [...weightLogs].filter(l => l.weight_fasting != null).sort((a, b) => a.date.localeCompare(b.date));
-          const flSorted = [...foldLogs].filter(l => l.fat_pct_real != null || FOLD_KEYS.some(k => l[k] != null)).sort((a, b) => a.date.localeCompare(b.date));
-          const pSorted  = [...perimLogs].filter(l => l.abd_navel_r != null).sort((a, b) => a.date.localeCompare(b.date));
-
-          const fmtLbl = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" });
-
-          const weightPts: ChartPoint[] = wSorted.map(l => ({ label: fmtLbl(l.date), value: parseFloat(l.weight_fasting) }));
-          const fatPts: ChartPoint[] = flSorted.map(l => {
-            const real = l.fat_pct_real;
-            const calc = FOLD_KEYS.reduce((s: number, k: string) => s + (parseFloat(l[k]) || 0), 0) / 10;
-            return { label: fmtLbl(l.date), value: real != null ? parseFloat(real) : parseFloat(calc.toFixed(2)) };
-          });
-          const abdPts: ChartPoint[] = pSorted.map(l => ({ label: fmtLbl(l.date), value: parseFloat(l.abd_navel_r) }));
-
-          const hasAny = weightPts.length >= 2 || fatPts.length >= 2 || abdPts.length >= 2;
-
-          if (!hasAny) return (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <p className="text-4xl mb-3">📈</p>
-              <p className="text-white font-semibold mb-1">Sin datos suficientes</p>
-              <p className="text-neutral-500 text-sm px-8">Registra al menos 2 mediciones de peso, pliegues o perímetros para ver tu evolución.</p>
-            </div>
-          );
-
-          const Card = ({ title, pts, color, unit }: { title: string; pts: ChartPoint[]; color: string; unit: string }) => {
-            if (pts.length < 2) return null;
-            const first = pts[0].value;
-            const last2 = pts[pts.length - 1].value;
-            const delta = last2 - first;
-            const deltaColor = delta < 0 ? "#4ADE80" : delta > 0 ? "#F87171" : "#FBBF24";
-            return (
-              <div className="rounded-2xl p-4 space-y-2" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-neutral-300">{title}</p>
-                  <span className="text-xs font-bold tabular-nums" style={{ color: deltaColor }}>
-                    {delta > 0 ? "+" : ""}{delta.toFixed(1)}{unit} total
-                  </span>
-                </div>
-                <MiniChart data={pts} color={color} unit={unit} height={100} />
-                <div className="flex justify-between text-[10px] text-neutral-600 px-1 pt-1">
-                  <span>Inicio: <span className="text-neutral-400 font-medium">{first.toFixed(1)}{unit}</span></span>
-                  <span>{pts.length} mediciones</span>
-                  <span>Actual: <span className="text-neutral-400 font-medium">{last2.toFixed(1)}{unit}</span></span>
-                </div>
-              </div>
-            );
-          };
-
-          return (
-            <div className="space-y-4">
-              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Evolución en el tiempo</p>
-              <Card title="⚖️ Peso corporal" pts={weightPts} color="#C0394F" unit=" kg" />
-              <Card title="📌 % Grasa corporal" pts={fatPts} color="#F59E0B" unit="%" />
-              <Card title="📏 Perímetro abdominal" pts={abdPts} color="#3B82F6" unit=" cm" />
-            </div>
-          );
-        })()}
+        {tab === "progreso" && <ProgresoTab
+          weightLogs={weightLogs}
+          foldLogs={foldLogs}
+          perimLogs={perimLogs}
+          foldKeys={FOLD_KEYS}
+        />}
 
         {/* ── PESO ── */}
         {tab === "peso" && (

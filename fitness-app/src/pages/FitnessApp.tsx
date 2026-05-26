@@ -54,8 +54,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [settings, setSettings] = useSettings();
 
   // Historial de cargas por ejercicio
-  type ExHistory = { name: string; dayId: string; exerciseIndex: number };
-  const [exHistory, setExHistory] = useState<ExHistory | null>(null);
+  const [exHistory, setExHistory] = useState<{ name: string; dayId: string; exerciseIndex: number } | null>(null);
 
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
@@ -342,6 +341,72 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         </div>
       </div>
     );
+
+  // ── Render del modal historial ────────────────────────────────
+  const renderExHistoryModal = () => {
+    if (!exHistory) return null;
+    const exLogs = logs.filter(l => l.dayId === exHistory.dayId && l.exerciseIndex === exHistory.exerciseIndex);
+    const byMc: Record<number, { mc: number; maxWeight: number; totalVol: number }> = {};
+    exLogs.forEach(l => {
+      if (!byMc[l.microcycleNumber]) byMc[l.microcycleNumber] = { mc: l.microcycleNumber, maxWeight: 0, totalVol: 0 };
+      if (l.weight > byMc[l.microcycleNumber].maxWeight) byMc[l.microcycleNumber].maxWeight = l.weight;
+      byMc[l.microcycleNumber].totalVol += l.weight * l.reps;
+    });
+    const sorted = Object.values(byMc).sort((a, b) => a.mc - b.mc);
+    const weightPts: ChartPoint[] = sorted.map(s => ({ label: `S${s.mc}`, value: s.maxWeight }));
+    const volPts: ChartPoint[]    = sorted.map(s => ({ label: `S${s.mc}`, value: Math.round(s.totalVol) }));
+    const unit = exLogs[0]?.unit ?? "kg";
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+        onClick={() => setExHistory(null)}>
+        <div className="w-full max-w-lg rounded-t-3xl p-5 space-y-4"
+          style={{ background: "#111", border: "1px solid #222" }}
+          onClick={e => e.stopPropagation()}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">Historial</p>
+              <p className="text-white font-bold text-sm leading-snug">{exHistory.name}</p>
+            </div>
+            <button onClick={() => setExHistory(null)}
+              className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 active:text-white flex items-center justify-center text-sm shrink-0">✕</button>
+          </div>
+
+          {weightPts.length >= 2 ? (
+            <div className="space-y-4">
+              <div className="rounded-xl p-3" style={{ background: "#0D0D0D", border: "1px solid #1E1E1E" }}>
+                <p className="text-xs text-neutral-500 mb-2">💪 Peso máximo por semana ({unit})</p>
+                <MiniChart data={weightPts} color="#C0394F" unit={` ${unit}`} height={90} />
+              </div>
+              {volPts.length >= 2 && (
+                <div className="rounded-xl p-3" style={{ background: "#0D0D0D", border: "1px solid #1E1E1E" }}>
+                  <p className="text-xs text-neutral-500 mb-2">📦 Volumen total por semana ({unit}×reps)</p>
+                  <MiniChart data={volPts} color="#3B82F6" unit="" height={90} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-neutral-500 text-sm">Registra al menos 2 semanas para ver la evolución.</p>
+            </div>
+          )}
+
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-neutral-600 mb-2">Últimos registros</p>
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              {[...exLogs].sort((a, b) => b.loggedAt.localeCompare(a.loggedAt)).slice(0, 10).map((l, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: "#0D0D0D" }}>
+                  <span className="text-[10px] text-neutral-600 w-14 shrink-0">S{l.microcycleNumber}</span>
+                  <span className="text-white text-xs font-medium flex-1">{l.weight} {unit} × {l.reps} reps</span>
+                  {l.rpe > 0 && <span className="text-neutral-500 text-[10px]">RPE {l.rpe}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // ── Shell principal ────────────────────────────────────────────
 
@@ -711,73 +776,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       )}
 
       {/* ── Modal: Historial de cargas ── */}
-      {exHistory && (() => {
-        // Agrupar logs de este ejercicio por microciclo → max peso × reps (volumen) + max peso
-        const exLogs = logs.filter(l => l.dayId === exHistory.dayId && l.exerciseIndex === exHistory.exerciseIndex);
-        type McSummary = { mc: number; maxWeight: number; totalVol: number };
-        const byMc: Record<number, McSummary> = {};
-        exLogs.forEach(l => {
-          if (!byMc[l.microcycleNumber]) byMc[l.microcycleNumber] = { mc: l.microcycleNumber, maxWeight: 0, totalVol: 0 };
-          if (l.weight > byMc[l.microcycleNumber].maxWeight) byMc[l.microcycleNumber].maxWeight = l.weight;
-          byMc[l.microcycleNumber].totalVol += l.weight * l.reps;
-        });
-        const sorted = Object.values(byMc).sort((a, b) => a.mc - b.mc);
-        const weightPts: ChartPoint[] = sorted.map(s => ({ label: `S${s.mc}`, value: s.maxWeight }));
-        const volPts: ChartPoint[] = sorted.map(s => ({ label: `S${s.mc}`, value: Math.round(s.totalVol) }));
-        const unit = exLogs[0]?.unit ?? "kg";
-
-        return (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-            onClick={() => setExHistory(null)}>
-            <div className="w-full max-w-lg rounded-t-3xl p-5 space-y-4"
-              style={{ background: "#111", border: "1px solid #222" }}
-              onClick={e => e.stopPropagation()}>
-              {/* Cabecera */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">Historial</p>
-                  <p className="text-white font-bold text-sm leading-snug">{exHistory.name}</p>
-                </div>
-                <button onClick={() => setExHistory(null)}
-                  className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 active:text-white flex items-center justify-center text-sm shrink-0">✕</button>
-              </div>
-
-              {weightPts.length >= 2 ? (
-                <div className="space-y-4">
-                  <div className="rounded-xl p-3" style={{ background: "#0D0D0D", border: "1px solid #1E1E1E" }}>
-                    <p className="text-xs text-neutral-500 mb-2">💪 Peso máximo por semana ({unit})</p>
-                    <MiniChart data={weightPts} color="#C0394F" unit={` ${unit}`} height={90} />
-                  </div>
-                  {volPts.length >= 2 && (
-                    <div className="rounded-xl p-3" style={{ background: "#0D0D0D", border: "1px solid #1E1E1E" }}>
-                      <p className="text-xs text-neutral-500 mb-2">📦 Volumen total por semana ({unit}×reps)</p>
-                      <MiniChart data={volPts} color="#3B82F6" unit="" height={90} />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="py-8 text-center">
-                  <p className="text-neutral-500 text-sm">Registra al menos 2 semanas para ver la evolución.</p>
-                </div>
-              )}
-
-              {/* Últimas series */}
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-neutral-600 mb-2">Últimos registros</p>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {[...exLogs].sort((a, b) => b.loggedAt.localeCompare(a.loggedAt)).slice(0, 10).map((l, i) => (
-                    <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: "#0D0D0D" }}>
-                      <span className="text-[10px] text-neutral-600 w-14 shrink-0">S{l.microcycleNumber}</span>
-                      <span className="text-white text-xs font-medium flex-1">{l.weight} {unit} × {l.reps} reps</span>
-                      {l.rpe > 0 && <span className="text-neutral-500 text-[10px]">RPE {l.rpe}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {renderExHistoryModal()}
 
       {/* Modal de vídeo */}
       {videoUrl && (
