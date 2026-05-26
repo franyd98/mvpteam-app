@@ -12,6 +12,7 @@ import RestTimer from "../components/RestTimer";
 import CheckInPage from "./CheckInPage";
 import DietPage from "./DietPage";
 import { MVPWordmark } from "../components/MVPLogo";
+import MiniChart, { type ChartPoint } from "../components/MiniChart";
 
 type Profile = { id: string; full_name: string; role: string };
 
@@ -51,6 +52,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   const [logs, setLogs] = useState<SetLog[]>([]);
   const [settings, setSettings] = useSettings();
+
+  // Historial de cargas por ejercicio
+  type ExHistory = { name: string; dayId: string; exerciseIndex: number };
+  const [exHistory, setExHistory] = useState<ExHistory | null>(null);
 
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
@@ -377,6 +382,77 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             </div>
           </header>
 
+          {/* ── Streak + Vista semanal ── */}
+          {(() => {
+            // Fechas únicas donde hay al menos 1 log
+            const trainedDates = new Set(
+              logs.map(l => l.loggedAt.slice(0, 10))
+            );
+
+            // Streak: días consecutivos hacia atrás desde hoy
+            let streak = 0;
+            const todayStr = new Date().toISOString().slice(0, 10);
+            let checkDate = new Date();
+            // Si hoy no hay entrenamiento, empezamos desde ayer
+            if (!trainedDates.has(todayStr)) checkDate.setDate(checkDate.getDate() - 1);
+            for (let i = 0; i < 365; i++) {
+              const ds = checkDate.toISOString().slice(0, 10);
+              if (trainedDates.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+              else break;
+            }
+
+            // Semana actual (Lun → Dom)
+            const now = new Date();
+            const dow = now.getDay(); // 0=Dom...6=Sab
+            const mondayOffset = dow === 0 ? -6 : 1 - dow;
+            const weekDays = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date(now);
+              d.setDate(now.getDate() + mondayOffset + i);
+              return d.toISOString().slice(0, 10);
+            });
+            const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
+
+            if (trainedDates.size === 0) return null;
+
+            return (
+              <div className="mb-4 rounded-2xl p-3 space-y-2" style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
+                {/* Streak */}
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-600">Esta semana</p>
+                  {streak > 0 && (
+                    <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>
+                      🔥 {streak} {streak === 1 ? "día seguido" : "días seguidos"}
+                    </span>
+                  )}
+                </div>
+                {/* Días de la semana */}
+                <div className="flex gap-1.5">
+                  {weekDays.map((ds, i) => {
+                    const trained = trainedDates.has(ds);
+                    const isToday = ds === todayStr;
+                    return (
+                      <div key={ds} className="flex-1 flex flex-col items-center gap-1">
+                        <span className="text-[9px] font-semibold" style={{ color: isToday ? "#fff" : "#555" }}>
+                          {DAY_LABELS[i]}
+                        </span>
+                        <div
+                          className="w-full rounded-lg flex items-center justify-center"
+                          style={{
+                            height: 28,
+                            background: trained ? "#8B1A2F" : isToday ? "#1E1E1E" : "#131313",
+                            border: isToday ? "1px solid #333" : "1px solid transparent",
+                          }}
+                        >
+                          {trained && <span className="text-white text-xs">✓</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Nombre del programa (debajo del header) */}
           <p className="text-[10px] text-neutral-600 uppercase tracking-wider mb-4 pl-0.5 truncate">
             {program.programName}
@@ -463,7 +539,18 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   <div className="flex justify-between items-start gap-2 mb-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">{ex.muscleGroup}</p>
-                      <h2 className="text-sm font-semibold text-white leading-snug line-clamp-2" title={ex.name}>{ex.name}</h2>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-semibold text-white leading-snug line-clamp-2 flex-1" title={ex.name}>{ex.name}</h2>
+                        {/* Botón historial de cargas */}
+                        {logs.some(l => l.dayId === dayId && l.exerciseIndex === idx) && (
+                          <button
+                            onClick={() => setExHistory({ name: ex.name, dayId, exerciseIndex: idx })}
+                            className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-sm active:scale-95 transition-transform"
+                            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                            title="Ver evolución de cargas"
+                          >📊</button>
+                        )}
+                      </div>
                     </div>
                     {ex.videoRef && ex.videoRef !== "-" && (
                       ex.videoRef.startsWith("http") ? (
@@ -622,6 +709,75 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           onDismiss={() => setRest(null)}
         />
       )}
+
+      {/* ── Modal: Historial de cargas ── */}
+      {exHistory && (() => {
+        // Agrupar logs de este ejercicio por microciclo → max peso × reps (volumen) + max peso
+        const exLogs = logs.filter(l => l.dayId === exHistory.dayId && l.exerciseIndex === exHistory.exerciseIndex);
+        type McSummary = { mc: number; maxWeight: number; totalVol: number };
+        const byMc: Record<number, McSummary> = {};
+        exLogs.forEach(l => {
+          if (!byMc[l.microcycleNumber]) byMc[l.microcycleNumber] = { mc: l.microcycleNumber, maxWeight: 0, totalVol: 0 };
+          if (l.weight > byMc[l.microcycleNumber].maxWeight) byMc[l.microcycleNumber].maxWeight = l.weight;
+          byMc[l.microcycleNumber].totalVol += l.weight * l.reps;
+        });
+        const sorted = Object.values(byMc).sort((a, b) => a.mc - b.mc);
+        const weightPts: ChartPoint[] = sorted.map(s => ({ label: `S${s.mc}`, value: s.maxWeight }));
+        const volPts: ChartPoint[] = sorted.map(s => ({ label: `S${s.mc}`, value: Math.round(s.totalVol) }));
+        const unit = exLogs[0]?.unit ?? "kg";
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setExHistory(null)}>
+            <div className="w-full max-w-lg rounded-t-3xl p-5 space-y-4"
+              style={{ background: "#111", border: "1px solid #222" }}
+              onClick={e => e.stopPropagation()}>
+              {/* Cabecera */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">Historial</p>
+                  <p className="text-white font-bold text-sm leading-snug">{exHistory.name}</p>
+                </div>
+                <button onClick={() => setExHistory(null)}
+                  className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 active:text-white flex items-center justify-center text-sm shrink-0">✕</button>
+              </div>
+
+              {weightPts.length >= 2 ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl p-3" style={{ background: "#0D0D0D", border: "1px solid #1E1E1E" }}>
+                    <p className="text-xs text-neutral-500 mb-2">💪 Peso máximo por semana ({unit})</p>
+                    <MiniChart data={weightPts} color="#C0394F" unit={` ${unit}`} height={90} />
+                  </div>
+                  {volPts.length >= 2 && (
+                    <div className="rounded-xl p-3" style={{ background: "#0D0D0D", border: "1px solid #1E1E1E" }}>
+                      <p className="text-xs text-neutral-500 mb-2">📦 Volumen total por semana ({unit}×reps)</p>
+                      <MiniChart data={volPts} color="#3B82F6" unit="" height={90} />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="py-8 text-center">
+                  <p className="text-neutral-500 text-sm">Registra al menos 2 semanas para ver la evolución.</p>
+                </div>
+              )}
+
+              {/* Últimas series */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-neutral-600 mb-2">Últimos registros</p>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {[...exLogs].sort((a, b) => b.loggedAt.localeCompare(a.loggedAt)).slice(0, 10).map((l, i) => (
+                    <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: "#0D0D0D" }}>
+                      <span className="text-[10px] text-neutral-600 w-14 shrink-0">S{l.microcycleNumber}</span>
+                      <span className="text-white text-xs font-medium flex-1">{l.weight} {unit} × {l.reps} reps</span>
+                      {l.rpe > 0 && <span className="text-neutral-500 text-[10px]">RPE {l.rpe}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal de vídeo */}
       {videoUrl && (

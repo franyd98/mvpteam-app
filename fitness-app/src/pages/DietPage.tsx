@@ -162,6 +162,8 @@ function MacroBar({ label, value, target, color }: {
 }
 
 // ── Componente principal ──────────────────────────────────────────
+const todayDate = () => new Date().toISOString().slice(0, 10);
+
 export default function DietPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
   const [dietTab, setDietTab]   = useState<DietTab>("plan");
   const [plan, setPlan]         = useState<DietPlan | null>(null);
@@ -171,6 +173,8 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [mealStates, setMealStates] = useState<Record<string, MealState>>({});
   const [clientMacros, setClientMacros] = useState<ClientMacros | null>(null);
+  const [savingDay, setSavingDay] = useState(false);
+  const [savedDay, setSavedDay]   = useState(false);
 
   useEffect(() => {
     loadDiet();
@@ -209,18 +213,72 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
       .from("diet_meals").select("*, diet_options(*)")
       .eq("plan_id", planData.id).order("sort_order");
 
+    let parsedMeals: DietMeal[] = [];
     if (mealsData) {
-      const parsed: DietMeal[] = mealsData.map((m: any) => ({
+      parsedMeals = mealsData.map((m: any) => ({
         ...m,
         options: (m.diet_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
       }));
-      setMeals(parsed);
-      if (parsed.length > 0) setExpanded(new Set([parsed[0].id]));
+      setMeals(parsedMeals);
+      if (parsedMeals.length > 0) setExpanded(new Set([parsedMeals[0].id]));
       const initStates: Record<string, MealState> = {};
-      parsed.forEach(m => { initStates[m.id] = emptyMealState(); });
+      parsedMeals.forEach(m => { initStates[m.id] = emptyMealState(); });
       setMealStates(initStates);
     }
     setLoading(false);
+
+    // Cargar los registros de hoy si existen
+    const { data: todayLogs } = await supabase
+      .from("daily_food_logs")
+      .select("*")
+      .eq("client_id", profile.id)
+      .eq("date", todayDate());
+
+    if (todayLogs && todayLogs.length > 0) {
+      const restoredStates: Record<string, MealState> = {};
+      parsedMeals.forEach(m => { restoredStates[m.id] = emptyMealState(); });
+      todayLogs.forEach((row: any) => {
+        restoredStates[row.meal_id] = {
+          proteina:  row.proteina_id ? { ingId: row.proteina_id, grams: row.proteina_g ?? 100 } : null,
+          hidrato:   row.hidrato_id  ? { ingId: row.hidrato_id,  grams: row.hidrato_g  ?? 100 } : null,
+          grasa:     row.grasa_id    ? { ingId: row.grasa_id,    grams: row.grasa_g    ?? 10  } : null,
+          extras:    row.extras ?? [],
+          note:      row.note ?? "",
+          showNote:  !!(row.note),
+          optionTab: 0,
+        };
+      });
+      setMealStates(restoredStates);
+      setSavedDay(true);
+    }
+  };
+
+  // ── Guardar comidas del día ────────────────────────────────────────
+  const saveDayLogs = async () => {
+    setSavingDay(true);
+    const date = todayDate();
+    for (const [mealId, ms] of Object.entries(mealStates)) {
+      const meal = meals.find(m => m.id === mealId);
+      const hasContent = ms.proteina?.ingId || ms.hidrato?.ingId || ms.grasa?.ingId || ms.extras.some(e => e.ingId);
+      if (!hasContent) continue;
+      await supabase.from("daily_food_logs").upsert({
+        client_id:   profile.id,
+        date,
+        meal_id:     mealId,
+        meal_name:   meal?.name ?? mealId,
+        proteina_id: ms.proteina?.ingId ?? null,
+        proteina_g:  ms.proteina?.grams ?? null,
+        hidrato_id:  ms.hidrato?.ingId  ?? null,
+        hidrato_g:   ms.hidrato?.grams  ?? null,
+        grasa_id:    ms.grasa?.ingId    ?? null,
+        grasa_g:     ms.grasa?.grams    ?? null,
+        extras:      ms.extras.filter(e => e.ingId),
+        note:        ms.note || null,
+      }, { onConflict: "client_id,date,meal_id" });
+    }
+    setSavingDay(false);
+    setSavedDay(true);
+    setTimeout(() => setSavedDay(false), 3000);
   };
 
   const updMealState = (mealId: string, patch: Partial<MealState>) =>
@@ -440,6 +498,19 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
               <p className="text-neutral-300 text-xs leading-relaxed whitespace-pre-line">{plan.notes}</p>
             </div>
           )}
+
+          {/* ── Botón guardar comidas del día ── */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={saveDayLogs}
+              disabled={savingDay}
+              className="flex-1 py-3 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 active:opacity-70"
+              style={savedDay
+                ? { background: "#0A2A1A", border: "1px solid #1A4A2A", color: "#4ADE80" }
+                : { background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}>
+              {savingDay ? "Guardando…" : savedDay ? "✅ Comidas guardadas hoy" : "💾 Guardar comidas del día"}
+            </button>
+          </div>
 
           {/* ── COMIDAS ── */}
           {filteredMeals.map(meal => {
