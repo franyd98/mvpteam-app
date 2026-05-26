@@ -1,6 +1,7 @@
-// Vista del cliente: plan nutricional con selectores combinados
-// Proteína + Hidratos + Grasa por comida, cálculo de macros en vivo
-// y sugerencias del entrenador colapsables.
+// Vista del cliente: plan nutricional con 3 sub-pestañas
+//  1. Mi Plan  — dieta asignada por el entrenador
+//  2. Mis Macros — objetivos calóricos del cliente (read-only)
+//  3. Generar  — DietGenerator en modo cliente (sin guardar)
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -8,11 +9,18 @@ import {
   INGREDIENTS, CATEGORY_LABELS, calcMacros, sumMacros,
   bySlot, type MainSlot, type MacroResult,
 } from "../data/ingredients";
+import DietGenerator from "../components/DietGenerator";
 
 const ingName = (id: string) => INGREDIENTS.find(i => i.id === id)?.name ?? id;
 
 type Profile = { id: string; full_name: string; role: string };
 type DayType = "on" | "off";
+type DietTab = "plan" | "macros" | "generate";
+
+type ClientMacros = {
+  protein_g: number; carbs_g: number; fat_g: number; tdee: number;
+  carbs_off_g?: number | null; fat_off_g?: number | null; kcal_off?: number | null;
+};
 
 // ── Tipos del plan ────────────────────────────────────────────────
 type FoodGroup = { label: string; isChoice: boolean; items: string[]; note?: string };
@@ -30,13 +38,13 @@ type MealState = {
   extras:   ExtraEntry[];
   note:     string;
   showNote: boolean;
-  showAdminOpts: boolean;
+  optionTab: number;   // índice de la opción del entrenador activa (0, 1, 2)
 };
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const emptyMealState = (): MealState => ({
   proteina: null, hidrato: null, grasa: null,
-  extras: [], note: "", showNote: false, showAdminOpts: false,
+  extras: [], note: "", showNote: false, optionTab: 0,
 });
 
 // ── Componente selector de ingrediente ────────────────────────────
@@ -155,14 +163,28 @@ function MacroBar({ label, value, target, color }: {
 
 // ── Componente principal ──────────────────────────────────────────
 export default function DietPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
-  const [plan, setPlan]   = useState<DietPlan | null>(null);
-  const [meals, setMeals] = useState<DietMeal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dayType, setDayType] = useState<DayType>("on");
+  const [dietTab, setDietTab]   = useState<DietTab>("plan");
+  const [plan, setPlan]         = useState<DietPlan | null>(null);
+  const [meals, setMeals]       = useState<DietMeal[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [dayType, setDayType]   = useState<DayType>("on");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [mealStates, setMealStates] = useState<Record<string, MealState>>({});
+  const [clientMacros, setClientMacros] = useState<ClientMacros | null>(null);
 
-  useEffect(() => { loadDiet(); }, []);
+  useEffect(() => {
+    loadDiet();
+    loadMacros();
+  }, []);
+
+  const loadMacros = async () => {
+    const { data } = await supabase
+      .from("client_macros")
+      .select("*")
+      .eq("client_id", profile.id)
+      .maybeSingle();
+    if (data) setClientMacros(data);
+  };
 
   const loadDiet = async () => {
     setLoading(true);
@@ -239,29 +261,135 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
     return sumMacros(items);
   };
 
+  // ── Sub-tab: Generar ─────────────────────────────────────────────
+  if (dietTab === "generate") {
+    return (
+      <DietGenerator
+        clientId={profile.id}
+        clientName={profile.full_name}
+        clientMode
+        onBack={() => setDietTab("plan")}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-dvh bg-neutral-950 pb-28">
+    <div className="min-h-dvh pb-28" style={{ background: "#0A0A0A" }}>
       {/* Header */}
-      <header className="header-safe bg-neutral-900 border-b border-neutral-800 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-20">
-        <button onClick={onBack}
-          className="w-10 h-10 rounded-xl bg-neutral-800 text-neutral-300 active:bg-neutral-700 flex items-center justify-center text-lg shrink-0">←</button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-white font-bold text-base">Mi Dieta</h1>
-          {plan && <p className="text-neutral-500 text-xs truncate">{plan.name}</p>}
+      <header className="header-safe px-4 pt-4 pb-0 sticky top-0 z-20"
+        style={{ background: "#0F0F0F", borderBottom: "1px solid #1E1E1E" }}>
+        <div className="flex items-center gap-3 pb-3">
+          <button onClick={onBack}
+            className="w-10 h-10 rounded-xl text-neutral-300 active:opacity-70 flex items-center justify-center text-lg shrink-0"
+            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-white font-bold text-base">🥗 Dieta</h1>
+            <p className="text-neutral-500 text-xs">{profile.full_name}</p>
+          </div>
+        </div>
+        {/* Sub-pestañas */}
+        <div className="flex gap-1 pb-0">
+          {([
+            { id: "plan"     as DietTab, label: "📋 Mi Plan" },
+            { id: "macros"   as DietTab, label: "📊 Mis Macros" },
+            { id: "generate" as DietTab, label: "🎲 Generar" },
+          ]).map(({ id, label }) => (
+            <button key={id} onClick={() => setDietTab(id)}
+              className={"flex-1 py-2 text-xs font-semibold rounded-t-lg transition-colors " +
+                (dietTab === id ? "text-white" : "text-neutral-500")}
+              style={dietTab === id
+                ? { background: "#1A1A1A", borderTop: "2px solid #C0394F" }
+                : { background: "transparent" }}>
+              {label}
+            </button>
+          ))}
         </div>
       </header>
 
-      {loading ? (
+      {/* ── Sub-tab: Mis Macros ── */}
+      {dietTab === "macros" && (
+        <div className="max-w-2xl mx-auto px-4 pt-5 space-y-4">
+          {!clientMacros ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <p className="text-3xl mb-3">📊</p>
+              <p className="text-white font-semibold mb-1">Sin objetivos asignados</p>
+              <p className="text-neutral-500 text-sm">Tu entrenador aún no ha calculado tus macros.</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-1">
+                Objetivos calóricos establecidos por tu entrenador
+              </p>
+              {/* ON */}
+              <div className="rounded-2xl p-4 space-y-3"
+                style={{ background: "#111", border: "1px solid #1E3A2A" }}>
+                <div className="flex items-center justify-between">
+                  <p className="text-emerald-400 font-bold text-sm">💪 Día ON — Entrenamiento</p>
+                  <p className="text-white font-bold text-lg">{clientMacros.tdee} <span className="text-neutral-500 text-xs font-normal">kcal</span></p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Proteína", val: clientMacros.protein_g, unit: "g", color: "text-red-400", bg: "#2A1010" },
+                    { label: "Hidratos", val: clientMacros.carbs_g,   unit: "g", color: "text-amber-400", bg: "#2A1E10" },
+                    { label: "Grasas",   val: clientMacros.fat_g,     unit: "g", color: "text-blue-400", bg: "#10182A" },
+                  ].map(({ label, val, unit, color, bg }) => (
+                    <div key={label} className="rounded-xl p-3 text-center" style={{ background: bg }}>
+                      <p className={`text-xl font-bold ${color}`}>{val}<span className="text-xs ml-0.5">{unit}</span></p>
+                      <p className="text-[10px] text-neutral-500 mt-0.5">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* OFF */}
+              {(clientMacros.carbs_off_g != null || clientMacros.kcal_off != null) && (
+                <div className="rounded-2xl p-4 space-y-3"
+                  style={{ background: "#111", border: "1px solid #1A2035" }}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-blue-400 font-bold text-sm">😴 Día OFF — Descanso</p>
+                    <p className="text-white font-bold text-lg">
+                      {clientMacros.kcal_off ?? Math.round(
+                        clientMacros.protein_g * 4 +
+                        (clientMacros.carbs_off_g ?? clientMacros.carbs_g) * 4 +
+                        (clientMacros.fat_off_g ?? clientMacros.fat_g) * 9
+                      )}
+                      <span className="text-neutral-500 text-xs font-normal"> kcal</span>
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Proteína", val: clientMacros.protein_g, color: "text-red-400", bg: "#2A1010" },
+                      { label: "Hidratos", val: clientMacros.carbs_off_g ?? clientMacros.carbs_g, color: "text-amber-400", bg: "#2A1E10" },
+                      { label: "Grasas",   val: clientMacros.fat_off_g ?? clientMacros.fat_g,     color: "text-blue-400", bg: "#10182A" },
+                    ].map(({ label, val, color, bg }) => (
+                      <div key={label} className="rounded-xl p-3 text-center" style={{ background: bg }}>
+                        <p className={`text-xl font-bold ${color}`}>{val}<span className="text-xs ml-0.5">g</span></p>
+                        <p className="text-[10px] text-neutral-500 mt-0.5">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-[10px] text-neutral-600 text-center px-4 pb-4 leading-relaxed">
+                Estos valores los calcula tu entrenador según tu peso, altura, actividad y objetivo.
+                Si crees que deben ajustarse, coméntaselo.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Sub-tab: Mi Plan ── */}
+      {dietTab === "plan" && loading ? (
         <div className="flex items-center justify-center py-24">
           <p className="text-neutral-500 text-sm">Cargando tu plan…</p>
         </div>
-      ) : !plan ? (
+      ) : dietTab === "plan" && !plan ? (
         <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
           <p className="text-4xl mb-4">🥗</p>
           <p className="text-white font-semibold mb-1">Sin plan asignado</p>
           <p className="text-neutral-500 text-sm">Tu entrenador aún no ha creado tu plan nutricional.</p>
         </div>
-      ) : (
+      ) : dietTab === "plan" ? (
         <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
 
           {/* Toggle ON / OFF */}
@@ -306,7 +434,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
           )}
 
           {/* Notas generales */}
-          {plan.notes && (
+          {plan?.notes && (
             <div className="bg-neutral-900 border border-amber-800/30 rounded-2xl px-4 py-3">
               <p className="text-[10px] text-amber-600 uppercase tracking-wider mb-1">📌 Nota del entrenador</p>
               <p className="text-neutral-300 text-xs leading-relaxed whitespace-pre-line">{plan.notes}</p>
@@ -370,6 +498,59 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                       />
                     ))}
 
+                    {/* Opciones del entrenador (tabs numeradas) */}
+                    {meal.options.length > 0 && (
+                      <div className="border-t border-neutral-800 pt-3 space-y-2">
+                        <p className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold pb-0.5">
+                          📋 Opciones del entrenador
+                        </p>
+                        {/* Tab pills */}
+                        <div className="flex gap-1.5">
+                          {meal.options.map((opt, idx) => {
+                            const active = ms.optionTab === idx;
+                            return (
+                              <button key={opt.id}
+                                onClick={() => updMealState(meal.id, { optionTab: idx })}
+                                className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                                style={active
+                                  ? { background: "#8B1A2F", color: "#fff", border: "1px solid #8B1A2F" }
+                                  : { background: "#1E1E1E", color: "#777", border: "1px solid #2A2A2A" }}>
+                                {idx + 1}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {/* Contenido de la opción activa */}
+                        {(() => {
+                          const opt = meal.options[ms.optionTab];
+                          if (!opt) return null;
+                          return (
+                            <div className="rounded-xl px-3 py-2.5 space-y-2"
+                              style={{ background: "#131313", border: "1px solid #222" }}>
+                              <p className="text-white text-xs font-semibold">{opt.name}</p>
+                              {opt.content.map((g, gi) => (
+                                <div key={gi}>
+                                  {g.label && (
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">{g.label}</p>
+                                      {g.isChoice && <span className="text-[9px] bg-blue-900/40 text-blue-400 rounded px-1">elige uno</span>}
+                                    </div>
+                                  )}
+                                  {g.items.map((item: any, ii: number) => {
+                                    const display = typeof item === "object" && item.ingId
+                                      ? `${item.grams} gr. ${ingName(item.ingId)}`
+                                      : typeof item === "string" ? item : "";
+                                    return <p key={ii} className="text-neutral-300 text-xs pl-2">• {display}</p>;
+                                  })}
+                                  {g.note && <p className="text-neutral-500 text-[10px] italic pl-2">※ {g.note}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
                     {/* Botones acción */}
                     <div className="flex gap-2 flex-wrap pt-1">
                       <button
@@ -383,14 +564,6 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                           (ms.showNote ? "bg-amber-800/40 text-amber-300" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700")}>
                         📝 {ms.showNote ? "Ocultar nota" : "Añadir nota"}
                       </button>
-                      {meal.options.length > 0 && (
-                        <button
-                          onClick={() => updMealState(meal.id, { showAdminOpts: !ms.showAdminOpts })}
-                          className={"px-3 py-1.5 rounded-lg text-xs transition-colors " +
-                            (ms.showAdminOpts ? "bg-neutral-700 text-white" : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700")}>
-                          📋 {ms.showAdminOpts ? "Ocultar sugerencias" : "Ver sugerencias"}
-                        </button>
-                      )}
                     </div>
 
                     {/* Nota opcional */}
@@ -411,37 +584,6 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                         <span className="text-blue-400">{mt.fat.toFixed(1)}g G</span>
                       </div>
                     )}
-
-                    {/* Sugerencias del entrenador (colapsables) */}
-                    {ms.showAdminOpts && meal.options.length > 0 && (
-                      <div className="border-t border-neutral-800 pt-3 space-y-3">
-                        <p className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
-                          📋 Sugerencias del entrenador
-                        </p>
-                        {meal.options.map(opt => (
-                          <div key={opt.id} className="bg-neutral-800/50 rounded-xl px-3 py-2.5 space-y-2">
-                            <p className="text-white text-xs font-semibold">{opt.name}</p>
-                            {opt.content.map((g, gi) => (
-                              <div key={gi}>
-                                {g.label && (
-                                  <div className="flex items-center gap-1.5 mb-1">
-                                    <p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">{g.label}</p>
-                                    {g.isChoice && <span className="text-[9px] bg-blue-900/40 text-blue-400 rounded px-1">elige uno</span>}
-                                  </div>
-                                )}
-                                {g.items.map((item: any, ii: number) => {
-                                  const display = typeof item === "object" && item.ingId
-                                    ? `${item.grams} gr. ${ingName(item.ingId)}`
-                                    : typeof item === "string" ? item : "";
-                                  return <p key={ii} className="text-neutral-300 text-xs pl-2">• {display}</p>;
-                                })}
-                                {g.note && <p className="text-neutral-500 text-[10px] italic pl-2">※ {g.note}</p>}
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -454,7 +596,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

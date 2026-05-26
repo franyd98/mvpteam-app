@@ -52,7 +52,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [clientLogs, setClientLogs] = useState<ClientLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [selectedTrainingDay, setSelectedTrainingDay] = useState<string | null>(null);
-  const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin" | "dieta" | "calculadora">("entreno");
+  const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin" | "dieta">("entreno");
+  const [clientDietSubTab, setClientDietSubTab] = useState<"macros" | "plan" | "generar">("macros");
   const [clientCheckIn, setClientCheckIn] = useState<{ weights: any[]; perims: any[]; folds: any[]; fatigues: any[]; photos: any[] } | null>(null);
   const [adminPreviewUrl, setAdminPreviewUrl] = useState<string | null>(null);
   const [loadingCheckIn, setLoadingCheckIn] = useState(false);
@@ -443,10 +444,9 @@ export default function AdminPage({ profile }: { profile: Profile }) {
         {/* Sub-tabs + botón Visita Presencial */}
         <div className="flex items-center gap-1.5 px-3 py-2.5 max-w-3xl mx-auto border-b border-neutral-800 overflow-x-auto scrollbar-hide">
           {[
-            { id: "entreno",     label: "🏋️ Entreno",  action: () => { setClientViewTab("entreno"); setSelectedTrainingDay(null); } },
-            { id: "checkin",     label: "📊 Control",  action: () => { setClientViewTab("checkin"); if (!clientCheckIn && !loadingCheckIn) loadClientCheckIn(viewingClient.id); } },
-            { id: "dieta",       label: "🥗 Dieta",    action: () => setClientViewTab("dieta") },
-            { id: "calculadora", label: "🧮 Calc.",    action: () => setClientViewTab("calculadora") },
+            { id: "entreno", label: "🏋️ Entreno", action: () => { setClientViewTab("entreno"); setSelectedTrainingDay(null); } },
+            { id: "checkin", label: "📊 Control",  action: () => { setClientViewTab("checkin"); if (!clientCheckIn && !loadingCheckIn) loadClientCheckIn(viewingClient.id); } },
+            { id: "dieta",   label: "🥗 Dieta",   action: () => { setClientViewTab("dieta"); setClientDietSubTab("macros"); } },
           ].map(({ id, label, action }) => (
             <button key={id} onClick={action}
               className={"px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 " +
@@ -637,85 +637,118 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           ))}
 
           {/* ── Dieta del cliente ── */}
-          {clientViewTab === "dieta" && (() => {
-            const da = dietAssignments.find(a => a.client_id === viewingClient.id);
-            return (
-              <div className="space-y-4">
-
-                {/* Generar nueva dieta automática */}
-                <button
-                  onClick={() => setGeneratingDietForClient(viewingClient)}
-                  className="w-full py-4 rounded-xl text-white font-bold text-sm active:opacity-80 transition-opacity flex items-center justify-center gap-2"
-                  style={{ background: "linear-gradient(135deg, #8B1A2F, #C0392B)" }}>
-                  ✨ Generar nueva dieta automática
-                </button>
-                <p className="text-[10px] text-neutral-600 text-center -mt-2 px-4">
-                  Genera ON + OFF automáticamente a partir de los macros de la calculadora
-                </p>
-
-                {/* Plan asignado actualmente */}
-                <div className="rounded-xl p-4" style={{ background: "#111", border: "1px solid #222" }}>
-                  <p className="text-xs uppercase tracking-wider text-neutral-500 mb-3">Plan asignado</p>
-                  {da ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <p className="text-white font-semibold">{da.plan_name}</p>
-                        {(() => {
-                          const plan = dietPlans.find(p => p.id === da.plan_id);
-                          return plan?.kcal_on
-                            ? <p className="text-neutral-400 text-xs mt-0.5">🔥 {plan.kcal_on} kcal día ON · {plan.kcal_off} día OFF</p>
-                            : null;
-                        })()}
-                      </div>
-                      <button
-                        onClick={() => setEditingDietPlanId(da.plan_id)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-300"
-                        style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-                        ✏️ Editar
-                      </button>
-                      <button
-                        onClick={() => handleUnassignDiet(viewingClient.id, viewingClient.full_name)}
-                        className="px-3 py-1.5 rounded-lg text-xs text-red-400"
-                        style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-neutral-500 text-sm">Sin dieta asignada</p>
-                  )}
-                </div>
-
-                {/* Lista de planes existentes para asignar */}
-                {dietPlans.length > 0 && (
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Asignar plan existente</p>
-                    <div className="space-y-2">
-                      {dietPlans.map(plan => {
-                        const isAssigned = da?.plan_id === plan.id;
-                        return (
-                          <button key={plan.id}
-                            onClick={() => handleAssignDiet(plan.id, viewingClient.id, viewingClient.full_name)}
-                            className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors"
-                            style={isAssigned
-                              ? { background: "#1A0810", border: "1px solid #8B1A2F" }
-                              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-                            <div className="flex-1">
-                              <p className={isAssigned ? "text-white font-semibold text-sm" : "text-neutral-300 text-sm"}>{plan.name}</p>
-                              {plan.kcal_on && <p className="text-neutral-500 text-xs">{plan.kcal_on} / {plan.kcal_off} kcal</p>}
-                            </div>
-                            {isAssigned && <span className="text-xs font-medium" style={{ color: "#8B1A2F" }}>✓ Activa</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+          {clientViewTab === "dieta" && (
+            <div className="space-y-4">
+              {/* Sub-tabs: Macros / Plan / Generar */}
+              <div className="flex gap-2">
+                {(["macros", "plan", "generar"] as const).map(tab => {
+                  const labels = { macros: "📊 Macros", plan: "📋 Plan", generar: "✨ Generar" };
+                  const active = clientDietSubTab === tab;
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setClientDietSubTab(tab)}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors"
+                      style={active
+                        ? { background: "#8B1A2F", color: "#fff", border: "1px solid #8B1A2F" }
+                        : { background: "#1A1A1A", color: "#999", border: "1px solid #2A2A2A" }}>
+                      {labels[tab]}
+                    </button>
+                  );
+                })}
               </div>
-            );
-          })()}
-          {/* ── Calculadora de macros ── */}
-          {clientViewTab === "calculadora" && (
-            <MacroCalculator clientName={viewingClient.full_name} clientId={viewingClient.id} />
+
+              {/* Sub-tab: Macros */}
+              {clientDietSubTab === "macros" && (
+                <MacroCalculator clientName={viewingClient.full_name} clientId={viewingClient.id} />
+              )}
+
+              {/* Sub-tab: Plan */}
+              {clientDietSubTab === "plan" && (() => {
+                const da = dietAssignments.find(a => a.client_id === viewingClient.id);
+                return (
+                  <div className="space-y-4">
+                    {/* Generar nueva dieta automática */}
+                    <button
+                      onClick={() => setGeneratingDietForClient(viewingClient)}
+                      className="w-full py-4 rounded-xl text-white font-bold text-sm active:opacity-80 transition-opacity flex items-center justify-center gap-2"
+                      style={{ background: "linear-gradient(135deg, #8B1A2F, #C0392B)" }}>
+                      ✨ Generar nueva dieta automática
+                    </button>
+                    <p className="text-[10px] text-neutral-600 text-center -mt-2 px-4">
+                      Genera ON + OFF automáticamente a partir de los macros de la calculadora
+                    </p>
+
+                    {/* Plan asignado actualmente */}
+                    <div className="rounded-xl p-4" style={{ background: "#111", border: "1px solid #222" }}>
+                      <p className="text-xs uppercase tracking-wider text-neutral-500 mb-3">Plan asignado</p>
+                      {da ? (
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <p className="text-white font-semibold">{da.plan_name}</p>
+                            {(() => {
+                              const plan = dietPlans.find(p => p.id === da.plan_id);
+                              return plan?.kcal_on
+                                ? <p className="text-neutral-400 text-xs mt-0.5">🔥 {plan.kcal_on} kcal día ON · {plan.kcal_off} día OFF</p>
+                                : null;
+                            })()}
+                          </div>
+                          <button
+                            onClick={() => setEditingDietPlanId(da.plan_id)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-300"
+                            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                            ✏️ Editar
+                          </button>
+                          <button
+                            onClick={() => handleUnassignDiet(viewingClient.id, viewingClient.full_name)}
+                            className="px-3 py-1.5 rounded-lg text-xs text-red-400"
+                            style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-neutral-500 text-sm">Sin dieta asignada</p>
+                      )}
+                    </div>
+
+                    {/* Lista de planes existentes para asignar */}
+                    {dietPlans.length > 0 && (
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Asignar plan existente</p>
+                        <div className="space-y-2">
+                          {dietPlans.map(plan => {
+                            const isAssigned = da?.plan_id === plan.id;
+                            return (
+                              <button key={plan.id}
+                                onClick={() => handleAssignDiet(plan.id, viewingClient.id, viewingClient.full_name)}
+                                className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors"
+                                style={isAssigned
+                                  ? { background: "#1A0810", border: "1px solid #8B1A2F" }
+                                  : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                                <div className="flex-1">
+                                  <p className={isAssigned ? "text-white font-semibold text-sm" : "text-neutral-300 text-sm"}>{plan.name}</p>
+                                  {plan.kcal_on && <p className="text-neutral-500 text-xs">{plan.kcal_on} / {plan.kcal_off} kcal</p>}
+                                </div>
+                                {isAssigned && <span className="text-xs font-medium" style={{ color: "#8B1A2F" }}>✓ Activa</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Sub-tab: Generar */}
+              {clientDietSubTab === "generar" && (
+                <DietGenerator
+                  clientId={viewingClient.id}
+                  clientName={viewingClient.full_name}
+                  onBack={() => setClientDietSubTab("plan")}
+                />
+              )}
+            </div>
           )}
 
         </div>
