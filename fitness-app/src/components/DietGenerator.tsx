@@ -406,34 +406,15 @@ const STANDARD_PORTIONS: Record<string, number> = {
   melon:            200,
 };
 
-// Porciones reducidas para días OFF (sólo las que cambian)
-const STANDARD_PORTIONS_OFF: Record<string, number> = {
-  pasta:            50,
-  pasta_integral:   50,
-  arroz:            50,
-  arroz_int:        50,
-  noodles_arroz:    50,
-  cuscus:           60,
-  noquis:          100,
-  patata:          200,
-  patata_bote:     200,
-  boniato:         160,
-  boniato_rojo:    160,
-  harina_avena:     60,
-  avena_copos:      60,
-  corn_flakes:      50,
-  weetabix:         50,
-  copos_trigo:      50,
-  rice_krispies:    50,
-  cereal_mix:       50,
-  crema_arroz:      50,
-  pan_centeno:      80,
-  pan_integral_pan: 80,
-  pan_tostado:      70,
-  pan_fibra:        80,
-  tortas_arroz:     50,
-  tortas_maiz:      50,
-};
+// ── Macros de referencia (Plan Fran Villar — base de calibración) ─────────────
+// Todas las porciones estándar están calibradas para estos macros ON.
+// La escalada para otros clientes se calcula proporcionalmente.
+const REF_ON = { protein: 137, carbs: 359.5, fat: 36 };
+
+// Condimentos que SIEMPRE son fijos (independientemente del cliente)
+const FIXED_CONDIMENTS = new Set([
+  "aceite_oliva", "aceite_coco", "chocolate85",
+]);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -445,17 +426,47 @@ function poolFromIds(ids: string[]): Ingredient[] {
     .filter((i): i is Ingredient => !!i);
 }
 
-/** Devuelve la porción estándar (g) para un ingrediente según día ON/OFF */
-function getPortionG(ingId: string, isOff: boolean): number {
-  if (isOff && STANDARD_PORTIONS_OFF[ingId] !== undefined) {
-    return STANDARD_PORTIONS_OFF[ingId];
+/**
+ * Devuelve la porción escalada (g) para un ingrediente.
+ *
+ * Fórmula: porción = base_ref × (macro_cliente / macro_ref)
+ *   - Proteína: escala con el target proteína del cliente
+ *   - Hidratos: escala con el target HC del cliente (ON u OFF, el que corresponda)
+ *   - Grasa: escala salvo para condimentos fijos (aceite, chocolate)
+ *   - "fixed": porción fija siempre
+ *
+ * Redondea al múltiplo de 5g más cercano. Mínimo 5g.
+ */
+function getScaledPortionG(
+  ingId:          string,
+  macro:          MacroKey | "fixed",
+  clientMacroVal: number,   // valor del macro del cliente para ese día
+): number {
+  const baseG = STANDARD_PORTIONS[ingId] ?? 100;
+
+  // Condimentos fijos y slots "fixed" no escalan nunca
+  if (macro === "fixed" || FIXED_CONDIMENTS.has(ingId)) {
+    return baseG;
   }
-  return STANDARD_PORTIONS[ingId] ?? 100;
+
+  const refVal =
+    macro === "protein" ? REF_ON.protein :
+    macro === "carbs"   ? REF_ON.carbs   :
+                          REF_ON.fat;
+
+  const scaleFactor = clientMacroVal / refVal;
+  const scaled      = Math.round(baseG * scaleFactor / 5) * 5;
+  return Math.max(scaled, 5);
 }
 
 // ── Generación ────────────────────────────────────────────────────────────────
 
-function generatePlan(_macros: DailyMacros, isOff: boolean): GeneratedMeal[] {
+/**
+ * Genera el plan para el día dado (ON u OFF).
+ * Pasa macrosOn para día ON, macrosOff para día OFF.
+ * Las porciones se escalan proporcionalmente a los macros del cliente.
+ */
+function generatePlan(macros: DailyMacros): GeneratedMeal[] {
   return MEAL_DEFS.map(meal => {
     const options: GeneratedOption[] = meal.profiles.map(profile => {
       const foods: GeneratedFood[] = [];
@@ -471,7 +482,11 @@ function generatePlan(_macros: DailyMacros, isOff: boolean): GeneratedMeal[] {
         if (slot.macro === "fixed") {
           grams = slot.fixedG ?? 100;
         } else {
-          grams = getPortionG(ing.id, isOff);
+          const clientMacroVal =
+            slot.macro === "protein" ? macros.protein_g :
+            slot.macro === "carbs"   ? macros.carbs_g   :
+                                       macros.fat_g;
+          grams = getScaledPortionG(ing.id, slot.macro, clientMacroVal);
         }
 
         if (grams <= 0) return;
@@ -482,7 +497,7 @@ function generatePlan(_macros: DailyMacros, isOff: boolean): GeneratedMeal[] {
           ing,
           grams,
           macro:         slot.macro,
-          targetG:       grams,   // con porciones estándar targetG = porción real
+          targetG:       grams,
           availablePool: pool,
           noteText:      slot.noteText,
         });
@@ -498,12 +513,12 @@ function generatePlan(_macros: DailyMacros, isOff: boolean): GeneratedMeal[] {
 // ── Cambiar un ingrediente dentro de un option ────────────────────────────────
 
 function selectFood(
-  plan: GeneratedMeal[],
-  mealId: string,
+  plan:       GeneratedMeal[],
+  mealId:     string,
   profileIdx: number,
-  slotId: string,
-  newIngId: string,
-  isOff: boolean,
+  slotId:     string,
+  newIngId:   string,
+  macros:     DailyMacros,
 ): GeneratedMeal[] {
   return plan.map(meal => {
     if (meal.mealId !== mealId) return meal;
@@ -521,9 +536,14 @@ function selectFood(
             const ing = food.availablePool.find(i => i.id === newIngId);
             if (!ing) return food;
 
-            const grams = food.macro === "fixed"
-              ? food.grams
-              : getPortionG(newIngId, isOff);
+            let grams = food.grams;
+            if (food.macro !== "fixed") {
+              const clientMacroVal =
+                food.macro === "protein" ? macros.protein_g :
+                food.macro === "carbs"   ? macros.carbs_g   :
+                                           macros.fat_g;
+              grams = getScaledPortionG(newIngId, food.macro, clientMacroVal);
+            }
 
             return { ...food, ing, grams, targetG: grams };
           }),
@@ -666,8 +686,8 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
   // ── Generar ───────────────────────────────────────────────────────
   const handleGenerate = () => {
     if (!macrosOn || !macrosOff) return;
-    const initOn  = generatePlan(macrosOn,  false);
-    const initOff = generatePlan(macrosOff, true);
+    const initOn  = generatePlan(macrosOn);
+    const initOff = generatePlan(macrosOff);
     setPlanOn(initOn);
     setPlanOff(initOff);
     // Opción 0 activa por defecto en todas las comidas
@@ -680,8 +700,8 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
 
   // ── Cambio de ingrediente ─────────────────────────────────────────
   const doSelect = (mealId: string, profileIdx: number, slotId: string, newIngId: string) => {
-    setPlanOn( p => selectFood(p, mealId, profileIdx, slotId, newIngId, false));
-    setPlanOff(p => selectFood(p, mealId, profileIdx, slotId, newIngId, true));
+    setPlanOn( p => selectFood(p, mealId, profileIdx, slotId, newIngId, macrosOn!));
+    setPlanOff(p => selectFood(p, mealId, profileIdx, slotId, newIngId, macrosOff!));
   };
 
   // ── Guardar ───────────────────────────────────────────────────────
