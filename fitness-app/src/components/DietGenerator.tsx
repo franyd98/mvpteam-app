@@ -297,6 +297,144 @@ const MEAL_DEFS: MealDef[] = [
   },
 ];
 
+// ── Porciones estándar (gramos) ───────────────────────────────────────────────
+// Basadas en el plan nutricional real del cliente. Día ON por defecto.
+// Las claves que aparecen en STANDARD_PORTIONS_OFF sobreescriben en días OFF.
+
+const STANDARD_PORTIONS: Record<string, number> = {
+  // Carnes / proteína animal
+  pollo:            100,
+  pavo:             100,
+  picada_pollo:     100,
+  hamburguesa:      100,
+  lomo_cerdo:       100,
+  ternera:          100,
+  salmon:           100,
+  trucha:           100,
+  lomo_atun:         80,
+  atun_lata:         80,
+  merluza:          140,
+  tilapia:          140,
+  lenguado:         140,
+  lubina:           140,
+  sepia:            150,
+  gambas:           150,
+  calamar:          150,
+  // Embutidos
+  lomo_embuchado:    50,
+  jamon:             60,
+  fiambre_pavo:      50,
+  lomo_curado_pavo:  50,
+  salchi_pavo_3:     60,
+  salchi_pavo_ff:    60,
+  // Lácteos / proteína
+  iso:               30,
+  whey:              30,
+  yogur_prot:       200,
+  yogur_griego:     200,
+  yogur_sln:        200,
+  qso_batido:       200,
+  qso_fresco:       150,
+  mousse_prot:      200,
+  leche_prot:       200,
+  qso_eatlean:      100,
+  mozza_light:      100,
+  havarti:           50,
+  qso_pizza:         50,
+  // Hidratos — cereales / avena
+  harina_avena:      80,
+  avena_copos:       80,
+  avena_crunchy:     60,
+  corn_flakes:       60,
+  weetabix:          60,
+  copos_trigo:       60,
+  rice_krispies:     60,
+  cereal_mix:        60,
+  crema_arroz:       60,
+  choco_zero:        50,
+  // Hidratos — pasta / arroz / tubérculos
+  pasta:             75,
+  pasta_integral:    75,
+  arroz:             75,
+  arroz_int:         75,
+  noodles_arroz:     75,
+  cuscus:            90,
+  noquis:           150,
+  arroz_3del:       100,
+  arroz_bolsita:    125,
+  patata:           300,
+  patata_bote:      300,
+  boniato:          240,
+  boniato_rojo:     240,
+  // Hidratos — pan / tortas
+  pan_centeno:      100,
+  pan_integral_pan: 125,
+  pan_tostado:       80,
+  pan_fibra:        100,
+  pan_wasa:          70,
+  pan_molde:         80,
+  pan_blanco:        80,
+  fajitas:          100,
+  tortas_legumbre:   75,
+  tortas_arroz:      75,
+  tortas_maiz:       75,
+  pizza_int:        200,
+  // Grasas
+  aceite_oliva:       5,
+  aceite_coco:        5,
+  chocolate85:       10,
+  aguacate:          40,
+  crema_cacah:       20,
+  almendras:         20,
+  nuez:              20,
+  aceitunas:         30,
+  guacamole:         40,
+  // Fruta
+  platano:          100,
+  fresas:           150,
+  frambuesas:       150,
+  arandanos:        150,
+  arandanos_cong:   150,
+  frutos_rojos:     150,
+  kiwi:             150,
+  melocoton:        150,
+  manzana:          150,
+  pera:             150,
+  uva:              150,
+  cerezas:          150,
+  sandia:           200,
+  melon:            200,
+};
+
+// Porciones reducidas para días OFF (sólo las que cambian)
+const STANDARD_PORTIONS_OFF: Record<string, number> = {
+  pasta:            50,
+  pasta_integral:   50,
+  arroz:            50,
+  arroz_int:        50,
+  noodles_arroz:    50,
+  cuscus:           60,
+  noquis:          100,
+  patata:          200,
+  patata_bote:     200,
+  boniato:         160,
+  boniato_rojo:    160,
+  harina_avena:     60,
+  avena_copos:      60,
+  corn_flakes:      50,
+  weetabix:         50,
+  copos_trigo:      50,
+  rice_krispies:    50,
+  cereal_mix:       50,
+  crema_arroz:      50,
+  pan_centeno:      80,
+  pan_integral_pan: 80,
+  pan_tostado:      70,
+  pan_fibra:        80,
+  tortas_arroz:     50,
+  tortas_maiz:      50,
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function round1(n: number) { return Math.round(n * 10) / 10; }
@@ -307,15 +445,17 @@ function poolFromIds(ids: string[]): Ingredient[] {
     .filter((i): i is Ingredient => !!i);
 }
 
-function calcGrams(ing: Ingredient, macro: MacroKey, targetG: number): number {
-  const per100 = ing[macro];
-  if (!per100 || per100 <= 0) return 0;
-  return Math.round((targetG / per100) * 100);
+/** Devuelve la porción estándar (g) para un ingrediente según día ON/OFF */
+function getPortionG(ingId: string, isOff: boolean): number {
+  if (isOff && STANDARD_PORTIONS_OFF[ingId] !== undefined) {
+    return STANDARD_PORTIONS_OFF[ingId];
+  }
+  return STANDARD_PORTIONS[ingId] ?? 100;
 }
 
 // ── Generación ────────────────────────────────────────────────────────────────
 
-function generatePlan(macros: DailyMacros): GeneratedMeal[] {
+function generatePlan(_macros: DailyMacros, isOff: boolean): GeneratedMeal[] {
   return MEAL_DEFS.map(meal => {
     const options: GeneratedOption[] = meal.profiles.map(profile => {
       const foods: GeneratedFood[] = [];
@@ -324,25 +464,17 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
         const pool = poolFromIds(slot.ingIds);
         if (!pool.length) return;
 
-        // Rotar arranque según slot para variar ingredientes entre opciones
+        // Rotar arranque según slotIdx para variar ingredientes entre perfiles
         const ing = pool[slotIdx % pool.length];
 
-        let grams   = 0;
-        let targetG = 0;
-
+        let grams: number;
         if (slot.macro === "fixed") {
-          grams   = slot.fixedG ?? 100;
-          targetG = grams;
+          grams = slot.fixedG ?? 100;
         } else {
-          const daily =
-            slot.macro === "protein" ? macros.protein_g :
-            slot.macro === "carbs"   ? macros.carbs_g   :
-                                       macros.fat_g;
-          targetG = Math.round(daily * slot.pct / 100 * 10) / 10;
-          grams   = calcGrams(ing, slot.macro, targetG);
+          grams = getPortionG(ing.id, isOff);
         }
 
-        if (grams <= 0 || grams > 3000) return;
+        if (grams <= 0) return;
 
         foods.push({
           slotId:        slot.id,
@@ -350,7 +482,7 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
           ing,
           grams,
           macro:         slot.macro,
-          targetG,
+          targetG:       grams,   // con porciones estándar targetG = porción real
           availablePool: pool,
           noteText:      slot.noteText,
         });
@@ -371,6 +503,7 @@ function selectFood(
   profileIdx: number,
   slotId: string,
   newIngId: string,
+  isOff: boolean,
 ): GeneratedMeal[] {
   return plan.map(meal => {
     if (meal.mealId !== mealId) return meal;
@@ -388,13 +521,11 @@ function selectFood(
             const ing = food.availablePool.find(i => i.id === newIngId);
             if (!ing) return food;
 
-            let grams = food.grams;
-            if (food.macro !== "fixed") {
-              grams = calcGrams(ing, food.macro, food.targetG);
-              if (grams <= 0 || grams > 3000) grams = 100;
-            }
+            const grams = food.macro === "fixed"
+              ? food.grams
+              : getPortionG(newIngId, isOff);
 
-            return { ...food, ing, grams };
+            return { ...food, ing, grams, targetG: grams };
           }),
         };
       }),
@@ -535,8 +666,8 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
   // ── Generar ───────────────────────────────────────────────────────
   const handleGenerate = () => {
     if (!macrosOn || !macrosOff) return;
-    const initOn  = generatePlan(macrosOn);
-    const initOff = generatePlan(macrosOff);
+    const initOn  = generatePlan(macrosOn,  false);
+    const initOff = generatePlan(macrosOff, true);
     setPlanOn(initOn);
     setPlanOff(initOff);
     // Opción 0 activa por defecto en todas las comidas
@@ -549,8 +680,8 @@ export default function DietGenerator({ clientId, clientName, onBack }: Props) {
 
   // ── Cambio de ingrediente ─────────────────────────────────────────
   const doSelect = (mealId: string, profileIdx: number, slotId: string, newIngId: string) => {
-    setPlanOn( p => selectFood(p, mealId, profileIdx, slotId, newIngId));
-    setPlanOff(p => selectFood(p, mealId, profileIdx, slotId, newIngId));
+    setPlanOn( p => selectFood(p, mealId, profileIdx, slotId, newIngId, false));
+    setPlanOff(p => selectFood(p, mealId, profileIdx, slotId, newIngId, true));
   };
 
   // ── Guardar ───────────────────────────────────────────────────────
