@@ -394,16 +394,16 @@ const STANDARD_PORTIONS: Record<string, number> = {
   noquis:           150,
   arroz_3del:       100,
   arroz_bolsita:    125,
-  patata:           300,
-  patata_bote:      300,
-  boniato:          240,
-  boniato_rojo:     240,
+  patata:           180,
+  patata_bote:      180,
+  boniato:          150,
+  boniato_rojo:     150,
   // Hidratos — pan / tortas
-  pan_centeno:      100,
-  pan_integral_pan: 125,
-  pan_tostado:       80,
-  pan_fibra:        100,
-  pan_wasa:          70,
+  pan_centeno:       80,
+  pan_integral_pan:  80,
+  pan_tostado:       60,
+  pan_fibra:         80,
+  pan_wasa:          60,
   pan_molde:         80,
   pan_blanco:        80,
   fajitas:          100,
@@ -811,6 +811,66 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     setSaving(false);
   };
 
+  // ── Guardar dieta propia (modo cliente) ──────────────────────────
+  const handleSaveClient = async () => {
+    if (!macrosOn || !macrosOff || !planOn.length) return;
+    setSaving(true);
+    try {
+      const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+
+      // Desactivar plan cliente anterior si existe
+      await supabase
+        .from("diet_assignments")
+        .update({ active: false })
+        .eq("client_id", clientId)
+        .eq("source", "client");
+
+      const { data: planRow, error: planErr } = await supabase
+        .from("diet_plans")
+        .insert({
+          name:        `Mi dieta — ${today}`,
+          kcal_on:     macrosOn.kcal,      kcal_off:     macrosOff.kcal,
+          protein_on:  macrosOn.protein_g, protein_off:  macrosOff.protein_g,
+          carbs_on:    macrosOn.carbs_g,   carbs_off:    macrosOff.carbs_g,
+          fat_on:      macrosOn.fat_g,     fat_off:      macrosOff.fat_g,
+          notes:       "__CLIENT_GENERATED__",
+        })
+        .select("id").single();
+
+      if (planErr || !planRow) throw planErr ?? new Error("No plan id");
+      const pid = planRow.id;
+
+      for (let i = 0; i < planOn.length; i++) {
+        const meal = planOn[i];
+        const { data: mealRow, error: mErr } = await supabase
+          .from("diet_meals")
+          .insert({ plan_id: pid, name: meal.name, emoji: meal.emoji, day_type: "both", sort_order: i })
+          .select("id").single();
+        if (mErr || !mealRow) throw mErr ?? new Error("No meal id");
+        for (let j = 0; j < meal.options.length; j++) {
+          const opt     = meal.options[j];
+          const content = opt.foods.map(food => ({
+            label:    food.label,
+            slot:     food.macro === "protein" ? "proteina" : food.macro === "carbs" ? "hidrato" : food.macro === "fat" ? "grasa" : "extra",
+            isChoice: false,
+            note:     food.noteText ?? "",
+            items:    [{ ingId: food.ing.id, grams: food.grams }],
+          }));
+          await supabase.from("diet_options").insert({ meal_id: mealRow.id, name: opt.profileLabel, content, sort_order: j });
+        }
+      }
+
+      await supabase.from("diet_assignments").insert({
+        client_id: clientId, plan_id: pid, active: true, source: "client",
+      });
+
+      showToast("✅ ¡Dieta guardada! Ya aparece en 'Mi Plan'");
+    } catch (e: any) {
+      showToast(`❌ Error: ${e?.message ?? "desconocido"}`);
+    }
+    setSaving(false);
+  };
+
   // ── Datos del tab activo ──────────────────────────────────────────
   const activePlan   = activeTab === "on" ? planOn : planOff;
   const activeMacros = activeTab === "on" ? macrosOn : macrosOff;
@@ -1139,7 +1199,7 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
               );
             })}
 
-            {/* Guardar bottom (solo admin) */}
+            {/* Guardar bottom (admin) */}
             {!clientMode && (
               <div className="pt-2">
                 <button onClick={handleSave} disabled={saving}
@@ -1149,6 +1209,20 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
                 </button>
                 <p className="text-[10px] text-neutral-600 text-center mt-2">
                   Se guardan las 3 opciones por comida. El cliente ve todas y elige la que prefiera.
+                </p>
+              </div>
+            )}
+
+            {/* Guardar bottom (cliente) */}
+            {clientMode && (
+              <div className="pt-2 space-y-2">
+                <button onClick={handleSaveClient} disabled={saving}
+                  className="w-full py-4 rounded-xl text-white font-bold text-sm disabled:opacity-40 active:opacity-70"
+                  style={{ background: "linear-gradient(135deg, #8B1A2F, #C0392B)" }}>
+                  {saving ? "Guardando…" : "💾 Guardar como mi dieta"}
+                </button>
+                <p className="text-[10px] text-neutral-600 text-center">
+                  Se guarda en "Mi Plan" y puedes consultarla cuando quieras.
                 </p>
               </div>
             )}

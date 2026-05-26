@@ -10,6 +10,7 @@ import {
   bySlot, type MainSlot, type MacroResult,
 } from "../data/ingredients";
 import DietGenerator from "../components/DietGenerator";
+import MacroCalculator from "../components/MacroCalculator";
 
 const ingName = (id: string) => INGREDIENTS.find(i => i.id === id)?.name ?? id;
 
@@ -166,12 +167,20 @@ const todayDate = () => new Date().toISOString().slice(0, 10);
 
 export default function DietPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
   const [dietTab, setDietTab]   = useState<DietTab>("plan");
+
+  // ── Plan del entrenador ──────────────────────────────────────────
   const [plan, setPlan]         = useState<DietPlan | null>(null);
   const [meals, setMeals]       = useState<DietMeal[]>([]);
   const [loading, setLoading]   = useState(true);
   const [dayType, setDayType]   = useState<DayType>("on");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [mealStates, setMealStates] = useState<Record<string, MealState>>({});
+
+  // ── Plan propio del cliente ──────────────────────────────────────
+  const [myPlan, setMyPlan]   = useState<DietPlan | null>(null);
+  const [myMeals, setMyMeals] = useState<DietMeal[]>([]);
+  const [planSource, setPlanSource] = useState<"trainer" | "client">("trainer");
+
   const [clientMacros, setClientMacros] = useState<ClientMacros | null>(null);
   const [savingDay, setSavingDay] = useState(false);
   const [savedDay, setSavedDay]   = useState(false);
@@ -192,39 +201,57 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
 
   const loadDiet = async () => {
     setLoading(true);
-    // 1. Buscar asignación activa de este cliente
-    const { data: assignment } = await supabase
+
+    // 1. Cargar TODAS las asignaciones activas (trainer + client)
+    const { data: assignments } = await supabase
       .from("diet_assignments")
-      .select("plan_id")
+      .select("plan_id, source")
       .eq("client_id", profile.id)
-      .eq("active", true)
-      .single();
+      .eq("active", true);
 
-    if (!assignment) { setLoading(false); return; }
+    const trainerAssignment = assignments?.find(a => (a.source ?? "trainer") === "trainer");
+    const clientAssignment  = assignments?.find(a => a.source === "client");
 
-    // 2. Cargar el plan asignado
-    const { data: planData } = await supabase
-      .from("diet_plans").select("*").eq("id", assignment.plan_id).single();
-
-    if (!planData) { setLoading(false); return; }
-    setPlan(planData);
-
-    const { data: mealsData } = await supabase
-      .from("diet_meals").select("*, diet_options(*)")
-      .eq("plan_id", planData.id).order("sort_order");
-
-    let parsedMeals: DietMeal[] = [];
-    if (mealsData) {
-      parsedMeals = mealsData.map((m: any) => ({
-        ...m,
-        options: (m.diet_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
-      }));
-      setMeals(parsedMeals);
-      if (parsedMeals.length > 0) setExpanded(new Set([parsedMeals[0].id]));
-      const initStates: Record<string, MealState> = {};
-      parsedMeals.forEach(m => { initStates[m.id] = emptyMealState(); });
-      setMealStates(initStates);
+    // 2. Cargar plan del entrenador
+    let trainerMeals: DietMeal[] = [];
+    if (trainerAssignment) {
+      const { data: planData } = await supabase
+        .from("diet_plans").select("*").eq("id", trainerAssignment.plan_id).single();
+      if (planData) {
+        setPlan(planData);
+        const { data: mealsData } = await supabase
+          .from("diet_meals").select("*, diet_options(*)")
+          .eq("plan_id", planData.id).order("sort_order");
+        if (mealsData) {
+          trainerMeals = mealsData.map((m: any) => ({
+            ...m, options: (m.diet_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+          }));
+          setMeals(trainerMeals);
+          if (trainerMeals.length > 0) setExpanded(new Set([trainerMeals[0].id]));
+          const initStates: Record<string, MealState> = {};
+          trainerMeals.forEach(m => { initStates[m.id] = emptyMealState(); });
+          setMealStates(initStates);
+        }
+      }
     }
+
+    // 3. Cargar plan propio del cliente (si existe)
+    if (clientAssignment) {
+      const { data: myPlanData } = await supabase
+        .from("diet_plans").select("*").eq("id", clientAssignment.plan_id).single();
+      if (myPlanData) {
+        setMyPlan(myPlanData);
+        const { data: myMealsData } = await supabase
+          .from("diet_meals").select("*, diet_options(*)")
+          .eq("plan_id", myPlanData.id).order("sort_order");
+        if (myMealsData) {
+          setMyMeals(myMealsData.map((m: any) => ({
+            ...m, options: (m.diet_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+          })));
+        }
+      }
+    }
+
     setLoading(false);
 
     // Cargar los registros de hoy si existen
@@ -234,9 +261,9 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
       .eq("client_id", profile.id)
       .eq("date", todayDate());
 
-    if (todayLogs && todayLogs.length > 0) {
+    if (todayLogs && todayLogs.length > 0 && trainerMeals.length > 0) {
       const restoredStates: Record<string, MealState> = {};
-      parsedMeals.forEach(m => { restoredStates[m.id] = emptyMealState(); });
+      trainerMeals.forEach(m => { restoredStates[m.id] = emptyMealState(); });
       todayLogs.forEach((row: any) => {
         restoredStates[row.meal_id] = {
           proteina:  row.proteina_id ? { ingId: row.proteina_id, grams: row.proteina_g ?? 100 } : null,
@@ -366,73 +393,8 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
 
       {/* ── Sub-tab: Mis Macros ── */}
       {dietTab === "macros" && (
-        <div className="max-w-2xl mx-auto px-4 pt-5 space-y-4">
-          {!clientMacros ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <p className="text-3xl mb-3">📊</p>
-              <p className="text-white font-semibold mb-1">Sin objetivos asignados</p>
-              <p className="text-neutral-500 text-sm">Tu entrenador aún no ha calculado tus macros.</p>
-            </div>
-          ) : (
-            <>
-              <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-1">
-                Objetivos calóricos establecidos por tu entrenador
-              </p>
-              {/* ON */}
-              <div className="rounded-2xl p-4 space-y-3"
-                style={{ background: "#111", border: "1px solid #1E3A2A" }}>
-                <div className="flex items-center justify-between">
-                  <p className="text-emerald-400 font-bold text-sm">💪 Día ON — Entrenamiento</p>
-                  <p className="text-white font-bold text-lg">{clientMacros.tdee} <span className="text-neutral-500 text-xs font-normal">kcal</span></p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: "Proteína", val: clientMacros.protein_g, unit: "g", color: "text-red-400", bg: "#2A1010" },
-                    { label: "Hidratos", val: clientMacros.carbs_g,   unit: "g", color: "text-amber-400", bg: "#2A1E10" },
-                    { label: "Grasas",   val: clientMacros.fat_g,     unit: "g", color: "text-blue-400", bg: "#10182A" },
-                  ].map(({ label, val, unit, color, bg }) => (
-                    <div key={label} className="rounded-xl p-3 text-center" style={{ background: bg }}>
-                      <p className={`text-xl font-bold ${color}`}>{val}<span className="text-xs ml-0.5">{unit}</span></p>
-                      <p className="text-[10px] text-neutral-500 mt-0.5">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* OFF */}
-              {(clientMacros.carbs_off_g != null || clientMacros.kcal_off != null) && (
-                <div className="rounded-2xl p-4 space-y-3"
-                  style={{ background: "#111", border: "1px solid #1A2035" }}>
-                  <div className="flex items-center justify-between">
-                    <p className="text-blue-400 font-bold text-sm">😴 Día OFF — Descanso</p>
-                    <p className="text-white font-bold text-lg">
-                      {clientMacros.kcal_off ?? Math.round(
-                        clientMacros.protein_g * 4 +
-                        (clientMacros.carbs_off_g ?? clientMacros.carbs_g) * 4 +
-                        (clientMacros.fat_off_g ?? clientMacros.fat_g) * 9
-                      )}
-                      <span className="text-neutral-500 text-xs font-normal"> kcal</span>
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: "Proteína", val: clientMacros.protein_g, color: "text-red-400", bg: "#2A1010" },
-                      { label: "Hidratos", val: clientMacros.carbs_off_g ?? clientMacros.carbs_g, color: "text-amber-400", bg: "#2A1E10" },
-                      { label: "Grasas",   val: clientMacros.fat_off_g ?? clientMacros.fat_g,     color: "text-blue-400", bg: "#10182A" },
-                    ].map(({ label, val, color, bg }) => (
-                      <div key={label} className="rounded-xl p-3 text-center" style={{ background: bg }}>
-                        <p className={`text-xl font-bold ${color}`}>{val}<span className="text-xs ml-0.5">g</span></p>
-                        <p className="text-[10px] text-neutral-500 mt-0.5">{label}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <p className="text-[10px] text-neutral-600 text-center px-4 pb-4 leading-relaxed">
-                Estos valores los calcula tu entrenador según tu peso, altura, actividad y objetivo.
-                Si crees que deben ajustarse, coméntaselo.
-              </p>
-            </>
-          )}
+        <div className="max-w-2xl mx-auto px-4 pt-4 pb-8">
+          <MacroCalculator clientId={profile.id} />
         </div>
       )}
 
@@ -441,14 +403,64 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
         <div className="flex items-center justify-center py-24">
           <p className="text-neutral-500 text-sm">Cargando tu plan…</p>
         </div>
-      ) : dietTab === "plan" && !plan ? (
+      ) : dietTab === "plan" && !plan && !myPlan ? (
         <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
           <p className="text-4xl mb-4">🥗</p>
           <p className="text-white font-semibold mb-1">Sin plan asignado</p>
-          <p className="text-neutral-500 text-sm">Tu entrenador aún no ha creado tu plan nutricional.</p>
+          <p className="text-neutral-500 text-sm">Tu entrenador aún no ha creado tu plan. Puedes generar el tuyo en la pestaña 🎲 Generar.</p>
         </div>
       ) : dietTab === "plan" ? (
         <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
+
+          {/* Toggle Entrenador / Mi dieta — solo si existen los dos */}
+          {plan && myPlan && (
+            <div className="flex gap-2 rounded-xl p-1" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+              {([["trainer","📋 Plan entrenador"],["client","🎲 Mi dieta"]] as const).map(([src, label]) => (
+                <button key={src} onClick={() => setPlanSource(src)}
+                  className="flex-1 py-2 rounded-lg text-xs font-semibold transition-colors"
+                  style={planSource === src
+                    ? { background: "#8B1A2F", color: "#fff" }
+                    : { background: "transparent", color: "#666" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ── Vista plan del cliente propio (lectura) ── */}
+          {planSource === "client" && myPlan && (
+            <div className="space-y-3 pb-8">
+              <div className="rounded-2xl p-4" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+                <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">🎲 Dieta generada por ti</p>
+                <p className="text-white font-bold text-sm">{myPlan.name.replace("__CLIENT_GENERATED__", "").trim()}</p>
+                {myPlan.kcal_on && (
+                  <p className="text-neutral-400 text-xs mt-1">💪 {myPlan.kcal_on} kcal ON · 😴 {myPlan.kcal_off} kcal OFF</p>
+                )}
+              </div>
+              {myMeals.map(meal => (
+                <div key={meal.id} className="rounded-2xl p-4 space-y-2" style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
+                  <p className="text-white font-semibold text-sm">{meal.emoji} {meal.name}</p>
+                  {meal.options.slice(0, 1).map(opt => (
+                    <div key={opt.id} className="space-y-1">
+                      {Array.isArray(opt.content) && opt.content.map((fg: any, fi: number) => (
+                        <p key={fi} className="text-neutral-400 text-xs">
+                          · {Array.isArray(fg.items) && fg.items.length > 0
+                              ? `${fg.items[0]?.grams ?? ""}g — ${fg.label}`
+                              : fg.label}
+                        </p>
+                      ))}
+                    </div>
+                  ))}
+                  {meal.options.length > 1 && (
+                    <p className="text-[10px] text-neutral-600">+{meal.options.length - 1} opciones guardadas</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Vista plan del entrenador (o si solo existe uno) ── */}
+          {(planSource === "trainer" || !myPlan) && plan && <>
 
           {/* Toggle ON / OFF */}
           <div className="grid grid-cols-2 gap-2">
@@ -666,6 +678,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
               <p className="text-neutral-500 text-sm">No hay comidas para el día {dayType.toUpperCase()}.</p>
             </div>
           )}
+          </> /* fin vista entrenador */}
         </div>
       ) : null}
     </div>

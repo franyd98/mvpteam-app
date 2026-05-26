@@ -52,7 +52,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [clientLogs, setClientLogs] = useState<ClientLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [selectedTrainingDay, setSelectedTrainingDay] = useState<string | null>(null);
-  const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin" | "dieta">("entreno");
+  const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin" | "dieta" | "calculadora">("entreno");
   const [clientDietSubTab, setClientDietSubTab] = useState<"macros" | "plan" | "generar">("macros");
   const [clientCheckIn, setClientCheckIn] = useState<{ weights: any[]; perims: any[]; folds: any[]; fatigues: any[]; photos: any[] } | null>(null);
   const [adminPreviewUrl, setAdminPreviewUrl] = useState<string | null>(null);
@@ -444,9 +444,10 @@ export default function AdminPage({ profile }: { profile: Profile }) {
         {/* Sub-tabs + botón Visita Presencial */}
         <div className="flex items-center gap-1.5 px-3 py-2.5 max-w-3xl mx-auto border-b border-neutral-800 overflow-x-auto scrollbar-hide">
           {[
-            { id: "entreno", label: "🏋️ Entreno", action: () => { setClientViewTab("entreno"); setSelectedTrainingDay(null); } },
-            { id: "checkin", label: "📊 Control",  action: () => { setClientViewTab("checkin"); if (!clientCheckIn && !loadingCheckIn) loadClientCheckIn(viewingClient.id); } },
-            { id: "dieta",   label: "🥗 Dieta",   action: () => { setClientViewTab("dieta"); setClientDietSubTab("macros"); } },
+            { id: "entreno",     label: "🏋️ Entreno",  action: () => { setClientViewTab("entreno"); setSelectedTrainingDay(null); } },
+            { id: "checkin",     label: "📊 Control",   action: () => { setClientViewTab("checkin"); if (!clientCheckIn && !loadingCheckIn) loadClientCheckIn(viewingClient.id); } },
+            { id: "dieta",       label: "🥗 Dieta",     action: () => { setClientViewTab("dieta"); setClientDietSubTab("macros"); } },
+            { id: "calculadora", label: "🧮 Calculadora", action: () => setClientViewTab("calculadora") },
           ].map(({ id, label, action }) => (
             <button key={id} onClick={action}
               className={"px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 " +
@@ -749,6 +750,14 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                 />
               )}
             </div>
+          )}
+
+          {/* ── Pestaña Calculadora ── */}
+          {clientViewTab === "calculadora" && (
+            <MacroCalculator
+              clientName={viewingClient.full_name}
+              clientId={viewingClient.id}
+            />
           )}
 
         </div>
