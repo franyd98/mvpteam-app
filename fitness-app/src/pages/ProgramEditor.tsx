@@ -22,6 +22,9 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   // Renombrar días
   const [editingDayId, setEditingDayId] = useState<number | null>(null);
   const [dayNameInput, setDayNameInput] = useState("");
+  // Drag & drop de días
+  const [dragFromIdx, setDragFromIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [showExPicker, setShowExPicker] = useState(false);
   const [exSearch, setExSearch] = useState("");
 
@@ -37,10 +40,11 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   // Feedback visual breve tras sincronizar
   const [syncFlash, setSyncFlash] = useState(false);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { setLoading(true); loadAll().finally(() => setLoading(false)); }, []);
 
+  // loadAll NO toca el estado de loading — la carga inicial lo gestiona el useEffect.
+  // Esto permite llamar a loadAll() desde mutaciones sin mostrar pantalla de carga.
   const loadAll = async () => {
-    setLoading(true);
     const [progRes, catRes] = await Promise.all([
       supabase.from("programs").select(`
         id, name, description,
@@ -94,7 +98,6 @@ export default function ProgramEditor({ programId, onBack }: Props) {
       setSetEdits(initial);
     }
 
-    setLoading(false);
   };
 
   const currentDay = program?.days[selectedDayIdx] ?? null;
@@ -118,25 +121,65 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     setSaving(false);
   };
 
-  const moveDay = async (dayIdx: number, direction: -1 | 1) => {
-    if (!program) return;
-    const days = [...program.days];
-    const targetIdx = dayIdx + direction;
-    if (targetIdx < 0 || targetIdx >= days.length) return;
+  const moveDay = async (fromIdx: number, toIdx: number) => {
+    if (!program || fromIdx === toIdx) return;
     setSaving(true);
-    const dayA = days[dayIdx];
-    const dayB = days[targetIdx];
+    const days = [...program.days];
+    const fromDay = days[fromIdx];
+    const toDay   = days[toIdx];
+    // Intercambia order_index en Supabase
     await Promise.all([
-      supabase.from("program_days").update({ order_index: dayB.order_index }).eq("id", dayA.id),
-      supabase.from("program_days").update({ order_index: dayA.order_index }).eq("id", dayB.id),
+      supabase.from("program_days").update({ order_index: toDay.order_index }).eq("id", fromDay.id),
+      supabase.from("program_days").update({ order_index: fromDay.order_index }).eq("id", toDay.id),
     ]);
+    // Actualiza estado local
     const newDays = days.map(d => {
-      if (d.id === dayA.id) return { ...d, order_index: dayB.order_index };
-      if (d.id === dayB.id) return { ...d, order_index: dayA.order_index };
+      if (d.id === fromDay.id) return { ...d, order_index: toDay.order_index };
+      if (d.id === toDay.id)   return { ...d, order_index: fromDay.order_index };
       return d;
     }).sort((a, b) => a.order_index - b.order_index);
     setProgram(p => p ? { ...p, days: newDays } : p);
-    setSelectedDayIdx(targetIdx);
+    setSelectedDayIdx(toIdx);
+    setSaving(false);
+  };
+
+  const addDay = async () => {
+    if (!program) return;
+    setSaving(true);
+    const nextOrder = program.days.length > 0
+      ? Math.max(...program.days.map(d => d.order_index)) + 1
+      : 0;
+    const newName = `Día ${program.days.length + 1}`;
+    const { data: newDay } = await supabase.from("program_days")
+      .insert({ program_id: program.id, name: newName, order_index: nextOrder, optional: false })
+      .select().single();
+    if (newDay) {
+      const { data: newMc } = await supabase.from("microcycles")
+        .insert({ day_id: newDay.id, number: 1 }).select().single();
+      const newEditorDay: EditorDay = {
+        id: newDay.id, name: newDay.name, order_index: newDay.order_index, optional: false,
+        microcycles: newMc ? [{ id: newMc.id, number: 1, exercises: [] }] : [],
+      };
+      const newDays = [...program.days, newEditorDay];
+      setProgram(p => p ? { ...p, days: newDays } : p);
+      setSelectedDayIdx(newDays.length - 1);
+      setSelectedMcNum(1);
+      // Abre el renombre inmediatamente
+      setEditingDayId(newDay.id);
+      setDayNameInput(newDay.name);
+    }
+    setSaving(false);
+  };
+
+  const deleteDay = async (dayId: number, dayIdx: number) => {
+    if (!program) return;
+    if (program.days.length <= 1) { alert("El programa debe tener al menos un día."); return; }
+    if (!confirm(`¿Eliminar este día y todos sus microciclos y ejercicios?`)) return;
+    setSaving(true);
+    await supabase.from("program_days").delete().eq("id", dayId);
+    const newDays = program.days.filter(d => d.id !== dayId);
+    setProgram(p => p ? { ...p, days: newDays } : p);
+    setSelectedDayIdx(Math.max(0, dayIdx - 1));
     setSaving(false);
   };
 
@@ -483,50 +526,81 @@ export default function ProgramEditor({ programId, onBack }: Props) {
 
       {/* Días */}
       <div className="px-4 pt-4 pb-2 max-w-3xl mx-auto">
-        <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Días del programa</p>
-        <div className="space-y-1.5">
+        <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Días · arrastra para reordenar</p>
+
+        {/* Formulario de renombre inline (flota encima si está activo) */}
+        {editingDayId !== null && (
+          <form
+            onSubmit={e => { e.preventDefault(); saveDayName(editingDayId); }}
+            className="flex gap-1.5 mb-3">
+            <input
+              autoFocus
+              value={dayNameInput}
+              onChange={e => setDayNameInput(e.target.value)}
+              className="flex-1 bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white"
+              placeholder="Nombre del día"
+            />
+            <button type="submit" disabled={saving}
+              className="px-3 py-2 rounded-lg bg-white text-black text-xs font-bold disabled:opacity-40">✓ Guardar</button>
+            <button type="button" onClick={() => setEditingDayId(null)}
+              className="px-3 py-2 rounded-lg text-neutral-300 text-xs"
+              style={{ background: "#2a2a2a" }}>✕</button>
+          </form>
+        )}
+
+        <div className="flex flex-wrap gap-2 items-center">
           {program?.days.map((d, idx) => {
             const isSelected = selectedDayIdx === idx;
-            const isEditingThisDay = editingDayId === d.id;
+            const isDragging = dragFromIdx === idx;
+            const isOver = dragOverIdx === idx && dragFromIdx !== idx;
             return (
-              <div key={d.id} className="flex items-center gap-2">
-                {/* Flechas de orden */}
-                <div className="flex flex-col gap-0.5 shrink-0">
-                  <button onClick={() => moveDay(idx, -1)} disabled={idx === 0 || saving}
-                    className="w-6 h-5 rounded text-[10px] flex items-center justify-center transition-colors disabled:opacity-20"
-                    style={{ background: "#1e1e1e", color: "#888" }}>↑</button>
-                  <button onClick={() => moveDay(idx, 1)} disabled={idx === (program?.days.length ?? 0) - 1 || saving}
-                    className="w-6 h-5 rounded text-[10px] flex items-center justify-center transition-colors disabled:opacity-20"
-                    style={{ background: "#1e1e1e", color: "#888" }}>↓</button>
-                </div>
-
-                {isEditingThisDay ? (
-                  <form onSubmit={e => { e.preventDefault(); saveDayName(d.id); }} className="flex flex-1 gap-1">
-                    <input autoFocus value={dayNameInput} onChange={e => setDayNameInput(e.target.value)}
-                      className="flex-1 bg-neutral-800 border border-neutral-600 rounded-lg px-2.5 py-1.5 text-white text-sm focus:outline-none focus:border-white"
-                      placeholder="Nombre del día" />
-                    <button type="submit" disabled={saving}
-                      className="px-2.5 py-1.5 rounded-lg bg-white text-black text-xs font-bold disabled:opacity-40">✓</button>
-                    <button type="button" onClick={() => setEditingDayId(null)}
-                      className="px-2.5 py-1.5 rounded-lg text-neutral-300 text-xs"
-                      style={{ background: "#2a2a2a" }}>✕</button>
-                  </form>
-                ) : (
-                  <>
-                    <button onClick={() => { setSelectedDayIdx(idx); setSelectedMcNum(1); }}
-                      className={"flex-1 px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors " +
-                        (isSelected ? "bg-white text-black" : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700")}>
-                      {d.name}
-                    </button>
-                    <button onClick={() => { setEditingDayId(d.id); setDayNameInput(d.name); }}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition-colors"
-                      style={{ background: "#1e1e1e", color: "#666" }}
-                      title="Renombrar día">✏️</button>
-                  </>
+              <div key={d.id} className="relative group">
+                {/* Chip principal — draggable */}
+                <button
+                  draggable
+                  onDragStart={() => { setDragFromIdx(idx); }}
+                  onDragEnd={() => { setDragFromIdx(null); setDragOverIdx(null); }}
+                  onDragOver={e => { e.preventDefault(); setDragOverIdx(idx); }}
+                  onDrop={e => { e.preventDefault(); if (dragFromIdx !== null) moveDay(dragFromIdx, idx); setDragFromIdx(null); setDragOverIdx(null); }}
+                  onClick={() => { setSelectedDayIdx(idx); setSelectedMcNum(1); }}
+                  className={"px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-grab active:cursor-grabbing select-none pr-6 " +
+                    (isSelected ? "bg-white text-black " : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 ") +
+                    (isDragging ? "opacity-40 " : "") +
+                    (isOver ? "ring-2 ring-blue-500 " : "")}
+                >
+                  {d.name}
+                </button>
+                {/* Botón ✕ borrar (aparece siempre en esquina) */}
+                <button
+                  onClick={e => { e.stopPropagation(); deleteDay(d.id, idx); }}
+                  disabled={saving}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold transition-opacity disabled:opacity-30"
+                  style={{ background: "#C0394F", color: "#fff" }}
+                  title="Eliminar día"
+                >×</button>
+                {/* Botón ✏️ renombrar (aparece al seleccionar) */}
+                {isSelected && !isDragging && (
+                  <button
+                    onClick={() => { setEditingDayId(d.id); setDayNameInput(d.name); }}
+                    className="absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-opacity"
+                    style={{ background: "#3a3a3a", color: "#aaa" }}
+                    title="Renombrar"
+                  >✏</button>
                 )}
               </div>
             );
           })}
+
+          {/* Botón añadir día */}
+          <button
+            onClick={addDay}
+            disabled={saving}
+            className="px-3 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 flex items-center gap-1"
+            style={{ background: "#0E2010", border: "1px solid #1E4020", color: "#4ADE80" }}
+            title="Añadir nuevo día"
+          >
+            + Día
+          </button>
         </div>
       </div>
 

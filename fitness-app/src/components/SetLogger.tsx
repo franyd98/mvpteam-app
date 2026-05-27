@@ -53,6 +53,14 @@ export default function SetLogger({
   );
   const [activeField, setActiveField] = useState<Field>("weight");
 
+  // Previene el "ghost-click" en móvil: el touchend que abrió el modal
+  // no debe cerrar el backdrop inmediatamente.
+  const [backdropReady, setBackdropReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setBackdropReady(true), 250);
+    return () => clearTimeout(t);
+  }, []);
+
   // Tecla pulsada en el teclado numérico → actualiza el campo activo.
   const handleKey = (k: string) => {
     const current = getCurrent();
@@ -116,7 +124,7 @@ export default function SetLogger({
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onCancel}
+      onClick={backdropReady ? onCancel : undefined}
     >
       <div
         className="bg-neutral-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden footer-safe"
