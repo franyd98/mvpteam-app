@@ -59,8 +59,12 @@ export default function ProgramEditor({ programId, onBack }: Props) {
       `).eq("id", programId).single(),
       supabase.from("exercises").select("*").order("muscle_group").order("name"),
     ]);
+    if (progRes.error) console.error("[loadAll] ❌ Error query:", progRes.error);
     if (progRes.data) {
       const raw = progRes.data as any;
+      const totalMcs = (raw.program_days ?? []).flatMap((d: any) => d.microcycles ?? []).length;
+      const totalExs = (raw.program_days ?? []).flatMap((d: any) => (d.microcycles ?? []).flatMap((m: any) => m.microcycle_exercises ?? [])).length;
+      console.log(`[loadAll] ✅ Datos recibidos: ${(raw.program_days ?? []).length} días, ${totalMcs} microciclos, ${totalExs} ejercicios`);
       const days: EditorDay[] = (raw.program_days ?? [])
         .sort((a: any, b: any) => a.order_index - b.order_index)
         .map((d: any) => ({
@@ -188,20 +192,26 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     setSaving(true);
 
     const nextNum = Math.max(...currentDay.microcycles.map(m => m.number), 0) + 1;
+    console.log(`[DUP] Iniciando duplicado → Mc${nextNum}, día="${currentDay.name}" (id=${currentDay.id})`);
+    const lastMcForLog = currentDay.microcycles[currentDay.microcycles.length - 1];
+    console.log(`[DUP] Ejercicios a copiar: ${lastMcForLog?.exercises.length ?? 0}`);
+
     const { data: newMc, error: mcError } = await supabase
       .from("microcycles")
       .insert({ day_id: currentDay.id, number: nextNum })
       .select().single();
 
     if (!newMc || mcError) {
-      console.error("[addMicrocycle] Error creando microciclo:", mcError);
+      console.error("[DUP] ❌ Error creando microciclo:", mcError);
       setSaving(false);
       return;
     }
+    console.log(`[DUP] ✅ Microciclo creado id=${newMc.id}`);
 
     const lastMc = currentDay.microcycles[currentDay.microcycles.length - 1];
 
     for (const ex of lastMc?.exercises ?? []) {
+      console.log(`[DUP] Insertando ejercicio "${ex.name}"...`);
       const { data: newMe, error: meError } = await supabase
         .from("microcycle_exercises")
         .insert({
@@ -213,11 +223,11 @@ export default function ProgramEditor({ programId, onBack }: Props) {
         .select().single();
 
       if (!newMe || meError) {
-        console.error("[addMicrocycle] Error insertando ejercicio:", meError, ex.name);
+        console.error(`[DUP] ❌ Error ejercicio "${ex.name}":`, meError);
         continue;
       }
+      console.log(`[DUP] ✅ Ejercicio "${ex.name}" creado id=${newMe.id}, insertando ${ex.sets.length} series...`);
 
-      // Copiamos target_reps y target_rpe del microciclo anterior
       const { error: setsError } = await supabase
         .from("exercise_sets")
         .insert(
@@ -230,15 +240,18 @@ export default function ProgramEditor({ programId, onBack }: Props) {
         );
 
       if (setsError) {
-        console.error("[addMicrocycle] Error insertando series:", setsError, ex.name);
+        console.error(`[DUP] ❌ Error series "${ex.name}":`, setsError);
+      } else {
+        console.log(`[DUP] ✅ Series de "${ex.name}" creadas`);
       }
     }
 
-    // Recargamos desde BD — loadAll ya NO llama setLoading, así que el editor
-    // no se desmonta y selectedMcNum se puede actualizar correctamente justo después.
+    console.log("[DUP] Todos los inserts terminados, llamando loadAll()...");
     await loadAll();
+    console.log("[DUP] loadAll() completado, seleccionando Mc" + nextNum);
     setSelectedMcNum(nextNum);
     setSaving(false);
+    console.log("[DUP] ✅ Duplicado completo");
   };
 
   const removeMicrocycle = async () => {
