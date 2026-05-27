@@ -186,24 +186,98 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   const addMicrocycle = async () => {
     if (!currentDay) return;
     setSaving(true);
+
     const nextNum = Math.max(...currentDay.microcycles.map(m => m.number), 0) + 1;
-    const { data: newMc } = await supabase.from("microcycles").insert({ day_id: currentDay.id, number: nextNum }).select().single();
-    if (newMc) {
-      const lastMc = currentDay.microcycles[currentDay.microcycles.length - 1];
-      for (const ex of lastMc?.exercises ?? []) {
-        const { data: newMe } = await supabase.from("microcycle_exercises")
-          .insert({ microcycle_id: newMc.id, exercise_id: ex.exercise_id, order_index: ex.order_index, total_sets: ex.sets.length })
-          .select().single();
-        if (newMe) {
-          await supabase.from("exercise_sets").insert(
-            ex.sets.map(s => ({ microcycle_exercise_id: newMe.id, set_number: s.set_number, target_reps: null }))
-          );
-        }
-      }
+    const { data: newMc, error: mcError } = await supabase
+      .from("microcycles")
+      .insert({ day_id: currentDay.id, number: nextNum })
+      .select().single();
+
+    if (!newMc || mcError) {
+      console.error("[addMicrocycle] Error creando microciclo:", mcError);
+      setSaving(false);
+      return;
     }
-    await loadAll();
+
+    const lastMc = currentDay.microcycles[currentDay.microcycles.length - 1];
+    const newExercises: EditorEx[] = [];
+    const newEdits: Record<number, { target_reps: string; target_rpe: string }> = {};
+
+    for (const ex of lastMc?.exercises ?? []) {
+      const { data: newMe, error: meError } = await supabase
+        .from("microcycle_exercises")
+        .insert({
+          microcycle_id: newMc.id,
+          exercise_id: ex.exercise_id,
+          order_index: ex.order_index,
+          total_sets: ex.sets.length,
+        })
+        .select().single();
+
+      if (!newMe || meError) {
+        console.error("[addMicrocycle] Error insertando ejercicio:", meError, ex.name);
+        continue;
+      }
+
+      // Copiamos target_reps y target_rpe del microciclo anterior (no los dejamos a null)
+      const { data: setsData, error: setsError } = await supabase
+        .from("exercise_sets")
+        .insert(
+          ex.sets.map(s => ({
+            microcycle_exercise_id: newMe.id,
+            set_number: s.set_number,
+            target_reps: s.target_reps,
+            target_rpe: s.target_rpe,
+          }))
+        )
+        .select();
+
+      if (setsError) {
+        console.error("[addMicrocycle] Error insertando series:", setsError, ex.name);
+      }
+
+      const newSets: EditorSet[] = ((setsData ?? []) as any[])
+        .sort((a, b) => a.set_number - b.set_number)
+        .map(s => ({
+          id: s.id,
+          set_number: s.set_number,
+          target_reps: s.target_reps ?? null,
+          target_rpe: s.target_rpe ?? null,
+        }));
+
+      newSets.forEach(s => {
+        newEdits[s.id] = {
+          target_reps: s.target_reps ?? "",
+          target_rpe: s.target_rpe ?? "",
+        };
+      });
+      newExercises.push({
+        id: newMe.id,
+        exercise_id: ex.exercise_id,
+        name: ex.name,
+        muscle_group: ex.muscle_group,
+        order_index: ex.order_index,
+        sets: newSets,
+      });
+    }
+
+    // Actualizar estado local al instante para que el admin lo vea sin esperar
+    setProgram(p => {
+      if (!p) return p;
+      return {
+        ...p,
+        days: p.days.map((d, i) =>
+          i !== selectedDayIdx ? d
+            : { ...d, microcycles: [...d.microcycles, { id: newMc.id, number: nextNum, exercises: newExercises }] }
+        ),
+      };
+    });
+    setSetEdits(prev => ({ ...prev, ...newEdits }));
     setSelectedMcNum(nextNum);
     setSaving(false);
+
+    // Sincronizamos con la BD para reflejar el estado real (sin pantalla de carga)
+    loadAll();
   };
 
   const removeMicrocycle = async () => {
@@ -213,7 +287,17 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     setSaving(true);
     await supabase.from("microcycles").delete().eq("id", currentMc.id);
     const next = currentDay.microcycles.find(m => m.number !== currentMc.number)?.number ?? 1;
-    await loadAll();
+    // Actualizar estado local al instante
+    setProgram(p => {
+      if (!p) return p;
+      return {
+        ...p,
+        days: p.days.map((d, i) =>
+          i !== selectedDayIdx ? d
+            : { ...d, microcycles: d.microcycles.filter(m => m.id !== currentMc!.id) }
+        ),
+      };
+    });
     setSelectedMcNum(next);
     setSaving(false);
   };
@@ -226,14 +310,28 @@ export default function ProgramEditor({ programId, onBack }: Props) {
       .insert({ microcycle_id: currentMc.id, exercise_id: ex.id, order_index: nextOrder, total_sets: 3 })
       .select().single();
     if (newMe) {
-      await supabase.from("exercise_sets").insert([
-        { microcycle_exercise_id: newMe.id, set_number: 1, target_reps: null },
-        { microcycle_exercise_id: newMe.id, set_number: 2, target_reps: null },
-        { microcycle_exercise_id: newMe.id, set_number: 3, target_reps: null },
-      ]);
+      const { data: setsData } = await supabase.from("exercise_sets").insert([
+        { microcycle_exercise_id: (newMe as any).id, set_number: 1, target_reps: null, target_rpe: null },
+        { microcycle_exercise_id: (newMe as any).id, set_number: 2, target_reps: null, target_rpe: null },
+        { microcycle_exercise_id: (newMe as any).id, set_number: 3, target_reps: null, target_rpe: null },
+      ]).select();
+      const newSets: EditorSet[] = ((setsData ?? []) as any[]).map(s => ({ id: s.id, set_number: s.set_number, target_reps: null, target_rpe: null }));
+      const newEdits: Record<number, { target_reps: string; target_rpe: string }> = {};
+      newSets.forEach(s => { newEdits[s.id] = { target_reps: "", target_rpe: "" }; });
+      const newEditorEx: EditorEx = { id: (newMe as any).id, exercise_id: ex.id, name: ex.name, muscle_group: ex.muscle_group, order_index: nextOrder, sets: newSets };
+      setProgram(p => {
+        if (!p) return p;
+        return {
+          ...p,
+          days: p.days.map(d => ({
+            ...d,
+            microcycles: d.microcycles.map(mc => mc.id !== currentMc!.id ? mc : { ...mc, exercises: [...mc.exercises, newEditorEx] }),
+          })),
+        };
+      });
+      setSetEdits(prev => ({ ...prev, ...newEdits }));
     }
     setShowExPicker(false); setExSearch("");
-    await loadAll();
     setSaving(false);
   };
 
@@ -241,23 +339,64 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     if (!confirm(`¿Quitar "${exName}" de este microciclo?`)) return;
     setSaving(true);
     await supabase.from("microcycle_exercises").delete().eq("id", meId);
-    await loadAll();
+    setProgram(p => {
+      if (!p) return p;
+      return {
+        ...p,
+        days: p.days.map(d => ({
+          ...d,
+          microcycles: d.microcycles.map(mc => ({ ...mc, exercises: mc.exercises.filter(e => e.id !== meId) })),
+        })),
+      };
+    });
     setSaving(false);
   };
 
   const addSet = async (ex: EditorEx) => {
     setSaving(true);
     const nextNum = (ex.sets.length > 0 ? Math.max(...ex.sets.map(s => s.set_number)) : 0) + 1;
-    await supabase.from("exercise_sets").insert({ microcycle_exercise_id: ex.id, set_number: nextNum, target_reps: null });
-    await loadAll();
+    const { data: newSet } = await supabase
+      .from("exercise_sets")
+      .insert({ microcycle_exercise_id: ex.id, set_number: nextNum, target_reps: null, target_rpe: null })
+      .select().single();
+    if (newSet) {
+      const ns: EditorSet = { id: (newSet as any).id, set_number: nextNum, target_reps: null, target_rpe: null };
+      setSetEdits(prev => ({ ...prev, [(newSet as any).id]: { target_reps: "", target_rpe: "" } }));
+      setProgram(p => {
+        if (!p) return p;
+        return {
+          ...p,
+          days: p.days.map(d => ({
+            ...d,
+            microcycles: d.microcycles.map(mc => ({
+              ...mc,
+              exercises: mc.exercises.map(e => e.id === ex.id ? { ...e, sets: [...e.sets, ns] } : e),
+            })),
+          })),
+        };
+      });
+    }
     setSaving(false);
   };
 
   const removeSet = async (ex: EditorEx) => {
     if (ex.sets.length <= 1) return;
     setSaving(true);
-    await supabase.from("exercise_sets").delete().eq("id", ex.sets[ex.sets.length - 1].id);
-    await loadAll();
+    const lastSet = ex.sets[ex.sets.length - 1];
+    await supabase.from("exercise_sets").delete().eq("id", lastSet.id);
+    setProgram(p => {
+      if (!p) return p;
+      return {
+        ...p,
+        days: p.days.map(d => ({
+          ...d,
+          microcycles: d.microcycles.map(mc => ({
+            ...mc,
+            exercises: mc.exercises.map(e => e.id === ex.id ? { ...e, sets: e.sets.slice(0, -1) } : e),
+          })),
+        })),
+      };
+    });
     setSaving(false);
   };
 
