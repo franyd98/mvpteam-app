@@ -78,9 +78,11 @@ const MEAL_DEFS: MealDef[] = [
     id: "c1", name: "Comida 1 — Desayuno", emoji: "🌅",
     profiles: [
       {
-        // Lácteos (yogur/queso/mousse) + CUALQUIER cereal o avena
+        // Huevo (fijo) + Lácteos (yogur/queso/mousse) + CUALQUIER cereal o avena
         id: "c1_a", label: "Lácteos + Cereal",
         slots: [
+          { id: "huevo", label: "Huevo base", macro: "fixed", pct: 0, fixedG: 60,
+            ingIds: ["huevo"] },
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
             ingIds: ["yogur_prot","yogur_griego","mousse_prot","qso_batido","qso_fresco","leche_prot","yogur_sln"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 25,
@@ -94,9 +96,11 @@ const MEAL_DEFS: MealDef[] = [
         ],
       },
       {
-        // ISO/Whey en batido + CUALQUIER cereal o avena
+        // Huevo (fijo) + ISO/Whey en batido + CUALQUIER cereal o avena
         id: "c1_b", label: "ISO / Whey + Cereal",
         slots: [
+          { id: "huevo", label: "Huevo base", macro: "fixed", pct: 0, fixedG: 60,
+            ingIds: ["huevo"] },
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
             ingIds: ["iso","whey"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 25,
@@ -109,9 +113,11 @@ const MEAL_DEFS: MealDef[] = [
         ],
       },
       {
-        // Pan / tostadas con proteína láctea o ISO + grasa saludable
+        // Huevo (fijo) + Pan / tostadas con proteína láctea o ISO + grasa saludable
         id: "c1_c", label: "Pan + Proteína + Grasa",
         slots: [
+          { id: "huevo", label: "Huevo base", macro: "fixed", pct: 0, fixedG: 60,
+            ingIds: ["huevo"] },
           { id: "prot", label: "Proteína", macro: "protein", pct: 20,
             ingIds: ["yogur_griego","qso_batido","qso_fresco","leche_prot","iso","yogur_prot","mousse_prot"] },
           { id: "hc",   label: "Hidratos", macro: "carbs",   pct: 25,
@@ -335,6 +341,7 @@ const MEAL_DEFS: MealDef[] = [
 
 const STANDARD_PORTIONS: Record<string, number> = {
   // Carnes / proteína animal
+  huevo:             60,   // 1 huevo entero ≈ 60 g
   pollo:            100,
   pavo:             100,
   picada_pollo:     100,
