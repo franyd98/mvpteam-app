@@ -67,7 +67,8 @@ export default function RestTimer({
   const progress = Math.max(0, Math.min(1, remainingMs / (totalSeconds * 1000)));
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pointer-events-none">
+    <div className="fixed inset-x-0 bottom-0 z-40 px-3 pointer-events-none"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 76px)" }}>
       <div
         className={
           "pointer-events-auto max-w-2xl mx-auto rounded-2xl border shadow-2xl overflow-hidden transition-colors " +

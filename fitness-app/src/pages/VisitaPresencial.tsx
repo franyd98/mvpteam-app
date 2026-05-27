@@ -272,7 +272,7 @@ export default function VisitaPresencial({ client, onBack }: { client: Profile; 
       </div>
 
       {/* Botón fijo abajo */}
-      <div className="fixed bottom-0 left-0 right-0 bg-neutral-950 border-t border-neutral-800 px-4 py-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-neutral-950 border-t border-neutral-800 px-4 pt-3 footer-safe">
         <div className="max-w-2xl mx-auto">
           <button
             onClick={handleSave}

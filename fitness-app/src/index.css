@@ -13,6 +13,8 @@ html {
   /* Evita que iOS agrande el texto al girar */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Elimina el rebote de scroll en iOS a nivel raíz */
+  overscroll-behavior: none;
 }
 
 body {
@@ -24,9 +26,17 @@ body {
     "Segoe UI",
     Roboto,
     sans-serif;
-  /* Scroll suave global */
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: none;
+  /* Texto más nítido en pantallas retina */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Eliminar el flash azul / gris en tap (iOS & Android) */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;   /* evita menú largo-presión en iOS */
 }
 
 /* ── Safe areas (notch / Dynamic Island / home bar) ───────── */
@@ -52,26 +62,90 @@ body {
   scrollbar-width: none;
 }
 
+/* ── Barra de tabs con fade derecho (indica scroll horizontal) */
+.tabs-fade-right {
+  position: relative;
+}
+.tabs-fade-right::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, transparent, #0a0a0a);
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* ── Touch targets mínimos ────────────────────────────────── */
 button, [role="button"] {
-  /* iOS recomienda 44×44 px mínimo */
-  min-height: 36px;
+  min-height: 40px;
 }
 
 /* Evitar doble-tap zoom en botones en iOS */
-button {
+button, a, [role="button"] {
   touch-action: manipulation;
 }
 
 /* ── Inputs: deshabilitar zoom automático en iOS ──────────── */
 /* iOS hace zoom si el font-size del input < 16px */
-input, select, textarea {
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+select,
+textarea {
   font-size: 16px !important;
 }
 
-/* Pero en desktop queremos que hereden el tamaño normal */
+/* En desktop volvemos al tamaño natural */
 @media (min-width: 640px) {
-  input, select, textarea {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
     font-size: inherit !important;
   }
+}
+
+/* ── Range inputs ─────────────────────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: #333;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* ── Modales / bottom sheets: evitar scroll del body detrás ── */
+.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
 }

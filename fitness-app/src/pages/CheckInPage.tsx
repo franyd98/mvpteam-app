@@ -642,7 +642,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     ["perimetros",  "📏 Perímetros"],
     ["pliegues",    "📌 Pliegues"],
     ["fatiga",      "🔥 Fatiga"],
-    ["antropometria","📊 Antropometría"],
+    ["antropometria","📊 Antrop."],
     ["fotos",       "📷 Fotos"],
   ];
 
@@ -666,15 +666,21 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         </div>
       </header>
 
-      {/* Tabs — scrollables, sin scrollbar visible */}
-      <div className="flex gap-1.5 px-3 py-3 max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
-        {TABS.map(([t, label]) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={"shrink-0 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors " +
-              (tab === t ? "bg-white text-black" : "bg-neutral-800 text-neutral-400 active:bg-neutral-700")}>
-            {label}
-          </button>
-        ))}
+      {/* Tabs — scrollables con fade derecho */}
+      <div className="tabs-fade-right max-w-2xl mx-auto sticky top-[calc(env(safe-area-inset-top)+56px)] z-10"
+        style={{ background: "#030712" }}>
+        <div className="flex gap-1.5 px-3 py-2.5 overflow-x-auto scrollbar-hide">
+          {TABS.map(([t, label]) => (
+            <button key={t} onClick={() => setTab(t)}
+              className={"shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all select-none " +
+                (tab === t
+                  ? "bg-white text-black shadow-sm"
+                  : "text-neutral-400 active:bg-neutral-700")}
+              style={tab !== t ? { background: "#1a1a1a", border: "1px solid #2a2a2a" } : {}}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 space-y-4 pb-8">
