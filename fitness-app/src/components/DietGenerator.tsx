@@ -640,7 +640,7 @@ function planTotalMacros(plan: GeneratedMeal[], activeOptions: Record<string, nu
 // ── Componente ────────────────────────────────────────────────────────────────
 
 interface Props {
-  clientId:    string;
+  clientId?:   string;   // opcional — si vacío/undefined: modo plantilla (sin cliente)
   clientName?: string;
   onBack:      () => void;
   /** Modo cliente: oculta nombre/notas/guardar. Solo generación y exploración. */
@@ -648,11 +648,18 @@ interface Props {
 }
 
 export default function DietGenerator({ clientId, clientName, onBack, clientMode = false }: Props) {
+  const isTemplateMode = !clientId;
+
   // ── Macros del cliente ────────────────────────────────────────────
   const [macrosOn,  setMacrosOn]  = useState<DailyMacros | null>(null);
   const [macrosOff, setMacrosOff] = useState<DailyMacros | null>(null);
-  const [loadingMacros, setLoadingMacros] = useState(true);
+  const [loadingMacros, setLoadingMacros] = useState(!isTemplateMode);
   const [macroError,    setMacroError]    = useState(false);
+
+  // ── Formulario manual (modo plantilla) ───────────────────────────
+  const [tplProtein, setTplProtein] = useState("150");
+  const [tplCarbs,   setTplCarbs]   = useState("300");
+  const [tplFat,     setTplFat]     = useState("60");
 
   // ── Planes ON/OFF ─────────────────────────────────────────────────
   const [planOn,  setPlanOn]  = useState<GeneratedMeal[]>([]);
@@ -676,8 +683,9 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Cargar macros ─────────────────────────────────────────────────
+  // ── Cargar macros (solo si hay cliente) ──────────────────────────
   useEffect(() => {
+    if (isTemplateMode) return;   // modo plantilla: el admin introduce macros a mano
     (async () => {
       setLoadingMacros(true);
       const { data } = await supabase
@@ -711,6 +719,31 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
+
+  // ── Aplicar macros manuales y generar (modo plantilla) ───────────
+  const applyTemplateAndGenerate = () => {
+    const p = parseFloat(tplProtein) || 0;
+    const c = parseFloat(tplCarbs)   || 0;
+    const f = parseFloat(tplFat)     || 0;
+    const on: DailyMacros = { protein_g: p, carbs_g: c, fat_g: f, kcal: Math.round(p*4 + c*4 + f*9) };
+    const offCarbs = round1(c * (1 - offPct / 100));
+    const off: DailyMacros = {
+      protein_g: p, carbs_g: offCarbs, fat_g: f,
+      kcal: Math.round(p*4 + offCarbs*4 + f*9),
+    };
+    setMacrosOn(on);
+    setMacrosOff(off);
+    if (!planName) setPlanName("Plantilla nutricional");
+    const initOn  = generatePlan(on);
+    const initOff = generatePlan(off);
+    setPlanOn(initOn);
+    setPlanOff(initOff);
+    const init: Record<string, number> = {};
+    initOn.forEach(m => { init[m.mealId] = 0; });
+    setActiveOptions(init);
+    setGenerated(true);
+    setActiveTab("on");
+  };
 
   // Recalcular OFF al cambiar %
   useEffect(() => {
@@ -804,13 +837,16 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
         }
       }
 
-      // Asignar al cliente
-      await supabase.from("diet_assignments").upsert(
-        { client_id: clientId, plan_id: pid, active: true },
-        { onConflict: "client_id" },
-      );
-
-      showToast("✅ Plan guardado y asignado al cliente");
+      // Asignar al cliente (solo si hay cliente — no en modo plantilla)
+      if (clientId) {
+        await supabase.from("diet_assignments").upsert(
+          { client_id: clientId, plan_id: pid, active: true },
+          { onConflict: "client_id" },
+        );
+        showToast("✅ Plan guardado y asignado al cliente");
+      } else {
+        showToast("✅ Plantilla guardada correctamente");
+      }
       setTimeout(() => onBack(), 1500);
     } catch (e: any) {
       showToast(`❌ Error: ${e?.message ?? "desconocido"}`);
@@ -897,6 +933,96 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     );
   }
 
+  // Modo plantilla: mostrar formulario de macros manuales
+  if (isTemplateMode && !macrosOn) {
+    const tplKcal = Math.round((parseFloat(tplProtein)||0)*4 + (parseFloat(tplCarbs)||0)*4 + (parseFloat(tplFat)||0)*9);
+    return (
+      <div className="min-h-screen pb-28" style={{ background: "linear-gradient(160deg,#0A0A0A 80%,#1A0810 100%)" }}>
+        <header className="px-4 py-3 flex items-center gap-3 sticky top-0 z-10 header-safe"
+          style={{ background: "#0F0F0F", borderBottom: "1px solid #8B1A2F40" }}>
+          <button onClick={onBack}
+            className="w-9 h-9 rounded-lg text-neutral-300 flex items-center justify-center shrink-0"
+            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
+          <div>
+            <p className="text-white font-bold text-sm">✨ Generar plantilla</p>
+            <p className="text-neutral-500 text-xs">Introduce los macros objetivo del día ON</p>
+          </div>
+        </header>
+        <div className="max-w-2xl mx-auto px-4 pt-6 space-y-5">
+
+          <div className="rounded-2xl p-5 space-y-4" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+            <p className="text-white font-semibold text-sm">📊 Macros día ON</p>
+
+            {/* Inputs de macros */}
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { label: "💪 Proteína", val: tplProtein, set: setTplProtein, color: "text-red-400" },
+                { label: "🌾 Hidratos", val: tplCarbs,   set: setTplCarbs,   color: "text-amber-400" },
+                { label: "🥑 Grasa",    val: tplFat,     set: setTplFat,     color: "text-blue-400" },
+              ] as const).map(({ label, val, set, color }) => (
+                <div key={label} className="flex flex-col gap-1.5">
+                  <label className={`text-[10px] font-semibold uppercase tracking-wider ${color}`}>{label}</label>
+                  <div className="flex items-center gap-1">
+                    <input type="number" step="1" value={val}
+                      onChange={e => set(e.target.value)}
+                      className="w-full rounded-lg px-2 py-2.5 text-white text-sm font-bold text-center focus:outline-none"
+                      style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+                    <span className="text-neutral-600 text-xs shrink-0">g</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Kcal auto-calculadas */}
+            {tplKcal > 0 && (
+              <div className="flex items-center justify-center gap-2 py-2 rounded-xl"
+                style={{ background: "#0A0A0A", border: "1px solid #1A1A1A" }}>
+                <span className="text-neutral-500 text-xs uppercase tracking-wider">Total ON</span>
+                <span className="text-white font-bold text-lg">{tplKcal}</span>
+                <span className="text-neutral-500 text-xs">kcal</span>
+              </div>
+            )}
+
+            {/* Reducción OFF */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
+                Reducción HC en días OFF
+              </label>
+              <div className="flex gap-2">
+                {[10, 13, 15, 20].map(pct => (
+                  <button key={pct} onClick={() => setOffPct(pct)}
+                    className={"flex-1 py-2 rounded-lg text-xs font-medium transition-colors " +
+                      (offPct === pct ? "bg-white text-black" : "text-neutral-400")}
+                    style={offPct !== pct ? { background: "#1A1A1A", border: "1px solid #2A2A2A" } : {}}>
+                    −{pct}%
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Nombre del plan */}
+          <div className="rounded-2xl p-4 space-y-2" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+            <label className="text-[10px] uppercase tracking-wider text-neutral-500 block">Nombre de la plantilla</label>
+            <input value={planName} onChange={e => setPlanName(e.target.value)}
+              placeholder="Ej: Definición verano — Base"
+              className="w-full rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none"
+              style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+          </div>
+
+          <button
+            onClick={applyTemplateAndGenerate}
+            disabled={!tplKcal}
+            className="w-full py-4 rounded-xl text-white font-bold text-sm disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg,#8B1A2F,#C0392B)" }}>
+            ✨ Generar plantilla automáticamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Cliente sin macros configurados
   if (macroError || !macrosOn) {
     return (
       <div className="min-h-screen" style={{ background: "#0A0A0A" }}>
@@ -942,8 +1068,9 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
               ? "🎲 Genera tu menú del día"
               : generated ? (planName || "Plan generado") : "Generar Dieta"}
           </p>
-          {!clientMode && clientName && (
-            <p className="text-neutral-500 text-xs truncate">para {clientName}</p>
+          {!clientMode && (clientName
+            ? <p className="text-neutral-500 text-xs truncate">para {clientName}</p>
+            : isTemplateMode && <p className="text-neutral-500 text-xs truncate">plantilla sin cliente</p>
           )}
         </div>
         {!clientMode && generated && (
