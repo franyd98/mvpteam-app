@@ -200,8 +200,6 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     }
 
     const lastMc = currentDay.microcycles[currentDay.microcycles.length - 1];
-    const newExercises: EditorEx[] = [];
-    const newEdits: Record<number, { target_reps: string; target_rpe: string }> = {};
 
     for (const ex of lastMc?.exercises ?? []) {
       const { data: newMe, error: meError } = await supabase
@@ -219,8 +217,8 @@ export default function ProgramEditor({ programId, onBack }: Props) {
         continue;
       }
 
-      // Copiamos target_reps y target_rpe del microciclo anterior (no los dejamos a null)
-      const { data: setsData, error: setsError } = await supabase
+      // Copiamos target_reps y target_rpe del microciclo anterior
+      const { error: setsError } = await supabase
         .from("exercise_sets")
         .insert(
           ex.sets.map(s => ({
@@ -229,55 +227,18 @@ export default function ProgramEditor({ programId, onBack }: Props) {
             target_reps: s.target_reps,
             target_rpe: s.target_rpe,
           }))
-        )
-        .select();
+        );
 
       if (setsError) {
         console.error("[addMicrocycle] Error insertando series:", setsError, ex.name);
       }
-
-      const newSets: EditorSet[] = ((setsData ?? []) as any[])
-        .sort((a, b) => a.set_number - b.set_number)
-        .map(s => ({
-          id: s.id,
-          set_number: s.set_number,
-          target_reps: s.target_reps ?? null,
-          target_rpe: s.target_rpe ?? null,
-        }));
-
-      newSets.forEach(s => {
-        newEdits[s.id] = {
-          target_reps: s.target_reps ?? "",
-          target_rpe: s.target_rpe ?? "",
-        };
-      });
-      newExercises.push({
-        id: newMe.id,
-        exercise_id: ex.exercise_id,
-        name: ex.name,
-        muscle_group: ex.muscle_group,
-        order_index: ex.order_index,
-        sets: newSets,
-      });
     }
 
-    // Actualizar estado local al instante para que el admin lo vea sin esperar
-    setProgram(p => {
-      if (!p) return p;
-      return {
-        ...p,
-        days: p.days.map((d, i) =>
-          i !== selectedDayIdx ? d
-            : { ...d, microcycles: [...d.microcycles, { id: newMc.id, number: nextNum, exercises: newExercises }] }
-        ),
-      };
-    });
-    setSetEdits(prev => ({ ...prev, ...newEdits }));
+    // Recargamos desde BD — loadAll ya NO llama setLoading, así que el editor
+    // no se desmonta y selectedMcNum se puede actualizar correctamente justo después.
+    await loadAll();
     setSelectedMcNum(nextNum);
     setSaving(false);
-
-    // Sincronizamos con la BD para reflejar el estado real (sin pantalla de carga)
-    loadAll();
   };
 
   const removeMicrocycle = async () => {
