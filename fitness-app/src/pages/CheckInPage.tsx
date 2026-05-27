@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import heic2any from "heic2any";
 import MiniChart from "../components/MiniChart";
 import type { ChartPoint } from "../components/MiniChart";
 type Profile = { id: string; full_name: string; role: string };
-type Tab = "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos" | "progreso";
+type Tab = "hoy" | "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos" | "progreso";
+type EnergyLevel = "bajo" | "normal" | "alto" | "";
 
 const today = () => new Date().toISOString().split("T")[0];
 const fmtDate = (d: string) =>
@@ -354,7 +355,16 @@ function ProgresoTab({ weightLogs, foldLogs, perimLogs, foldKeys }: {
 
 // ── Componente principal ─────────────────────────────────────────
 export default function CheckInPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
-  const [tab, setTab] = useState<Tab>("peso");
+  const [tab, setTab] = useState<Tab>("hoy");
+
+  // ── REGISTRO RÁPIDO ───────────────────────────────────────────
+  const [quickDate,   setQuickDate]   = useState(today());
+  const [quickWeight, setQuickWeight] = useState("");
+  const [quickEnergy, setQuickEnergy] = useState<EnergyLevel>("");
+  const [quickSaved,  setQuickSaved]  = useState(false);
+  const [savingQuick, setSavingQuick] = useState(false);
+  const [quickPhotoFile, setQuickPhotoFile] = useState<File | null>(null);
+  const [quickPhotoReady, setQuickPhotoReady] = useState(false);
 
   // ── PESO ──────────────────────────────────────────────────────
   const [weightLogs, setWeightLogs] = useState<any[]>([]);
@@ -431,6 +441,75 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     setFoldLogs(fl.data ?? []);
     setFatigueLogs(f.data ?? []);
     setPhotoLogs(ph.data ?? []);
+  };
+
+  // ── Streak de días consecutivos con registro de peso ─────────
+  const streak = useMemo(() => {
+    if (!weightLogs.length) return 0;
+    const dates = new Set(weightLogs.map((l: any) => l.date));
+    let count = 0;
+    const d = new Date();
+    // Si hoy todavía no hay registro, empieza a contar desde ayer
+    if (!dates.has(d.toISOString().split("T")[0])) d.setDate(d.getDate() - 1);
+    while (true) {
+      const iso = d.toISOString().split("T")[0];
+      if (dates.has(iso)) { count++; d.setDate(d.getDate() - 1); }
+      else break;
+    }
+    return count;
+  }, [weightLogs]);
+
+  // ── Guardar registro rápido ───────────────────────────────────
+  const saveQuick = async () => {
+    if (!quickWeight && !quickPhotoFile) return;
+    setSavingQuick(true);
+
+    // 1. Guardar peso + energía
+    if (quickWeight && parseFloat(quickWeight) > 0) {
+      await supabase.from("weight_logs").insert({
+        client_id:      profile.id,
+        date:           quickDate,
+        weight_fasting: parseFloat(quickWeight),
+        notes:          quickEnergy ? `energy:${quickEnergy}` : null,
+      });
+    }
+
+    // 2. Subir foto si hay una elegida
+    if (quickPhotoFile) {
+      let file = quickPhotoFile;
+      try { file = await toJpeg(quickPhotoFile); } catch { /* usa original */ }
+      const ext  = file.type === "image/jpeg" ? "jpg" : (quickPhotoFile.name.split(".").pop() ?? "jpg");
+      const path = `${profile.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("checkin-photos")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (!upErr) {
+        const { data: urlData } = supabase.storage.from("checkin-photos").getPublicUrl(path);
+        await supabase.from("checkin_photos").insert({
+          client_id: profile.id,
+          url:       urlData.publicUrl,
+          taken_at:  quickDate,
+        });
+      }
+    }
+
+    await loadAll();
+    setQuickWeight("");
+    setQuickEnergy("");
+    setQuickPhotoFile(null);
+    setQuickPhotoReady(false);
+    setQuickSaved(true);
+    setSavingQuick(false);
+    setTimeout(() => setQuickSaved(false), 3000);
+  };
+
+  // Manejar selección de foto para registro rápido
+  const handleQuickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.files?.[0];
+    if (!raw) return;
+    setQuickPhotoFile(raw);
+    setQuickPhotoReady(true);
+    e.target.value = "";
   };
 
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -637,6 +716,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   ] as const;
 
   const TABS: [Tab, string][] = [
+    ["hoy",         "⚡ Hoy"],
     ["progreso",    "📈 Progreso"],
     ["peso",        "⚖️ Peso"],
     ["perimetros",  "📏 Perímetros"],
@@ -684,6 +764,131 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
       </div>
 
       <div className="max-w-2xl mx-auto px-4 space-y-4 pb-8">
+
+        {/* ── HOY — Registro rápido ── */}
+        {tab === "hoy" && (
+          <div className="space-y-4 pt-2">
+
+            {/* Streak */}
+            {streak > 0 && (
+              <div className="flex items-center gap-4 px-5 py-4 rounded-2xl"
+                style={{ background: "linear-gradient(135deg,#1A0808,#2A1008)", border: "1px solid #3A1A0A" }}>
+                <span className="text-4xl">🔥</span>
+                <div>
+                  <p className="text-white font-bold text-2xl leading-none">{streak}</p>
+                  <p className="text-neutral-400 text-sm">
+                    {streak === 1 ? "día registrado" : "días seguidos registrando"}
+                  </p>
+                </div>
+                {streak >= 7 && (
+                  <span className="ml-auto text-xs font-bold px-2 py-1 rounded-lg"
+                    style={{ background: "#8B1A2F20", color: "#C0394F" }}>
+                    🏅 {streak >= 30 ? "Mes completo" : streak >= 14 ? "2 semanas" : "1 semana"}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Formulario rápido */}
+            <div className="rounded-2xl p-5 space-y-5"
+              style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+
+              <p className="text-white font-semibold text-sm">⚡ Registro del día</p>
+
+              {/* Fecha */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500">Fecha</label>
+                <input type="date" value={quickDate} onChange={e => setQuickDate(e.target.value)}
+                  className="bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-neutral-500" />
+              </div>
+
+              {/* Peso */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500">Peso en ayunas (kg)</label>
+                <input type="number" step="0.1" value={quickWeight}
+                  onChange={e => setQuickWeight(e.target.value)}
+                  placeholder="ej. 74.5"
+                  className="bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-neutral-500 placeholder-neutral-700" />
+              </div>
+
+              {/* Energía */}
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-2">
+                  ¿Cómo te encuentras hoy?
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { id: "bajo"   as EnergyLevel, emoji: "😴", label: "Bajo",      bg: "#0E1020" },
+                    { id: "normal" as EnergyLevel, emoji: "😐", label: "Normal",    bg: "#0E1A0E" },
+                    { id: "alto"   as EnergyLevel, emoji: "🔥", label: "Con energía", bg: "#1A0E05" },
+                  ]).map(({ id, emoji, label, bg }) => {
+                    const active = quickEnergy === id;
+                    return (
+                      <button key={id} onClick={() => setQuickEnergy(active ? "" : id)}
+                        className="flex flex-col items-center gap-1.5 py-3.5 rounded-xl transition-all active:scale-95"
+                        style={active
+                          ? { background: bg, border: "2px solid #C0394F" }
+                          : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                        <span className="text-2xl">{emoji}</span>
+                        <span className="text-[11px] font-medium text-neutral-300 leading-tight text-center">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Foto */}
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-2">
+                  Foto del día (opcional)
+                </label>
+                <label className="flex items-center justify-center gap-2 py-3.5 rounded-xl cursor-pointer active:opacity-70 transition-opacity"
+                  style={{ background: "#1A1A1A", border: "1px dashed #333" }}>
+                  <span className="text-lg">📷</span>
+                  <span className="text-neutral-400 text-sm">
+                    {quickPhotoReady ? "✅ Foto lista" : "Elegir foto del carrete"}
+                  </span>
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={handleQuickPhoto} />
+                </label>
+              </div>
+
+              {/* Guardar */}
+              <button
+                onClick={saveQuick}
+                disabled={savingQuick || (!quickWeight && !quickPhotoFile)}
+                className="w-full py-4 rounded-xl text-sm font-bold transition-all disabled:opacity-40 active:scale-[0.98]"
+                style={quickSaved
+                  ? { background: "#0A2A1A", border: "1px solid #1A4A2A", color: "#4ADE80" }
+                  : { background: "#fff", color: "#000" }}>
+                {savingQuick ? "Guardando…" : quickSaved ? "✅ ¡Registrado!" : "💾 Guardar registro de hoy"}
+              </button>
+            </div>
+
+            {/* Últimos 5 registros */}
+            {weightLogs.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-1">Últimos registros</p>
+                {weightLogs.slice(0, 5).map((log: any) => {
+                  const energy = log.notes?.match(/energy:(\w+)/)?.[1] as EnergyLevel | undefined;
+                  const emojiMap: Record<string, string> = { bajo: "😴", normal: "😐", alto: "🔥" };
+                  return (
+                    <div key={log.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                      style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-neutral-400 text-xs">{fmtDate(log.date)}</p>
+                      </div>
+                      {energy && <span className="text-lg">{emojiMap[energy]}</span>}
+                      {log.weight_fasting && (
+                        <p className="text-white font-bold text-sm tabular-nums">{log.weight_fasting} kg</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── PROGRESO ── */}
         {tab === "progreso" && <ProgresoTab
