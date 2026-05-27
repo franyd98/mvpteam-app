@@ -4,7 +4,8 @@ import heic2any from "heic2any";
 import MiniChart from "../components/MiniChart";
 import type { ChartPoint } from "../components/MiniChart";
 type Profile = { id: string; full_name: string; role: string };
-type Tab = "hoy" | "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos" | "progreso";
+type Tab = "hoy" | "progreso" | "registro";
+type RegTab = "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos";
 type EnergyLevel = "bajo" | "normal" | "alto" | "";
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -356,6 +357,7 @@ function ProgresoTab({ weightLogs, foldLogs, perimLogs, foldKeys }: {
 // ── Componente principal ─────────────────────────────────────────
 export default function CheckInPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("hoy");
+  const [regTab, setRegTab] = useState<RegTab>("peso");
 
   // ── REGISTRO RÁPIDO ───────────────────────────────────────────
   const [quickDate,   setQuickDate]   = useState(today());
@@ -409,7 +411,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   // ── FATIGA ────────────────────────────────────────────────────
   const [fatigueLogs, setFatigueLogs] = useState<any[]>([]);
   const emptyFatigue = () => ({
-    date: today(), microcycle: "", session_type: "",
+    date: today(), microcycle: "", session_type: "", global_energy: "",
     shoulder: "0", chest: "0", bicep: "0", tricep: "0",
     back: "0", upper_back: "0", quad: "0", adductor: "0",
     hamstring: "0", glute: "0", calf: "0",
@@ -648,6 +650,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
       client_id: profile.id, date: ff.date,
       microcycle: ff.microcycle ? parseInt(ff.microcycle) : null,
       session_type: ff.session_type || null,
+      notes: ff.global_energy ? `energy:${ff.global_energy}` : null,
       shoulder: parseInt(ff.shoulder) || 0, chest: parseInt(ff.chest) || 0,
       bicep: parseInt(ff.bicep) || 0, tricep: parseInt(ff.tricep) || 0,
       back: parseInt(ff.back) || 0, upper_back: parseInt(ff.upper_back) || 0,
@@ -716,14 +719,18 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   ] as const;
 
   const TABS: [Tab, string][] = [
-    ["hoy",         "⚡ Hoy"],
-    ["progreso",    "📈 Progreso"],
-    ["peso",        "⚖️ Peso"],
-    ["perimetros",  "📏 Perímetros"],
-    ["pliegues",    "📌 Pliegues"],
-    ["fatiga",      "🔥 Fatiga"],
+    ["hoy",      "⚡ Hoy"],
+    ["progreso", "📈 Progreso"],
+    ["registro", "📋 Registro"],
+  ];
+
+  const REG_TABS: [RegTab, string][] = [
+    ["peso",         "⚖️ Peso"],
+    ["perimetros",   "📏 Perímetros"],
+    ["pliegues",     "📌 Pliegues"],
+    ["fatiga",       "🔥 Fatiga"],
     ["antropometria","📊 Antrop."],
-    ["fotos",       "📷 Fotos"],
+    ["fotos",        "📷 Fotos"],
   ];
 
   // Los 10 sitios de la fórmula Excel (Σ/1000 = % grasa)
@@ -761,6 +768,22 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
             </button>
           ))}
         </div>
+
+        {/* Sub-tabs de Registro semanal */}
+        {tab === "registro" && (
+          <div className="flex gap-1.5 px-3 pb-2.5 overflow-x-auto scrollbar-hide">
+            {REG_TABS.map(([t, label]) => (
+              <button key={t} onClick={() => setRegTab(t)}
+                className={"shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all select-none " +
+                  (regTab === t
+                    ? "bg-neutral-700 text-white"
+                    : "text-neutral-500 active:bg-neutral-800")}
+                style={regTab !== t ? { background: "#111", border: "1px solid #222" } : {}}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="max-w-2xl mx-auto px-4 space-y-4 pb-8">
@@ -899,7 +922,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         />}
 
         {/* ── PESO ── */}
-        {tab === "peso" && (
+        {tab === "registro" && regTab === "peso" && (
           <>
             <form onSubmit={saveWeight} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-3">
               <p className="text-white text-sm font-semibold">Nuevo registro</p>
@@ -944,7 +967,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         )}
 
         {/* ── PERÍMETROS ── */}
-        {tab === "perimetros" && (
+        {tab === "registro" && regTab === "perimetros" && (
           <>
             <form onSubmit={savePerim} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-4">
               <p className="text-white text-sm font-semibold">Nuevo registro</p>
@@ -1024,7 +1047,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         )}
 
         {/* ── PLIEGUES ── */}
-        {tab === "pliegues" && (
+        {tab === "registro" && regTab === "pliegues" && (
           <>
             <form onSubmit={saveFold} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-4">
               <p className="text-white text-sm font-semibold">Nuevo registro</p>
@@ -1116,10 +1139,38 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         )}
 
         {/* ── FATIGA ── */}
-        {tab === "fatiga" && (
+        {tab === "registro" && regTab === "fatiga" && (
           <>
             <form onSubmit={saveFatigue} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-4">
               <p className="text-white text-sm font-semibold">Nuevo registro · escala 0–10</p>
+
+              {/* ── Energía global (resumen rápido) ── */}
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-2">
+                  ¿Cómo te encuentras hoy?
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { id: "bajo",   emoji: "😴", label: "Bajo",       bg: "#0E1020" },
+                    { id: "normal", emoji: "😐", label: "Normal",     bg: "#0E1A0E" },
+                    { id: "alto",   emoji: "🔥", label: "Con energía", bg: "#1A0E05" },
+                  ] as const).map(({ id, emoji, label, bg }) => {
+                    const active = ff.global_energy === id;
+                    return (
+                      <button key={id} type="button"
+                        onClick={() => setFf(p => ({ ...p, global_energy: active ? "" : id }))}
+                        className="flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all active:scale-95"
+                        style={active
+                          ? { background: bg, border: "2px solid #C0394F" }
+                          : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                        <span className="text-2xl">{emoji}</span>
+                        <span className="text-[11px] font-medium text-neutral-300 leading-tight text-center">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 {dateInput(ff.date, d => setFf(p => ({ ...p, date: d })))}
                 <div className="flex flex-col gap-1">
@@ -1143,10 +1194,15 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                   ))}
                 </div>
               </div>
-              <div className="space-y-3 pt-1">
-                {muscleGroups.map(([key, label]) => (
-                  <FatigueSlider key={key} label={label} value={ff[key]} onChange={v => setFf(p => ({ ...p, [key]: v }))} />
-                ))}
+
+              {/* Separador visual antes de los sliders */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-3">Fatiga por grupo muscular (detalle)</p>
+                <div className="space-y-3">
+                  {muscleGroups.map(([key, label]) => (
+                    <FatigueSlider key={key} label={label} value={ff[key]} onChange={v => setFf(p => ({ ...p, [key]: v }))} />
+                  ))}
+                </div>
               </div>
               {saveBtn(savingF)}
             </form>
@@ -1158,6 +1214,11 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                     <div key={log.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-neutral-400 text-xs">{fmtDate(log.date)}</span>
+                        {(() => {
+                          const e = log.notes?.match(/energy:(\w+)/)?.[1];
+                          const em: Record<string, string> = { bajo: "😴", normal: "😐", alto: "🔥" };
+                          return e ? <span className="text-lg leading-none">{em[e]}</span> : null;
+                        })()}
                         {log.session_type && <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300">{log.session_type}</span>}
                         {log.microcycle && <span className="text-neutral-600 text-xs">Mc {log.microcycle}</span>}
                         <div className="flex-1" />
@@ -1191,7 +1252,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         )}
 
         {/* ── ANTROPOMETRÍA ── */}
-        {tab === "antropometria" && (
+        {tab === "registro" && regTab === "antropometria" && (
           <AntroTable
             weightLogs={[...weightLogs].sort((a, b) => a.date.localeCompare(b.date))}
             perimLogs={[...perimLogs].sort((a, b) => a.date.localeCompare(b.date))}
@@ -1200,7 +1261,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         )}
 
         {/* ── FOTOS ── */}
-        {tab === "fotos" && (
+        {tab === "registro" && regTab === "fotos" && (
           <div className="space-y-4">
             {/* Botón subir */}
             <label className={"w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-dashed transition-colors cursor-pointer " +
