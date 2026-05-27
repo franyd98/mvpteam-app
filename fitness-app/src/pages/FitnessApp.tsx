@@ -54,8 +54,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [logs, setLogs] = useState<SetLog[]>([]);
   const [settings, setSettings] = useSettings();
 
-  // Historial de cargas por ejercicio
+  // Historial de cargas por ejercicio + panel de stats global
   const [exHistory, setExHistory] = useState<{ name: string; dayId: string; exerciseIndex: number } | null>(null);
+  const [showStats, setShowStats] = useState(false);
 
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
@@ -307,7 +308,15 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     setEditing(null);
   };
 
-  const editingExercise = editing && microcycle ? microcycle.exercises[editing.exerciseIndex] : null;
+  // IMPORTANTE: se deriva del editing.dayId/microcycleNumber, NO del selector de UI.
+  // Así el SetLogger no desaparece si el usuario cambia de día/semana mientras el modal está abierto.
+  const editingExercise = (() => {
+    if (!editing || !program) return null;
+    const ed = program.days.find(d => d.id === editing.dayId)
+      ?.microcycles.find(m => m.number === editing.microcycleNumber)
+      ?.exercises[editing.exerciseIndex];
+    return ed ?? null;
+  })();
   const editingTargetSet = editingExercise?.sets.find((s) => s.number === editing?.setNumber);
   const editingExistingLog = editing
     ? findLatestLog(logs, editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
@@ -360,9 +369,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const unit = exLogs[0]?.unit ?? "kg";
 
     return (
-      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-3"
         onClick={() => setExHistory(null)}>
-        <div className="w-full max-w-lg rounded-t-3xl p-5 space-y-4"
+        <div className="w-full max-w-lg rounded-2xl p-5 space-y-4 max-h-[85dvh] overflow-y-auto"
           style={{ background: "#111", border: "1px solid #222" }}
           onClick={e => e.stopPropagation()}>
           <div className="flex items-start justify-between gap-3">
@@ -494,8 +503,14 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               </p>
             </div>
 
-            {/* Acciones del header: solo timer + ajustes */}
+            {/* Acciones del header */}
             <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => setShowStats(true)}
+                className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
+                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                title="Estadísticas"
+              >📊</button>
               <button
                 onClick={startRestTimer}
                 className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
@@ -602,15 +617,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                       <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">{ex.muscleGroup}</p>
                       <div className="flex items-center gap-2">
                         <h2 className="text-sm font-semibold text-white leading-snug line-clamp-2 flex-1" title={ex.name}>{ex.name}</h2>
-                        {/* Botón historial de cargas */}
-                        {logs.some(l => l.dayId === dayId && l.exerciseIndex === idx) && (
-                          <button
-                            onClick={() => setExHistory({ name: ex.name, dayId, exerciseIndex: idx })}
-                            className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-sm active:scale-95 transition-transform"
-                            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-                            title="Ver evolución de cargas"
-                          >📊</button>
-                        )}
                       </div>
                     </div>
                     {ex.videoRef && ex.videoRef !== "-" && (
@@ -774,6 +780,69 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
       {/* ── Modal: Historial de cargas ── */}
       {renderExHistoryModal()}
+
+      {/* ── Panel global de estadísticas ── */}
+      {showStats && program && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-3"
+          onClick={() => setShowStats(false)}>
+          <div className="w-full max-w-lg rounded-2xl overflow-hidden max-h-[85dvh] flex flex-col"
+            style={{ background: "#111", border: "1px solid #222" }}
+            onClick={e => e.stopPropagation()}>
+            {/* Cabecera fija */}
+            <div className="flex items-center justify-between p-4 border-b border-neutral-800 shrink-0">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-neutral-500">Estadísticas</p>
+                <p className="text-white font-bold text-sm">Historial de entrenamientos</p>
+              </div>
+              <button onClick={() => setShowStats(false)}
+                className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 active:text-white flex items-center justify-center text-sm shrink-0">✕</button>
+            </div>
+            {/* Lista de días y ejercicios */}
+            <div className="overflow-y-auto">
+              {program.days.map(d => {
+                const dayExercises = d.microcycles[0]?.exercises ?? [];
+                if (dayExercises.length === 0) return null;
+                return (
+                  <div key={d.id}>
+                    <p className="px-4 py-2 text-[10px] uppercase tracking-wider text-neutral-500 bg-neutral-900/60 sticky top-0">
+                      {d.name}
+                    </p>
+                    {dayExercises.map((ex, exIdx) => {
+                      const hasLogs = logs.some(l => l.dayId === d.id && l.exerciseIndex === exIdx);
+                      const latestLog = hasLogs
+                        ? [...logs.filter(l => l.dayId === d.id && l.exerciseIndex === exIdx)]
+                            .sort((a, b) => b.loggedAt.localeCompare(a.loggedAt))[0]
+                        : null;
+                      return (
+                        <button key={exIdx}
+                          onClick={() => { setShowStats(false); setExHistory({ name: ex.name, dayId: d.id, exerciseIndex: exIdx }); }}
+                          disabled={!hasLogs}
+                          className={"w-full flex items-center gap-3 px-4 py-3 border-b text-left transition-colors " +
+                            (hasLogs ? "active:bg-neutral-800" : "opacity-40 cursor-default")}
+                          style={{ borderColor: "#1a1a1a" }}>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-neutral-400 truncate">{ex.muscleGroup}</p>
+                            <p className="text-sm text-white font-medium truncate">{ex.name}</p>
+                          </div>
+                          {latestLog ? (
+                            <div className="text-right shrink-0">
+                              <p className="text-xs font-bold text-emerald-400">{latestLog.weight} {latestLog.unit} × {latestLog.reps}</p>
+                              <p className="text-[10px] text-neutral-600">último</p>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-neutral-600">Sin datos</span>
+                          )}
+                          {hasLogs && <span className="text-neutral-600 text-xs shrink-0">›</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de vídeo */}
       {videoUrl && (
