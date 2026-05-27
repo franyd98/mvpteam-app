@@ -102,7 +102,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               id, number,
               microcycle_exercises (
                 id, order_index, total_sets, note,
-                exercises ( id, name, muscle_group, video_ref ),
+                exercises ( id, name, muscle_group, video_ref, coach_note ),
                 exercise_sets ( id, set_number, target_reps, target_weight, target_rpe )
               )
             )
@@ -144,6 +144,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   muscleGroup: me.exercises?.muscle_group ?? "",
                   name: me.exercises?.name ?? "",
                   videoRef: me.exercises?.video_ref ?? null,
+                  coachNote: me.exercises?.coach_note ?? null,
                   totalSets: me.total_sets,
                   note: me.note ?? null,
                   sets: (me.exercise_sets ?? [])
@@ -743,6 +744,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       {editing && editingExercise && editingTargetSet && (
         <SetLogger
           exerciseName={editingExercise.name}
+          coachNote={editingExercise.coachNote}
           targetSet={editingTargetSet}
           setNumber={editing.setNumber}
           weightUnit={settings.weightUnit}

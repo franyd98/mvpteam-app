@@ -10,7 +10,7 @@ import MacroCalculator from "../components/MacroCalculator";
 import IngredientsAdmin from "../components/IngredientsAdmin";
 
 type Profile = { id: string; full_name: string; role: string };
-type CatalogEx = { id: number; muscle_group: string; name: string; video_ref: string | null };
+type CatalogEx = { id: number; muscle_group: string; name: string; video_ref: string | null; coach_note: string | null };
 type ProgramRow = { id: number; name: string; description: string | null };
 type Assignment = { client_id: string; program_id: number; program_name: string };
 type DietPlan = { id: string; name: string; kcal_on: number | null; kcal_off: number | null; notes: string | null };
@@ -82,7 +82,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [searchEx, setSearchEx] = useState("");
 
   // Edición inline de ejercicios
-  type EditingEx = { id: number; name: string; muscle_group: string; video_ref: string };
+  type EditingEx = { id: number; name: string; muscle_group: string; video_ref: string; coach_note: string };
   const [editingEx, setEditingEx] = useState<EditingEx | null>(null);
   const [savingEx, setSavingEx] = useState(false);
 
@@ -341,7 +341,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   };
 
   const startEditEx = (ex: CatalogEx) => {
-    setEditingEx({ id: ex.id, name: ex.name, muscle_group: ex.muscle_group, video_ref: ex.video_ref ?? "" });
+    setEditingEx({ id: ex.id, name: ex.name, muscle_group: ex.muscle_group, video_ref: ex.video_ref ?? "", coach_note: ex.coach_note ?? "" });
   };
 
   const saveExercise = async () => {
@@ -351,6 +351,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       name: editingEx.name.trim(),
       muscle_group: editingEx.muscle_group.trim(),
       video_ref: editingEx.video_ref.trim() || null,
+      coach_note: editingEx.coach_note.trim() || null,
     }).eq("id", editingEx.id);
     if (!error) {
       await loadExercises();
@@ -1257,6 +1258,12 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                               onChange={e => setEditingEx(prev => prev ? { ...prev, video_ref: e.target.value } : prev)}
                               className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white"
                               placeholder="Referencia video (opcional)" />
+                            <textarea
+                              value={editingEx.coach_note}
+                              onChange={e => setEditingEx(prev => prev ? { ...prev, coach_note: e.target.value } : prev)}
+                              rows={3}
+                              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white resize-none"
+                              placeholder="Nota técnica del entrenador (el cliente la verá durante el ejercicio)" />
                             <div className="flex gap-2 pt-1">
                               <button onClick={saveExercise} disabled={savingEx}
                                 className="flex-1 py-2 rounded-lg bg-white text-black text-xs font-bold hover:bg-neutral-200 disabled:opacity-40">
@@ -1272,6 +1279,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                           /* ── modo vista ── */
                           <div className="px-3 py-2.5 flex items-center gap-2">
                             <p className="text-white text-sm flex-1">{ex.name}</p>
+                            {ex.coach_note && <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">📝</span>}
                             {ex.video_ref && ex.video_ref !== "-" && <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">📹</span>}
                             <button onClick={() => startEditEx(ex)}
                               className="w-7 h-7 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white text-xs flex items-center justify-center shrink-0">

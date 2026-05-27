@@ -14,6 +14,7 @@ export type Exercise = {
   muscleGroup: string;
   name: string;
   videoRef: string | null;
+  coachNote: string | null;
   sets: ExerciseSet[];
   totalSets: number;
   note: string | null;

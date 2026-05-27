@@ -13,6 +13,7 @@ type Field = "weight" | "reps" | "rpe";
 
 type Props = {
   exerciseName: string;
+  coachNote?: string | null;
   targetSet: ExerciseSet;
   setNumber: number;
   weightUnit: WeightUnit;
@@ -30,6 +31,7 @@ type Props = {
 
 export default function SetLogger({
   exerciseName,
+  coachNote,
   targetSet,
   setNumber,
   weightUnit,
@@ -128,6 +130,11 @@ export default function SetLogger({
           <h2 className="text-base font-semibold text-white truncate">
             {exerciseName}
           </h2>
+          {coachNote && (
+            <p className="mt-1.5 text-xs text-amber-400 leading-snug">
+              📝 {coachNote}
+            </p>
+          )}
         </header>
 
         {/* Banner historial: muestra lo del microciclo anterior si existe */}
