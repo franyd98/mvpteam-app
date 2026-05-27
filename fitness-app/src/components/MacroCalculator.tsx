@@ -7,7 +7,6 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { ingredients, Ingredient } from "../data/ingredients";
 
 // ── Tipos ─────────────────────────────────────────────────────────
 
@@ -23,24 +22,6 @@ interface MacroResult {
   fat_kcal: number;
 }
 
-interface MealFood {
-  food: Ingredient;
-  grams: number;
-  kcal: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
-
-interface Meal {
-  name: string;
-  emoji: string;
-  foods: MealFood[];
-  totalKcal: number;
-  totalProtein: number;
-  totalCarbs: number;
-  totalFat: number;
-}
 
 // ── Constantes ────────────────────────────────────────────────────
 
@@ -77,46 +58,9 @@ const OFF_REDUCTIONS = [
   { label: "−20%", value: 0.20 },
 ];
 
-// Distribución de macros por comida (% del total diario)
-const MEAL_DIST: [string, string, number, number, number][] = [
-  ["Comida 1", "🌅",  20, 25, 10],
-  ["Comida 2", "☕",  15, 20,  5],
-  ["Comida 3", "🍽️", 25, 30, 35],
-  ["Comida 4", "🫐",  20, 15, 15],
-  ["Comida 5", "🌙",  20, 10, 35],
-];
-
-const PROTEIN_CATS = ["lean_protein", "fatty_protein"] as const;
-const CARB_CATS    = ["clean_carb", "protein_carb"] as const;
-const FAT_CATS     = ["fat"] as const;
-const FRUIT_CATS   = ["fruit"] as const;
-
 // ── Helpers ───────────────────────────────────────────────────────
 
 function round1(n: number) { return Math.round(n * 10) / 10; }
-
-function gramsFor(food: Ingredient, key: "protein" | "carbs" | "fat", targetG: number): number {
-  const per100 = food[key];
-  if (!per100 || per100 <= 0) return 0;
-  return Math.round((targetG / per100) * 100);
-}
-
-function pick(cats: readonly string[], mealIdx: number): Ingredient | null {
-  const pool = ingredients.filter(i => cats.includes(i.category));
-  if (!pool.length) return null;
-  return pool[mealIdx % pool.length];
-}
-
-function mealFood(food: Ingredient, grams: number): MealFood {
-  const f = grams / 100;
-  return {
-    food, grams,
-    kcal:    round1(food.kcal    * f),
-    protein: round1(food.protein * f),
-    carbs:   round1(food.carbs   * f),
-    fat:     round1(food.fat     * f),
-  };
-}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-ES", {
@@ -159,51 +103,6 @@ function calcMacros(
   };
 }
 
-// ── Generador de plan ─────────────────────────────────────────────
-
-function generatePlan(macros: MacroResult): Meal[] {
-  return MEAL_DIST.map(([name, emoji, pPct, hcPct, fPct], idx) => {
-    const targetProtein = round1(macros.protein_g * pPct / 100);
-    const targetCarbs   = round1(macros.carbs_g   * hcPct / 100);
-    const targetFat     = round1(macros.fat_g     * fPct  / 100);
-
-    const foods: MealFood[] = [];
-
-    const protFood = pick(PROTEIN_CATS, idx + 3);
-    if (protFood && targetProtein > 0) {
-      const g = gramsFor(protFood, "protein", targetProtein);
-      if (g > 0) foods.push(mealFood(protFood, g));
-    }
-
-    const carbCats = (idx < 2) ? ["protein_carb", "clean_carb"] : CARB_CATS;
-    const carbFood = pick(carbCats as readonly string[], idx + 7);
-    if (carbFood && targetCarbs > 0) {
-      const g = gramsFor(carbFood, "carbs", targetCarbs);
-      if (g > 0) foods.push(mealFood(carbFood, g));
-    }
-
-    if (idx >= 2 && targetFat > 0) {
-      const fatFood = pick(FAT_CATS, idx);
-      if (fatFood) {
-        const g = gramsFor(fatFood, "fat", targetFat);
-        if (g > 0) foods.push(mealFood(fatFood, g));
-      }
-    }
-
-    if ([0, 2, 4].includes(idx)) {
-      const fruitFood = pick(FRUIT_CATS, idx + 1);
-      if (fruitFood) foods.push(mealFood(fruitFood, 125));
-    }
-
-    const totalKcal    = round1(foods.reduce((s, f) => s + f.kcal, 0));
-    const totalProtein = round1(foods.reduce((s, f) => s + f.protein, 0));
-    const totalCarbs   = round1(foods.reduce((s, f) => s + f.carbs, 0));
-    const totalFat     = round1(foods.reduce((s, f) => s + f.fat, 0));
-
-    return { name, emoji, foods, totalKcal, totalProtein, totalCarbs, totalFat };
-  });
-}
-
 // ── Componente ────────────────────────────────────────────────────
 
 interface Props {
@@ -234,10 +133,7 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
 
   const [result,         setResult]         = useState<MacroResult | null>(null);
   const [resultOff,      setResultOff]      = useState<MacroResult | null>(null);
-  const [plan,           setPlan]           = useState<Meal[] | null>(null);
-  const [planOff,        setPlanOff]        = useState<Meal[] | null>(null);
   const [activeDayTab,   setActiveDayTab]   = useState<"on" | "off">("on");
-  const [showPlan,       setShowPlan]       = useState(false);
   const [saving,         setSaving]         = useState(false);
   const [savedAt,        setSavedAt]        = useState<string | null>(null);
   const [loadingData,    setLoadingData]    = useState(false);
@@ -275,7 +171,6 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
   useEffect(() => {
     if (!canCalc) {
       setResult(null); setResultOff(null);
-      setPlan(null);   setPlanOff(null);
       return;
     }
     const r = calcMacros(
@@ -289,9 +184,6 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
     );
     setResult(r);
     setResultOff(rOff);
-    setPlan(generatePlan(r));
-    setPlanOff(generatePlan(rOff));
-    setShowPlan(false);
   }, [sex, age, height, weight, activityFactor, proteinMult, fatMult, goal, offReduction]);
 
   const handleSave = async () => {
@@ -328,7 +220,6 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
     : null;
 
   const activeResult = activeDayTab === "on" ? result : resultOff;
-  const activePlan   = activeDayTab === "on" ? plan   : planOff;
 
   const pctBar = activeResult ? {
     p: Math.round(activeResult.protein_kcal / activeResult.tdee * 100),
@@ -562,14 +453,14 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
           {/* Tabs ON / OFF */}
           <div className="flex gap-1 p-1 bg-neutral-900 rounded-xl border border-neutral-800">
             <button
-              onClick={() => { setActiveDayTab("on"); setShowPlan(false); }}
+              onClick={() => setActiveDayTab("on")}
               className={"flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors " +
                 (activeDayTab === "on" ? "bg-white text-black" : "text-neutral-400 active:bg-neutral-800")}>
               💪 Día ON
               <span className="block text-xs font-normal mt-0.5 text-neutral-500">{result.tdee} kcal</span>
             </button>
             <button
-              onClick={() => { setActiveDayTab("off"); setShowPlan(false); }}
+              onClick={() => setActiveDayTab("off")}
               className={"flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors " +
                 (activeDayTab === "off" ? "bg-white text-black" : "text-neutral-400 active:bg-neutral-800")}>
               😴 Día OFF
@@ -719,87 +610,6 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
             </div>
           )}
 
-          {/* Plan de ejemplo */}
-          <button
-            onClick={() => setShowPlan(p => !p)}
-            className="w-full py-3 rounded-xl bg-neutral-800 text-white text-sm font-medium active:bg-neutral-700">
-            {showPlan
-              ? `▲ Ocultar plan ${activeDayTab === "on" ? "ON" : "OFF"}`
-              : `✨ Ver plan diario de ejemplo (${activeDayTab === "on" ? "💪 Día ON" : "😴 Día OFF"})`}
-          </button>
-
-          {showPlan && activePlan && (
-            <div className="space-y-3">
-              <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-1">
-                Plan de ejemplo · {activeDayTab === "on" ? "💪 Día ON" : "😴 Día OFF"} · ajustar según gustos
-              </p>
-
-              {activePlan.map((meal, i) => (
-                <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{meal.emoji}</span>
-                      <p className="text-white text-sm font-semibold">{meal.name}</p>
-                    </div>
-                    <p className="text-neutral-400 text-xs">{meal.totalKcal} kcal</p>
-                  </div>
-                  <div className="space-y-2 mb-3">
-                    {meal.foods.map((mf, j) => (
-                      <div key={j} className="flex items-center justify-between">
-                        <div>
-                          <p className="text-neutral-200 text-xs">{mf.food.name}</p>
-                          <p className="text-neutral-600 text-[10px]">{mf.grams} g</p>
-                        </div>
-                        <div className="flex gap-2 text-[10px]">
-                          <span className="text-blue-400">{mf.protein}g P</span>
-                          <span className="text-amber-400">{mf.carbs}g HC</span>
-                          <span className="text-rose-400">{mf.fat}g G</span>
-                        </div>
-                      </div>
-                    ))}
-                    {[2, 4].includes(i) && (
-                      <div className="flex items-center justify-between opacity-60">
-                        <p className="text-neutral-400 text-xs">🥦 Verdura variada (libre)</p>
-                        <p className="text-neutral-600 text-[10px]">100–400 g</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-3 pt-2 border-t border-neutral-800 text-[10px]">
-                    <span className="text-blue-400">{meal.totalProtein}g P</span>
-                    <span className="text-amber-400">{meal.totalCarbs}g HC</span>
-                    <span className="text-rose-400">{meal.totalFat}g G</span>
-                  </div>
-                </div>
-              ))}
-
-              {/* Objetivo diario — mostramos el TARGET de la dieta, no la suma de los alimentos ilustrativos */}
-              {activeResult && (
-                <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Objetivo diario</p>
-                  <p className="text-[9px] text-neutral-600 mb-3">
-                    Los alimentos del plan son orientativos — ajusta cantidades hasta alcanzar estos valores.
-                  </p>
-                  <div className="grid grid-cols-4 gap-2 text-center">
-                    {[
-                      { label: "Kcal",     val: String(activeResult.tdee),                     color: "text-white" },
-                      { label: "Proteína", val: activeResult.protein_g + "g",                  color: "text-blue-400" },
-                      { label: "Hidratos", val: activeResult.carbs_g   + "g",                  color: "text-amber-400" },
-                      { label: "Grasa",    val: activeResult.fat_g     + "g",                  color: "text-rose-400" },
-                    ].map(t => (
-                      <div key={t.label}>
-                        <p className={`text-base font-bold ${t.color}`}>{t.val}</p>
-                        <p className="text-[9px] text-neutral-500">{t.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <p className="text-[10px] text-neutral-600 px-1 text-center">
-                Este plan es orientativo. El entrenador ajusta alimentos y cantidades en el plan oficial.
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>
