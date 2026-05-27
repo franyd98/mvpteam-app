@@ -281,46 +281,70 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   };
 
   const handleDuplicate = async (prog: ProgramRow) => {
+    showToast("⏳ Duplicando...");
+
     // 1. Crear programa copia
-    const { data: newProg } = await supabase.from("programs")
+    const { data: newProg, error: progErr } = await supabase.from("programs")
       .insert({ name: prog.name + " (copia)", description: prog.description, created_by: profile.id })
       .select().single();
-    if (!newProg) { showToast("Error al duplicar"); return; }
+    if (!newProg || progErr) { showToast("❌ Error al duplicar"); return; }
 
     // 2. Cargar estructura completa del original
-    const { data: fullProg } = await supabase.from("programs").select(`
+    // OJO: NO incluir target_weight — esa columna no existe en exercise_sets
+    const { data: fullProg, error: fetchErr } = await supabase.from("programs").select(`
       program_days ( id, name, order_index, optional,
         microcycles ( id, number,
           microcycle_exercises ( id, order_index, total_sets, note, exercise_id,
-            exercise_sets ( set_number, target_reps, target_weight, target_rpe )
+            exercise_sets ( set_number, target_reps, target_rpe )
           )
         )
       )
     `).eq("id", prog.id).single();
 
-    // 3. Copiar días, microciclos, ejercicios, series
+    if (fetchErr) {
+      console.error("[handleDuplicate] Error cargando programa original:", fetchErr);
+      showToast("❌ Error al leer el programa original");
+      return;
+    }
+
+    // 3. Copiar días → microciclos → ejercicios → series
     for (const day of (fullProg as any)?.program_days ?? []) {
       const { data: newDay } = await supabase.from("program_days")
         .insert({ program_id: newProg.id, name: day.name, order_index: day.order_index, optional: day.optional })
         .select().single();
       if (!newDay) continue;
+
       for (const mc of day.microcycles ?? []) {
-        const { data: newMc } = await supabase.from("microcycles").insert({ day_id: newDay.id, number: mc.number }).select().single();
+        const { data: newMc } = await supabase.from("microcycles")
+          .insert({ day_id: newDay.id, number: mc.number })
+          .select().single();
         if (!newMc) continue;
+
         for (const me of mc.microcycle_exercises ?? []) {
           const { data: newMe } = await supabase.from("microcycle_exercises")
             .insert({ microcycle_id: newMc.id, exercise_id: me.exercise_id, order_index: me.order_index, total_sets: me.total_sets, note: me.note })
             .select().single();
           if (!newMe) continue;
+
           if (me.exercise_sets?.length > 0) {
             await supabase.from("exercise_sets").insert(
-              me.exercise_sets.map((s: any) => ({ microcycle_exercise_id: newMe.id, set_number: s.set_number, target_reps: s.target_reps, target_weight: s.target_weight, target_rpe: s.target_rpe }))
+              me.exercise_sets.map((s: any) => ({
+                microcycle_exercise_id: newMe.id,
+                set_number: s.set_number,
+                target_reps: s.target_reps,
+                target_rpe: s.target_rpe,
+              }))
             );
           }
         }
       }
     }
-    await loadPrograms();
+
+    // 4. Añadir el programa nuevo a la lista inmediatamente (sin llamar loadPrograms)
+    setPrograms(prev =>
+      [...prev, { id: newProg.id, name: newProg.name, description: newProg.description }]
+        .sort((a, b) => a.name.localeCompare(b.name, "es"))
+    );
     showToast(`✅ "${prog.name}" duplicado`);
   };
 
