@@ -667,39 +667,33 @@ export default function ProgramEditor({ programId, onBack }: Props) {
             const isDragging = dragFromIdx === idx;
             const isOver = dragOverIdx === idx && dragFromIdx !== idx;
             return (
-              <div key={d.id} className="relative group">
-                {/* Chip principal — draggable */}
+              <div
+                key={d.id}
+                draggable
+                onDragStart={() => { setDragFromIdx(idx); }}
+                onDragEnd={() => { setDragFromIdx(null); setDragOverIdx(null); }}
+                onDragOver={e => { e.preventDefault(); setDragOverIdx(idx); }}
+                onDrop={e => { e.preventDefault(); if (dragFromIdx !== null) moveDay(dragFromIdx, idx); setDragFromIdx(null); setDragOverIdx(null); }}
+                className={"flex items-center rounded-lg text-xs font-medium cursor-grab active:cursor-grabbing select-none transition-all " +
+                  (isSelected ? "bg-white text-black " : "bg-neutral-800 text-neutral-300 ") +
+                  (isDragging ? "opacity-40 " : "") +
+                  (isOver ? "ring-2 ring-blue-500 " : "")}
+                style={{ height: 38 }}
+              >
                 <button
-                  draggable
-                  onDragStart={() => { setDragFromIdx(idx); }}
-                  onDragEnd={() => { setDragFromIdx(null); setDragOverIdx(null); }}
-                  onDragOver={e => { e.preventDefault(); setDragOverIdx(idx); }}
-                  onDrop={e => { e.preventDefault(); if (dragFromIdx !== null) moveDay(dragFromIdx, idx); setDragFromIdx(null); setDragOverIdx(null); }}
                   onClick={() => { setSelectedDayIdx(idx); setSelectedMcNum(1); }}
-                  className={"px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-grab active:cursor-grabbing select-none pr-5 " +
-                    (isSelected ? "bg-white text-black " : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 ") +
-                    (isDragging ? "opacity-40 " : "") +
-                    (isOver ? "ring-2 ring-blue-500 " : "")}
+                  className="pl-3 pr-1.5 h-full flex items-center"
+                  style={{ background: "transparent", fontSize: "inherit", color: "inherit" }}
                 >
                   {d.name}
                 </button>
-                {/* Botón ✕ borrar (aparece siempre en esquina) */}
                 <button
                   onClick={e => { e.stopPropagation(); deleteDay(d.id, idx); }}
                   disabled={saving}
-                  className="absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold transition-opacity disabled:opacity-30"
-                  style={{ background: "#C0394F", color: "#fff" }}
+                  className="pr-2 pl-0.5 h-full flex items-center disabled:opacity-30"
+                  style={{ background: "transparent", color: isSelected ? "#999" : "#555", fontSize: 15, lineHeight: 1 }}
                   title="Eliminar día"
                 >×</button>
-                {/* Botón ✏️ renombrar (aparece al seleccionar) */}
-                {isSelected && !isDragging && (
-                  <button
-                    onClick={() => { setEditingDayId(d.id); setDayNameInput(d.name); }}
-                    className="absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-opacity"
-                    style={{ background: "#3a3a3a", color: "#aaa" }}
-                    title="Renombrar"
-                  >✏</button>
-                )}
               </div>
             );
           })}
