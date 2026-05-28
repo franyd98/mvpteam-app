@@ -289,7 +289,11 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       .select().single();
     if (!newProg || progErr) { showToast("❌ Error al duplicar"); return; }
 
-    // 2. Cargar estructura completa del original y copiarla
+    // 2. Mostrar en lista inmediatamente (sin esperar a copiar estructura)
+    setPrograms(prev => [...prev, { id: newProg.id, name: newProg.name, description: newProg.description }]);
+    showToast(`✅ "${prog.name}" duplicado`);
+
+    // 3. Cargar estructura completa del original
     const { data: fullProg, error: fetchErr } = await supabase.from("programs").select(`
       program_days ( id, name, order_index, optional,
         microcycles ( id, number,
@@ -299,44 +303,46 @@ export default function AdminPage({ profile }: { profile: Profile }) {
         )
       )
     `).eq("id", prog.id).single();
+    if (fetchErr || !fullProg) return;
 
-    if (!fetchErr && fullProg) {
-      for (const day of (fullProg as any).program_days ?? []) {
+    // 4. Copiar días en paralelo
+    await Promise.all(
+      ((fullProg as any).program_days ?? []).map(async (day: any) => {
         const { data: newDay } = await supabase.from("program_days")
           .insert({ program_id: newProg.id, name: day.name, order_index: day.order_index, optional: day.optional })
           .select().single();
-        if (!newDay) continue;
+        if (!newDay) return;
 
-        for (const mc of day.microcycles ?? []) {
-          const { data: newMc } = await supabase.from("microcycles")
-            .insert({ day_id: newDay.id, number: mc.number })
-            .select().single();
-          if (!newMc) continue;
-
-          for (const me of mc.microcycle_exercises ?? []) {
-            const { data: newMe } = await supabase.from("microcycle_exercises")
-              .insert({ microcycle_id: newMc.id, exercise_id: me.exercise_id, order_index: me.order_index, total_sets: me.total_sets })
+        await Promise.all(
+          (day.microcycles ?? []).map(async (mc: any) => {
+            const { data: newMc } = await supabase.from("microcycles")
+              .insert({ day_id: newDay.id, number: mc.number })
               .select().single();
-            if (!newMe) continue;
+            if (!newMc) return;
 
-            if (me.exercise_sets?.length > 0) {
-              await supabase.from("exercise_sets").insert(
-                me.exercise_sets.map((s: any) => ({
-                  microcycle_exercise_id: newMe.id,
-                  set_number: s.set_number,
-                  target_reps: s.target_reps,
-                  target_rpe: s.target_rpe,
-                }))
-              );
-            }
-          }
-        }
-      }
-    }
+            await Promise.all(
+              (mc.microcycle_exercises ?? []).map(async (me: any) => {
+                const { data: newMe } = await supabase.from("microcycle_exercises")
+                  .insert({ microcycle_id: newMc.id, exercise_id: me.exercise_id, order_index: me.order_index, total_sets: me.total_sets })
+                  .select().single();
+                if (!newMe) return;
 
-    // 3. Recargar lista igual que handleDeleteProgram (patrón que funciona)
-    await loadPrograms();
-    showToast(`✅ "${prog.name}" duplicado`);
+                if (me.exercise_sets?.length > 0) {
+                  await supabase.from("exercise_sets").insert(
+                    me.exercise_sets.map((s: any) => ({
+                      microcycle_exercise_id: newMe.id,
+                      set_number: s.set_number,
+                      target_reps: s.target_reps,
+                      target_rpe: s.target_rpe,
+                    }))
+                  );
+                }
+              })
+            );
+          })
+        );
+      })
+    );
   };
 
   const handleAddExercise = async (e: React.FormEvent) => {
