@@ -338,8 +338,17 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       }
     }
 
-    // 4. Recargar todo — igual que hace el refresco de página
-    await loadAll();
+    // 4. Recargar lista de programas directamente (sin pasar por loadAll)
+    console.log("[DUP] Iniciando recarga directa de programas...");
+    setLoading(true);
+    const { data: freshPrograms } = await supabase
+      .from("programs")
+      .select("id, name, description")
+      .order("name");
+    console.log("[DUP] Programas recibidos:", freshPrograms?.length, freshPrograms?.map(p => p.name));
+    setPrograms(freshPrograms ?? []);
+    setLoading(false);
+    console.log("[DUP] ✅ setPrograms y setLoading(false) llamados");
     showToast(`✅ "${prog.name}" duplicado`);
   };
 
