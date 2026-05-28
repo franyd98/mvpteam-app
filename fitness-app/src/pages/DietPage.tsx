@@ -74,13 +74,17 @@ function IngSelect({ slot, value, onChange }: {
 }
 
 // ── Fila de ingrediente (slot principal) ─────────────────────────
-function SlotRow({ label, color, slot, entry, onChange, onClear, macroTarget, numMeals }: {
+function SlotRow({ label, color, slot, entry, onChange, onClear, macroTarget, numMeals, siblProt, siblHyd }: {
   label: string; color: string; slot: MainSlot;
   entry: SlotEntry | null;
   onChange: (e: SlotEntry) => void;
   onClear: () => void;
   macroTarget?: number | null;
   numMeals?: number;
+  /** fat already contributed by the proteína slot this meal (for grasa slot) */
+  siblProt?: SlotEntry | null;
+  /** fat already contributed by the hidrato slot this meal (for grasa slot) */
+  siblHyd?: SlotEntry | null;
 }) {
   const macros = entry ? calcMacros(entry.ingId, entry.grams) : null;
 
@@ -88,7 +92,16 @@ function SlotRow({ label, color, slot, entry, onChange, onClear, macroTarget, nu
     if (!macroTarget || !numMeals || numMeals === 0) return entry?.grams ?? 100;
     const ing = INGREDIENTS.find(i => i.id === ingId);
     if (!ing) return entry?.grams ?? 100;
-    const perMeal = macroTarget / numMeals;
+    let perMeal = macroTarget / numMeals;
+
+    // For the fat slot, subtract fat that already comes from protein and carb foods
+    if (slot === "grasa") {
+      const fatFromProt = siblProt?.ingId ? calcMacros(siblProt.ingId, siblProt.grams).fat : 0;
+      const fatFromHyd  = siblHyd?.ingId  ? calcMacros(siblHyd.ingId,  siblHyd.grams).fat  : 0;
+      perMeal = Math.max(0, perMeal - fatFromProt - fatFromHyd);
+      if (perMeal <= 0) return 10;
+    }
+
     const per100 = slot === "proteina" ? ing.protein : slot === "hidrato" ? ing.carbs : ing.fat;
     if (per100 <= 0) return entry?.grams ?? 100;
     return Math.max(10, Math.min(Math.round((perMeal / per100) * 100), 600));
@@ -489,28 +502,31 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             ))}
           </div>
 
-          {/* Progreso diario */}
+          {/* Progreso diario — sticky bajo el header */}
           {(target.kcal || target.protein) && (
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3 space-y-3">
-              <div className="flex justify-between items-center">
-                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">
-                  Progreso · Día {dayType.toUpperCase()}
-                </p>
-                <p className="text-xs font-bold text-white">
-                  {dailyTotal.kcal.toFixed(0)}
-                  {target.kcal ? ` / ${target.kcal} kcal` : " kcal"}
-                </p>
-              </div>
-              {/* Barra de kcal */}
-              <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
-                <div className="h-full bg-white rounded-full transition-all"
-                  style={{ width: target.kcal ? `${Math.min((dailyTotal.kcal / target.kcal) * 100, 100)}%` : "0%" }} />
-              </div>
-              {/* Barras de macros */}
-              <div className="flex gap-3">
-                <MacroBar label="P" value={dailyTotal.protein} target={target.protein ?? null} color="text-red-400" />
-                <MacroBar label="H" value={dailyTotal.carbs}   target={target.carbs ?? null}   color="text-amber-400" />
-                <MacroBar label="G" value={dailyTotal.fat}     target={target.fat ?? null}     color="text-blue-400" />
+            <div className="sticky z-10" style={{ top: 100 }}>
+              <div className="rounded-2xl px-4 py-3 space-y-3"
+                style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", boxShadow: "0 4px 24px rgba(0,0,0,0.7)" }}>
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] text-neutral-500 uppercase tracking-wider">
+                    Progreso · Día {dayType.toUpperCase()}
+                  </p>
+                  <p className="text-xs font-bold text-white">
+                    {dailyTotal.kcal.toFixed(0)}
+                    {target.kcal ? ` / ${target.kcal} kcal` : " kcal"}
+                  </p>
+                </div>
+                {/* Barra de kcal */}
+                <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-white rounded-full transition-all"
+                    style={{ width: target.kcal ? `${Math.min((dailyTotal.kcal / target.kcal) * 100, 100)}%` : "0%" }} />
+                </div>
+                {/* Barras de macros */}
+                <div className="flex gap-3">
+                  <MacroBar label="P" value={dailyTotal.protein} target={target.protein ?? null} color="text-red-400" />
+                  <MacroBar label="H" value={dailyTotal.carbs}   target={target.carbs ?? null}   color="text-amber-400" />
+                  <MacroBar label="G" value={dailyTotal.fat}     target={target.fat ?? null}     color="text-blue-400" />
+                </div>
               </div>
             </div>
           )}
@@ -589,6 +605,8 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                         ? clientMacros?.fat_g
                         : (clientMacros?.fat_off_g ?? clientMacros?.fat_g)}
                       numMeals={filteredMeals.length || 1}
+                      siblProt={ms.proteina}
+                      siblHyd={ms.hidrato}
                     />
 
                     {/* Extras */}
