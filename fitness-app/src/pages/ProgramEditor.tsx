@@ -676,7 +676,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                   onDragOver={e => { e.preventDefault(); setDragOverIdx(idx); }}
                   onDrop={e => { e.preventDefault(); if (dragFromIdx !== null) moveDay(dragFromIdx, idx); setDragFromIdx(null); setDragOverIdx(null); }}
                   onClick={() => { setSelectedDayIdx(idx); setSelectedMcNum(1); }}
-                  className={"px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-grab active:cursor-grabbing select-none pr-6 " +
+                  className={"px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-grab active:cursor-grabbing select-none pr-5 " +
                     (isSelected ? "bg-white text-black " : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 ") +
                     (isDragging ? "opacity-40 " : "") +
                     (isOver ? "ring-2 ring-blue-500 " : "")}
@@ -687,7 +687,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                 <button
                   onClick={e => { e.stopPropagation(); deleteDay(d.id, idx); }}
                   disabled={saving}
-                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold transition-opacity disabled:opacity-30"
+                  className="absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold transition-opacity disabled:opacity-30"
                   style={{ background: "#C0394F", color: "#fff" }}
                   title="Eliminar día"
                 >×</button>
