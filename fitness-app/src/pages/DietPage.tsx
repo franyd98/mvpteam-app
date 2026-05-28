@@ -74,20 +74,32 @@ function IngSelect({ slot, value, onChange }: {
 }
 
 // ── Fila de ingrediente (slot principal) ─────────────────────────
-function SlotRow({ label, color, slot, entry, onChange, onClear }: {
+function SlotRow({ label, color, slot, entry, onChange, onClear, macroTarget, numMeals }: {
   label: string; color: string; slot: MainSlot;
   entry: SlotEntry | null;
   onChange: (e: SlotEntry) => void;
   onClear: () => void;
+  macroTarget?: number | null;
+  numMeals?: number;
 }) {
   const macros = entry ? calcMacros(entry.ingId, entry.grams) : null;
+
+  const autoGrams = (ingId: string): number => {
+    if (!macroTarget || !numMeals || numMeals === 0) return entry?.grams ?? 100;
+    const ing = INGREDIENTS.find(i => i.id === ingId);
+    if (!ing) return entry?.grams ?? 100;
+    const perMeal = macroTarget / numMeals;
+    const per100 = slot === "proteina" ? ing.protein : slot === "hidrato" ? ing.carbs : ing.fat;
+    if (per100 <= 0) return entry?.grams ?? 100;
+    return Math.max(10, Math.min(Math.round((perMeal / per100) * 100), 600));
+  };
 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
         <span className={`text-[10px] font-bold uppercase tracking-wider w-16 shrink-0 ${color}`}>{label}</span>
         <IngSelect slot={slot} value={entry?.ingId ?? ""}
-          onChange={v => onChange({ ingId: v, grams: entry?.grams ?? 100 })} />
+          onChange={v => onChange({ ingId: v, grams: v ? autoGrams(v) : (entry?.grams ?? 100) })} />
         <input type="number" min="1" max="2000"
           value={entry?.grams ?? ""}
           onChange={e => entry && onChange({ ...entry, grams: parseFloat(e.target.value) || 0 })}
@@ -555,18 +567,28 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                       entry={ms.proteina}
                       onChange={e => updMealState(meal.id, { proteina: e })}
                       onClear={() => updMealState(meal.id, { proteina: null })}
+                      macroTarget={clientMacros?.protein_g}
+                      numMeals={filteredMeals.length || 1}
                     />
                     <SlotRow
                       label="Hidratos" color="text-amber-400" slot="hidrato"
                       entry={ms.hidrato}
                       onChange={e => updMealState(meal.id, { hidrato: e })}
                       onClear={() => updMealState(meal.id, { hidrato: null })}
+                      macroTarget={dayType === "on"
+                        ? clientMacros?.carbs_g
+                        : (clientMacros?.carbs_off_g ?? clientMacros?.carbs_g)}
+                      numMeals={filteredMeals.length || 1}
                     />
                     <SlotRow
                       label="Grasa" color="text-blue-400" slot="grasa"
                       entry={ms.grasa}
                       onChange={e => updMealState(meal.id, { grasa: e })}
                       onClear={() => updMealState(meal.id, { grasa: null })}
+                      macroTarget={dayType === "on"
+                        ? clientMacros?.fat_g
+                        : (clientMacros?.fat_off_g ?? clientMacros?.fat_g)}
+                      numMeals={filteredMeals.length || 1}
                     />
 
                     {/* Extras */}
