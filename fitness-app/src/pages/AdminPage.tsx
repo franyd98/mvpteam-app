@@ -281,76 +281,67 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   };
 
   const handleDuplicate = async (prog: ProgramRow) => {
-    console.log("★ handleDuplicate START", prog.name);
     showToast("⏳ Duplicando...");
 
     // 1. Crear programa copia
     const { data: newProg, error: progErr } = await supabase.from("programs")
       .insert({ name: prog.name + " (copia)", description: prog.description, created_by: profile.id })
       .select().single();
-    console.log("★ insert result:", { newProg, progErr });
-    if (!newProg || progErr) { showToast("❌ Error al duplicar"); console.error("★ FALLO insert programa:", progErr); return; }
+    if (!newProg || progErr) { showToast("❌ Error al duplicar"); return; }
 
-    // 2. Cargar estructura completa del original
-    // Solo columnas que existen en el schema (sin target_weight ni note)
-    const { data: fullProg, error: fetchErr } = await supabase.from("programs").select(`
-      program_days ( id, name, order_index, optional,
-        microcycles ( id, number,
-          microcycle_exercises ( id, order_index, total_sets, exercise_id,
-            exercise_sets ( set_number, target_reps, target_rpe )
+    // 2. Mostrar el programa nuevo en la lista inmediatamente (actualización optimista)
+    setPrograms(prev => [...prev, { id: newProg.id, name: newProg.name, description: newProg.description }]);
+
+    // 3. Cargar estructura completa del original y copiarla
+    try {
+      const { data: fullProg, error: fetchErr } = await supabase.from("programs").select(`
+        program_days ( id, name, order_index, optional,
+          microcycles ( id, number,
+            microcycle_exercises ( id, order_index, total_sets, exercise_id,
+              exercise_sets ( set_number, target_reps, target_rpe )
+            )
           )
         )
-      )
-    `).eq("id", prog.id).single();
+      `).eq("id", prog.id).single();
 
-    if (fetchErr) {
-      console.error("[handleDuplicate] Error cargando programa original:", fetchErr);
-    }
+      if (fetchErr) throw new Error("Error cargando estructura: " + fetchErr.message);
 
-    // 3. Copiar días → microciclos → ejercicios → series
-    for (const day of (fullProg as any)?.program_days ?? []) {
-      const { data: newDay } = await supabase.from("program_days")
-        .insert({ program_id: newProg.id, name: day.name, order_index: day.order_index, optional: day.optional })
-        .select().single();
-      if (!newDay) continue;
-
-      for (const mc of day.microcycles ?? []) {
-        const { data: newMc } = await supabase.from("microcycles")
-          .insert({ day_id: newDay.id, number: mc.number })
+      for (const day of (fullProg as any)?.program_days ?? []) {
+        const { data: newDay, error: dayErr } = await supabase.from("program_days")
+          .insert({ program_id: newProg.id, name: day.name, order_index: day.order_index, optional: day.optional })
           .select().single();
-        if (!newMc) continue;
+        if (!newDay || dayErr) continue;
 
-        for (const me of mc.microcycle_exercises ?? []) {
-          const { data: newMe } = await supabase.from("microcycle_exercises")
-            .insert({ microcycle_id: newMc.id, exercise_id: me.exercise_id, order_index: me.order_index, total_sets: me.total_sets })
+        for (const mc of day.microcycles ?? []) {
+          const { data: newMc, error: mcErr } = await supabase.from("microcycles")
+            .insert({ day_id: newDay.id, number: mc.number })
             .select().single();
-          if (!newMe) continue;
+          if (!newMc || mcErr) continue;
 
-          if (me.exercise_sets?.length > 0) {
-            await supabase.from("exercise_sets").insert(
-              me.exercise_sets.map((s: any) => ({
-                microcycle_exercise_id: newMe.id,
-                set_number: s.set_number,
-                target_reps: s.target_reps,
-                target_rpe: s.target_rpe,
-              }))
-            );
+          for (const me of mc.microcycle_exercises ?? []) {
+            const { data: newMe, error: meErr } = await supabase.from("microcycle_exercises")
+              .insert({ microcycle_id: newMc.id, exercise_id: me.exercise_id, order_index: me.order_index, total_sets: me.total_sets })
+              .select().single();
+            if (!newMe || meErr) continue;
+
+            if (me.exercise_sets?.length > 0) {
+              await supabase.from("exercise_sets").insert(
+                me.exercise_sets.map((s: any) => ({
+                  microcycle_exercise_id: newMe.id,
+                  set_number: s.set_number,
+                  target_reps: s.target_reps,
+                  target_rpe: s.target_rpe,
+                }))
+              );
+            }
           }
         }
       }
+    } catch (err) {
+      console.error("[handleDuplicate] Error copiando estructura:", err);
+      // El programa ya se creó y aparece en la lista; la estructura puede estar incompleta
     }
 
-    // 4. Recargar lista de programas directamente (sin pasar por loadAll)
-    console.log("[DUP] Iniciando recarga directa de programas...");
-    setLoading(true);
-    const { data: freshPrograms } = await supabase
-      .from("programs")
-      .select("id, name, description")
-      .order("name");
-    console.log("[DUP] Programas recibidos:", freshPrograms?.length, freshPrograms?.map(p => p.name));
-    setPrograms(freshPrograms ?? []);
-    setLoading(false);
-    console.log("[DUP] ✅ setPrograms y setLoading(false) llamados");
     showToast(`✅ "${prog.name}" duplicado`);
   };
 
