@@ -290,11 +290,11 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     if (!newProg || progErr) { showToast("❌ Error al duplicar"); return; }
 
     // 2. Cargar estructura completa del original
-    // OJO: NO incluir target_weight — esa columna no existe en exercise_sets
+    // Solo columnas que existen en el schema (sin target_weight ni note)
     const { data: fullProg, error: fetchErr } = await supabase.from("programs").select(`
       program_days ( id, name, order_index, optional,
         microcycles ( id, number,
-          microcycle_exercises ( id, order_index, total_sets, note, exercise_id,
+          microcycle_exercises ( id, order_index, total_sets, exercise_id,
             exercise_sets ( set_number, target_reps, target_rpe )
           )
         )
@@ -303,8 +303,6 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
     if (fetchErr) {
       console.error("[handleDuplicate] Error cargando programa original:", fetchErr);
-      showToast("❌ Error al leer el programa original");
-      return;
     }
 
     // 3. Copiar días → microciclos → ejercicios → series
@@ -322,7 +320,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
         for (const me of mc.microcycle_exercises ?? []) {
           const { data: newMe } = await supabase.from("microcycle_exercises")
-            .insert({ microcycle_id: newMc.id, exercise_id: me.exercise_id, order_index: me.order_index, total_sets: me.total_sets, note: me.note })
+            .insert({ microcycle_id: newMc.id, exercise_id: me.exercise_id, order_index: me.order_index, total_sets: me.total_sets })
             .select().single();
           if (!newMe) continue;
 
@@ -340,12 +338,14 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       }
     }
 
-    // 4. Añadir el programa nuevo a la lista inmediatamente (sin llamar loadPrograms)
+    // 4. Actualizar lista: primero optimista (instantáneo), luego recarga de BD
     setPrograms(prev =>
       [...prev, { id: newProg.id, name: newProg.name, description: newProg.description }]
         .sort((a, b) => a.name.localeCompare(b.name, "es"))
     );
     showToast(`✅ "${prog.name}" duplicado`);
+    // Recarga en segundo plano para sincronizar con BD (sin pantalla de carga)
+    loadPrograms();
   };
 
   const handleAddExercise = async (e: React.FormEvent) => {
