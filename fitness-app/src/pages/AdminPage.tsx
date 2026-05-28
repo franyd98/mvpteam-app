@@ -289,40 +289,35 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       .select().single();
     if (!newProg || progErr) { showToast("❌ Error al duplicar"); return; }
 
-    // 2. Mostrar el programa nuevo en la lista inmediatamente (actualización optimista)
-    setPrograms(prev => [...prev, { id: newProg.id, name: newProg.name, description: newProg.description }]);
-
-    // 3. Cargar estructura completa del original y copiarla
-    try {
-      const { data: fullProg, error: fetchErr } = await supabase.from("programs").select(`
-        program_days ( id, name, order_index, optional,
-          microcycles ( id, number,
-            microcycle_exercises ( id, order_index, total_sets, exercise_id,
-              exercise_sets ( set_number, target_reps, target_rpe )
-            )
+    // 2. Cargar estructura completa del original y copiarla
+    const { data: fullProg, error: fetchErr } = await supabase.from("programs").select(`
+      program_days ( id, name, order_index, optional,
+        microcycles ( id, number,
+          microcycle_exercises ( id, order_index, total_sets, exercise_id,
+            exercise_sets ( set_number, target_reps, target_rpe )
           )
         )
-      `).eq("id", prog.id).single();
+      )
+    `).eq("id", prog.id).single();
 
-      if (fetchErr) throw new Error("Error cargando estructura: " + fetchErr.message);
-
-      for (const day of (fullProg as any)?.program_days ?? []) {
-        const { data: newDay, error: dayErr } = await supabase.from("program_days")
+    if (!fetchErr && fullProg) {
+      for (const day of (fullProg as any).program_days ?? []) {
+        const { data: newDay } = await supabase.from("program_days")
           .insert({ program_id: newProg.id, name: day.name, order_index: day.order_index, optional: day.optional })
           .select().single();
-        if (!newDay || dayErr) continue;
+        if (!newDay) continue;
 
         for (const mc of day.microcycles ?? []) {
-          const { data: newMc, error: mcErr } = await supabase.from("microcycles")
+          const { data: newMc } = await supabase.from("microcycles")
             .insert({ day_id: newDay.id, number: mc.number })
             .select().single();
-          if (!newMc || mcErr) continue;
+          if (!newMc) continue;
 
           for (const me of mc.microcycle_exercises ?? []) {
-            const { data: newMe, error: meErr } = await supabase.from("microcycle_exercises")
+            const { data: newMe } = await supabase.from("microcycle_exercises")
               .insert({ microcycle_id: newMc.id, exercise_id: me.exercise_id, order_index: me.order_index, total_sets: me.total_sets })
               .select().single();
-            if (!newMe || meErr) continue;
+            if (!newMe) continue;
 
             if (me.exercise_sets?.length > 0) {
               await supabase.from("exercise_sets").insert(
@@ -337,11 +332,10 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           }
         }
       }
-    } catch (err) {
-      console.error("[handleDuplicate] Error copiando estructura:", err);
-      // El programa ya se creó y aparece en la lista; la estructura puede estar incompleta
     }
 
+    // 3. Recargar lista igual que handleDeleteProgram (patrón que funciona)
+    await loadPrograms();
     showToast(`✅ "${prog.name}" duplicado`);
   };
 
