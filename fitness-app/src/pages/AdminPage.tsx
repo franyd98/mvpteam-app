@@ -281,13 +281,15 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   };
 
   const handleDuplicate = async (prog: ProgramRow) => {
+    console.log("★ handleDuplicate START", prog.name);
     showToast("⏳ Duplicando...");
 
     // 1. Crear programa copia
     const { data: newProg, error: progErr } = await supabase.from("programs")
       .insert({ name: prog.name + " (copia)", description: prog.description, created_by: profile.id })
       .select().single();
-    if (!newProg || progErr) { showToast("❌ Error al duplicar"); return; }
+    console.log("★ insert result:", { newProg, progErr });
+    if (!newProg || progErr) { showToast("❌ Error al duplicar"); console.error("★ FALLO insert programa:", progErr); return; }
 
     // 2. Cargar estructura completa del original
     // Solo columnas que existen en el schema (sin target_weight ni note)
