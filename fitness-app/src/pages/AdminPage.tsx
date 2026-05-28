@@ -338,14 +338,9 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       }
     }
 
-    // 4. Actualizar lista: primero optimista (instantáneo), luego recarga de BD
-    setPrograms(prev =>
-      [...prev, { id: newProg.id, name: newProg.name, description: newProg.description }]
-        .sort((a, b) => a.name.localeCompare(b.name, "es"))
-    );
+    // 4. Recargar todo — igual que hace el refresco de página
+    await loadAll();
     showToast(`✅ "${prog.name}" duplicado`);
-    // Recarga en segundo plano para sincronizar con BD (sin pantalla de carga)
-    loadPrograms();
   };
 
   const handleAddExercise = async (e: React.FormEvent) => {
