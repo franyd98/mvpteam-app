@@ -583,7 +583,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
           {/* Header sticky con safe area */}
           <header
-            className="header-safe sticky top-0 z-10 flex items-center justify-between gap-3 pt-4 pb-3 mb-2"
+            className="header-safe sticky top-0 z-10 flex items-center justify-between gap-3 pb-3 mb-2"
             style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}
           >
             <div className="min-w-0 flex-1">
@@ -700,7 +700,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
           {/* Lista de ejercicios — espacio extra para el bottom nav */}
           {microcycle && (
-            <section className="space-y-3 pb-28">
+            <section className="space-y-3 pb-36">
               {microcycle.exercises.map((ex, idx) => {
                 const sub = substitutions[subKey(dayId, microcycleNumber, idx)];
                 const displayName = sub?.name ?? ex.name;

@@ -506,9 +506,9 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   }
 
   return (
-    <div className="min-h-dvh pb-28" style={{ background: "#0A0A0A" }}>
+    <div className="min-h-dvh pb-36" style={{ background: "#0A0A0A" }}>
       {/* Header */}
-      <header className="header-safe px-4 pt-4 pb-0 sticky top-0 z-20"
+      <header className="header-safe px-4 pb-0 sticky top-0 z-20"
         style={{ background: "#0F0F0F", borderBottom: "1px solid #1E1E1E" }}>
         <div className="flex items-center gap-3 pb-3">
           <button onClick={onBack}

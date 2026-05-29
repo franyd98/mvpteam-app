@@ -742,9 +742,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   };
 
   return (
-    <div className="min-h-dvh bg-neutral-950 pb-28">
+    <div className="min-h-dvh bg-neutral-950 pb-36">
       {/* Cabecera */}
-      <header className="header-safe bg-neutral-900 border-b border-neutral-800 px-4 pt-4 pb-3 flex items-center gap-3 sticky top-0 z-20">
+      <header className="header-safe bg-neutral-900 border-b border-neutral-800 px-4 pb-3 flex items-center gap-3 sticky top-0 z-20">
         <button onClick={onBack}
           className="w-10 h-10 rounded-xl bg-neutral-800 text-neutral-300 active:bg-neutral-700 flex items-center justify-center text-xl shrink-0">←</button>
         <div className="flex-1 min-w-0">
@@ -754,7 +754,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
       </header>
 
       {/* Tabs — scrollables con fade derecho */}
-      <div className="tabs-fade-right max-w-2xl mx-auto sticky top-[calc(env(safe-area-inset-top)+56px)] z-10"
+      <div className="tabs-fade-right max-w-2xl mx-auto sticky top-[calc(max(env(safe-area-inset-top),16px)+52px)] z-10"
         style={{ background: "#030712" }}>
         <div className="flex gap-1.5 px-3 py-2.5 overflow-x-auto scrollbar-hide">
           {TABS.map(([t, label]) => (

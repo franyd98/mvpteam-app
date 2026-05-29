@@ -45,9 +45,9 @@ body {
 .pl-safe  { padding-left:   max(env(safe-area-inset-left),   0px); }
 .pr-safe  { padding-right:  max(env(safe-area-inset-right),  0px); }
 
-/* Header fijo con safe area encima */
+/* Header fijo con safe area encima (mínimo 16px en dispositivos sin notch) */
 .header-safe {
-  padding-top: max(env(safe-area-inset-top), 0px);
+  padding-top: max(env(safe-area-inset-top), 16px);
 }
 
 /* Padding inferior para home bar de iPhone */
