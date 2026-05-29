@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import heic2any from "heic2any";
 import MiniChart from "../components/MiniChart";
@@ -427,7 +427,6 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   // ── BORRADO ───────────────────────────────────────────────────
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  useLayoutEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
@@ -743,7 +742,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   };
 
   return (
-    <div className="min-h-dvh bg-neutral-950 pb-36">
+    <div className="min-h-full bg-neutral-950 pb-8">
       {/* Cabecera */}
       <header className="header-safe bg-neutral-900 border-b border-neutral-800 px-4 pb-3 flex items-center gap-3 sticky top-0 z-20">
         <button onClick={onBack}
@@ -759,7 +758,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         style={{ background: "#030712" }}>
         <div className="flex gap-1.5 px-3 py-2.5 overflow-x-auto scrollbar-hide">
           {TABS.map(([t, label]) => (
-            <button key={t} onClick={() => { setTab(t); window.scrollTo({ top: 0, behavior: "instant" }); }}
+            <button key={t} onClick={() => { setTab(t); document.getElementById("tab-scroll")?.scrollTo({ top: 0, behavior: "instant" }); }}
               className={"shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all select-none " +
                 (tab === t
                   ? "bg-white text-black shadow-sm"

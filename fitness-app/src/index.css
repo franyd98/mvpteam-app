@@ -88,6 +88,14 @@ button, a, [role="button"] {
   touch-action: manipulation;
 }
 
+/* Eliminar el focus ring azul del navegador en botones (app nativa) */
+button:focus,
+button:focus-visible,
+[role="button"]:focus,
+[role="button"]:focus-visible {
+  outline: none;
+}
+
 /* ── Inputs: deshabilitar zoom automático en iOS ──────────── */
 /* iOS hace zoom si el font-size del input < 16px */
 input[type="text"],

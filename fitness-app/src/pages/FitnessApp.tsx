@@ -575,7 +575,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   // ── Shell principal ────────────────────────────────────────────
 
   return (
-    <div className="min-h-dvh" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
+    <div className="h-dvh flex flex-col overflow-hidden" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
+
+      {/* ── Área de scroll por tab: se monta fresco en cada cambio ── */}
+      <div id="tab-scroll" className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
 
       {/* ── Tab: Entrenamiento ── */}
       {activeTab === "workout" && (
@@ -700,7 +703,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
           {/* Lista de ejercicios — espacio extra para el bottom nav */}
           {microcycle && (
-            <section className="space-y-3 pb-36">
+            <section className="space-y-3 pb-8">
               {microcycle.exercises.map((ex, idx) => {
                 const sub = substitutions[subKey(dayId, microcycleNumber, idx)];
                 const displayName = sub?.name ?? ex.name;
@@ -829,9 +832,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         <CheckInPage profile={profile} onBack={() => setActiveTab("workout")} />
       )}
 
-      {/* ── Barra de navegación inferior ── */}
+      </div>{/* fin scroll container */}
+
+      {/* ── Barra de navegación inferior (in-flow, no fixed) ── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 footer-safe"
+        className="shrink-0 z-30 footer-safe"
         style={{ background: "#0F0F0F", borderTop: "1px solid #1E1E1E" }}
       >
         <div className="flex items-stretch max-w-2xl mx-auto">
@@ -842,7 +847,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           ] as const).map(({ tab, icon, label }) => (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); window.scrollTo({ top: 0, behavior: "instant" }); }}
+              onClick={() => setActiveTab(tab)}
               className={"flex-1 flex flex-col items-center justify-center py-3 gap-0.5 transition-colors active:scale-95 " +
                 (activeTab === tab ? "" : "opacity-40 active:opacity-60")}
               style={{ color: activeTab === tab ? "#C0394F" : "#888" }}

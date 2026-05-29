@@ -3,7 +3,7 @@
 //  2. Mis Macros — objetivos calóricos del cliente (read-only)
 //  3. Generar  — DietGenerator en modo cliente (sin guardar)
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
   INGREDIENTS, CATEGORY_LABELS, calcMacros, sumMacros,
@@ -242,7 +242,6 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [savingMeals, setSavingMeals] = useState<Set<string>>(new Set());
   const [savedMeals,  setSavedMeals]  = useState<Set<string>>(new Set());
 
-  useLayoutEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
   useEffect(() => {
     loadDiet();
     loadMacros();
@@ -507,7 +506,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   }
 
   return (
-    <div className="min-h-dvh pb-36" style={{ background: "#0A0A0A" }}>
+    <div className="min-h-full pb-8" style={{ background: "#0A0A0A" }}>
       {/* Header */}
       <header className="header-safe px-4 pb-0 sticky top-0 z-20"
         style={{ background: "#0F0F0F", borderBottom: "1px solid #1E1E1E" }}>
@@ -527,7 +526,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             { id: "macros"   as DietTab, label: "📊 Mis Macros" },
             { id: "generate" as DietTab, label: "🎲 Generar" },
           ]).map(({ id, label }) => (
-            <button key={id} onClick={() => { setDietTab(id); window.scrollTo({ top: 0, behavior: "instant" }); }}
+            <button key={id} onClick={() => { setDietTab(id); document.getElementById("tab-scroll")?.scrollTo({ top: 0, behavior: "instant" }); }}
               className={"flex-1 py-2 text-xs font-semibold rounded-t-lg transition-colors " +
                 (dietTab === id ? "text-white" : "text-neutral-500")}
               style={dietTab === id
