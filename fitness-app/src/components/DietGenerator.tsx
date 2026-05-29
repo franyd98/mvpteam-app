@@ -5,9 +5,45 @@
 // El admin puede cambiar cualquier ingrediente dentro de cada opción via select.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { ingredients, type Ingredient } from "../data/ingredients";
+
+// ── Calculadora de macros (copiada de MacroCalculator para no crear dependencia circular) ──
+
+const ACTIVITY_LEVELS = [
+  { value: 1.2, label: "1.2 – 3 días gym y menos de 10.000 pasos / poca masa muscular" },
+  { value: 1.3, label: "1.3 – 3 días gym y más de 10.000 pasos / poca masa muscular" },
+  { value: 1.4, label: "1.4 – 4 días gym y más de 10.000 pasos / poca masa muscular" },
+  { value: 1.5, label: "1.5 – 4 días gym y más de 10.000 pasos y experiencia entrenando" },
+  { value: 1.6, label: "1.6 – 4 días gym y más de 10.000 pasos y atleta fuera de forma" },
+  { value: 1.7, label: "1.7 – 4 días gym y más de 10.000 pasos y atleta en forma" },
+  { value: 1.8, label: "1.8 – 5 días gym y más de 10.000 pasos y atleta en forma" },
+];
+
+const GOAL_OPTIONS = [
+  { label: "Pérdida de grasa intensa",  sublabel: "−20% · máx. déficit",    value: -0.20, protein: 2.0, fat: 0.5, color: "text-red-400" },
+  { label: "Pérdida de grasa",          sublabel: "−15% · déficit moderado", value: -0.15, protein: 1.8, fat: 0.5, color: "text-orange-400" },
+  { label: "Pérdida de grasa suave",    sublabel: "−10% · déficit leve",     value: -0.10, protein: 1.8, fat: 0.6, color: "text-yellow-400" },
+  { label: "Mantenimiento",             sublabel: "0% · sostener peso",      value:  0.00, protein: 1.7, fat: 0.7, color: "text-neutral-300" },
+  { label: "Ganancia muscular",         sublabel: "+5% · ligero superávit",  value:  0.05, protein: 1.8, fat: 0.7, color: "text-emerald-400" },
+  { label: "Volumen / masa",            sublabel: "+10% · superávit amplio", value:  0.10, protein: 1.9, fat: 0.8, color: "text-blue-400" },
+];
+
+function computeMacros(
+  sex: "male" | "female", age: number, height: number, weight: number,
+  activityFactor: number, proteinMult: number, fatMult: number, deficit: number,
+) {
+  const bmr = sex === "male"
+    ? 10 * weight + 6.25 * height - 5 * age + 5
+    : 10 * weight + 6.25 * height - 5 * age - 161;
+  const tdeeMaint = Math.round(bmr * activityFactor);
+  const tdee      = Math.round(tdeeMaint * (1 + deficit));
+  const protein_g = round1(weight * proteinMult);
+  const fat_g     = round1(weight * fatMult);
+  const carbs_g   = round1(Math.max(0, tdee - protein_g * 4 - fat_g * 9) / 4);
+  return { tdee, protein_g, carbs_g, fat_g };
+}
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -656,10 +692,26 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
   const [loadingMacros, setLoadingMacros] = useState(!isTemplateMode);
   const [macroError,    setMacroError]    = useState(false);
 
-  // ── Formulario manual (modo plantilla) ───────────────────────────
+  // ── Formulario manual (modo plantilla) — solo usado si hay cliente sin macros ──
   const [tplProtein, setTplProtein] = useState("150");
   const [tplCarbs,   setTplCarbs]   = useState("300");
   const [tplFat,     setTplFat]     = useState("60");
+
+  // ── Calculadora integrada (modo plantilla sin cliente) ────────────
+  const [calcSex,      setCalcSex]      = useState<"male" | "female">("male");
+  const [calcAge,      setCalcAge]      = useState("");
+  const [calcHeight,   setCalcHeight]   = useState("");
+  const [calcWeight,   setCalcWeight]   = useState("");
+  const [calcActivity, setCalcActivity] = useState(1.5);
+  const [calcGoal,     setCalcGoal]     = useState(-0.15);
+  const [calcProtMult, setCalcProtMult] = useState(1.8);
+  const [calcFatMult,  setCalcFatMult]  = useState(0.5);
+
+  const calcResult = useMemo(() => {
+    const a = Number(calcAge); const h = Number(calcHeight); const w = Number(calcWeight);
+    if (!a || !h || !w) return null;
+    return computeMacros(calcSex, a, h, w, calcActivity, calcProtMult, calcFatMult, calcGoal);
+  }, [calcSex, calcAge, calcHeight, calcWeight, calcActivity, calcGoal, calcProtMult, calcFatMult]);
 
   // ── Planes ON/OFF ─────────────────────────────────────────────────
   const [planOn,  setPlanOn]  = useState<GeneratedMeal[]>([]);
@@ -720,12 +772,13 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
-  // ── Aplicar macros manuales y generar (modo plantilla) ───────────
+  // ── Aplicar macros y generar (modo plantilla) ────────────────────
   const applyTemplateAndGenerate = () => {
-    const p = parseFloat(tplProtein) || 0;
-    const c = parseFloat(tplCarbs)   || 0;
-    const f = parseFloat(tplFat)     || 0;
-    const on: DailyMacros = { protein_g: p, carbs_g: c, fat_g: f, kcal: Math.round(p*4 + c*4 + f*9) };
+    // Usar calculadora si hay datos, si no usar los inputs manuales
+    const p = calcResult ? calcResult.protein_g : (parseFloat(tplProtein) || 0);
+    const c = calcResult ? calcResult.carbs_g   : (parseFloat(tplCarbs)   || 0);
+    const f = calcResult ? calcResult.fat_g     : (parseFloat(tplFat)     || 0);
+    const on: DailyMacros = { protein_g: p, carbs_g: c, fat_g: f, kcal: calcResult?.tdee ?? Math.round(p*4 + c*4 + f*9) };
     const offCarbs = round1(c * (1 - offPct / 100));
     const off: DailyMacros = {
       protein_g: p, carbs_g: offCarbs, fat_g: f,
@@ -933,9 +986,14 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     );
   }
 
-  // Modo plantilla: mostrar formulario de macros manuales
+  // Modo plantilla: formulario estilo MacroCalculator
   if (isTemplateMode && !macrosOn) {
-    const tplKcal = Math.round((parseFloat(tplProtein)||0)*4 + (parseFloat(tplCarbs)||0)*4 + (parseFloat(tplFat)||0)*9);
+    const canGenerate = !!calcResult || (!!(parseFloat(tplProtein)) && !!(parseFloat(tplCarbs)));
+    const previewOn = calcResult
+      ? calcResult
+      : { protein_g: parseFloat(tplProtein)||0, carbs_g: parseFloat(tplCarbs)||0, fat_g: parseFloat(tplFat)||0, tdee: 0 };
+    const previewKcal = calcResult?.tdee ?? Math.round(previewOn.protein_g*4 + previewOn.carbs_g*4 + previewOn.fat_g*9);
+
     return (
       <div className="min-h-screen pb-28" style={{ background: "linear-gradient(160deg,#0A0A0A 80%,#1A0810 100%)" }}>
         <header className="px-4 py-3 flex items-center gap-3 sticky top-0 z-10 header-safe"
@@ -945,60 +1003,125 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
             style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
           <div>
             <p className="text-white font-bold text-sm">✨ Generar plantilla</p>
-            <p className="text-neutral-500 text-xs">Introduce los macros objetivo del día ON</p>
+            <p className="text-neutral-500 text-xs">Introduce los datos del cliente para calcular sus macros</p>
           </div>
         </header>
         <div className="max-w-2xl mx-auto px-4 pt-6 space-y-5">
 
+          {/* ── Datos personales ── */}
           <div className="rounded-2xl p-5 space-y-4" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
-            <p className="text-white font-semibold text-sm">📊 Macros día ON</p>
+            <p className="text-white font-semibold text-sm">👤 Datos personales</p>
 
-            {/* Inputs de macros */}
+            {/* Sexo */}
+            <div className="grid grid-cols-2 gap-2">
+              {(["male","female"] as const).map(s => (
+                <button key={s} onClick={() => setCalcSex(s)}
+                  className="py-3 rounded-xl text-sm font-bold transition-colors"
+                  style={calcSex === s
+                    ? { background: "#fff", color: "#000" }
+                    : { background: "#1A1A1A", color: "#777", border: "1px solid #2A2A2A" }}>
+                  {s === "male" ? "Hombre" : "Mujer"}
+                </button>
+              ))}
+            </div>
+
+            {/* Edad / Altura / Peso */}
             <div className="grid grid-cols-3 gap-3">
               {([
-                { label: "💪 Proteína", val: tplProtein, set: setTplProtein, color: "text-red-400" },
-                { label: "🌾 Hidratos", val: tplCarbs,   set: setTplCarbs,   color: "text-amber-400" },
-                { label: "🥑 Grasa",    val: tplFat,     set: setTplFat,     color: "text-blue-400" },
-              ] as const).map(({ label, val, set, color }) => (
-                <div key={label} className="flex flex-col gap-1.5">
-                  <label className={`text-[10px] font-semibold uppercase tracking-wider ${color}`}>{label}</label>
+                { label: "Edad", val: calcAge,    set: setCalcAge,    unit: "años", placeholder: "28" },
+                { label: "Altura", val: calcHeight, set: setCalcHeight, unit: "cm",   placeholder: "175" },
+                { label: "Peso",  val: calcWeight, set: setCalcWeight, unit: "kg",   placeholder: "75" },
+              ]).map(({ label, val, set, unit, placeholder }) => (
+                <div key={label} className="flex flex-col gap-1">
+                  <label className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</label>
                   <div className="flex items-center gap-1">
-                    <input type="number" step="1" value={val}
-                      onChange={e => set(e.target.value)}
+                    <input type="number" value={val} onChange={e => set(e.target.value)}
+                      placeholder={placeholder}
                       className="w-full rounded-lg px-2 py-2.5 text-white text-sm font-bold text-center focus:outline-none"
                       style={{ background: "#1A1A1A", border: "1px solid #333" }} />
-                    <span className="text-neutral-600 text-xs shrink-0">g</span>
+                    <span className="text-neutral-600 text-[10px] shrink-0">{unit}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Kcal auto-calculadas */}
-            {tplKcal > 0 && (
-              <div className="flex items-center justify-center gap-2 py-2 rounded-xl"
-                style={{ background: "#0A0A0A", border: "1px solid #1A1A1A" }}>
-                <span className="text-neutral-500 text-xs uppercase tracking-wider">Total ON</span>
-                <span className="text-white font-bold text-lg">{tplKcal}</span>
-                <span className="text-neutral-500 text-xs">kcal</span>
-              </div>
-            )}
-
-            {/* Reducción OFF */}
+            {/* Factor de actividad */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">
-                Reducción HC en días OFF
-              </label>
-              <div className="flex gap-2">
-                {[10, 13, 15, 20].map(pct => (
-                  <button key={pct} onClick={() => setOffPct(pct)}
-                    className={"flex-1 py-2 rounded-lg text-xs font-medium transition-colors " +
-                      (offPct === pct ? "bg-white text-black" : "text-neutral-400")}
-                    style={offPct !== pct ? { background: "#1A1A1A", border: "1px solid #2A2A2A" } : {}}>
-                    −{pct}%
-                  </button>
+              <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">Factor de actividad</label>
+              <select value={calcActivity} onChange={e => setCalcActivity(Number(e.target.value))}
+                className="w-full rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none"
+                style={{ background: "#1A1A1A", border: "1px solid #333" }}>
+                {ACTIVITY_LEVELS.map(l => (
+                  <option key={l.value} value={l.value}>{l.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* ── Objetivo ── */}
+          <div className="rounded-2xl p-5 space-y-3" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+            <p className="text-white font-semibold text-sm">🎯 Objetivo</p>
+            {GOAL_OPTIONS.map(g => (
+              <button key={g.value} onClick={() => {
+                setCalcGoal(g.value);
+                setCalcProtMult(g.protein);
+                setCalcFatMult(g.fat);
+              }}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition-colors"
+                style={calcGoal === g.value
+                  ? { background: "#fff", border: "1px solid #fff" }
+                  : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                <div>
+                  <p className={"text-sm font-semibold " + (calcGoal === g.value ? "text-black" : "text-white")}>{g.label}</p>
+                  <p className={"text-xs " + (calcGoal === g.value ? "text-neutral-600" : "text-neutral-500")}>{g.sublabel}</p>
+                </div>
+                {calcGoal === g.value && <span className="text-emerald-600 font-bold text-lg">✓</span>}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Preview macros calculados ── */}
+          {calcResult && (
+            <div className="rounded-2xl p-4 space-y-3" style={{ background: "#0A1A0A", border: "1px solid #1A3A1A" }}>
+              <p className="text-[10px] uppercase tracking-wider text-emerald-600">📊 Macros calculados — Día ON</p>
+              <div className="flex gap-3">
+                {[
+                  { label: "Proteína", val: calcResult.protein_g, color: "#F87171" },
+                  { label: "Hidratos", val: calcResult.carbs_g,   color: "#FBBF24" },
+                  { label: "Grasa",    val: calcResult.fat_g,     color: "#60A5FA" },
+                ].map(({ label, val, color }) => (
+                  <div key={label} className="flex-1 rounded-xl px-3 py-2.5 text-center" style={{ background: "#111" }}>
+                    <p className="text-[10px] text-neutral-500 uppercase">{label}</p>
+                    <p className="text-base font-bold tabular-nums" style={{ color }}>{val.toFixed(0)}<span className="text-xs font-normal text-neutral-500">g</span></p>
+                  </div>
                 ))}
               </div>
+              <div className="flex items-center justify-center gap-2 py-1.5 rounded-xl" style={{ background: "#111" }}>
+                <span className="text-neutral-500 text-xs uppercase tracking-wider">Total ON</span>
+                <span className="text-white font-bold text-lg">{calcResult.tdee}</span>
+                <span className="text-neutral-500 text-xs">kcal</span>
+              </div>
             </div>
+          )}
+
+          {/* ── Reducción OFF ── */}
+          <div className="rounded-2xl p-4 space-y-2" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+            <label className="text-[10px] uppercase tracking-wider text-neutral-500 block">Reducción HC en días OFF</label>
+            <div className="flex gap-2">
+              {[10, 13, 15, 20].map(pct => (
+                <button key={pct} onClick={() => setOffPct(pct)}
+                  className={"flex-1 py-2 rounded-lg text-xs font-medium transition-colors " +
+                    (offPct === pct ? "bg-white text-black" : "text-neutral-400")}
+                  style={offPct !== pct ? { background: "#1A1A1A", border: "1px solid #2A2A2A" } : {}}>
+                  −{pct}%
+                </button>
+              ))}
+            </div>
+            {calcResult && (
+              <p className="text-[10px] text-neutral-600 text-center pt-0.5">
+                Hidratos OFF: {round1(calcResult.carbs_g * (1 - offPct/100)).toFixed(0)}g · {Math.round(calcResult.protein_g*4 + calcResult.carbs_g*(1-offPct/100)*4 + calcResult.fat_g*9)} kcal
+              </p>
+            )}
           </div>
 
           {/* Nombre del plan */}
@@ -1012,11 +1135,40 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
 
           <button
             onClick={applyTemplateAndGenerate}
-            disabled={!tplKcal}
+            disabled={!canGenerate}
             className="w-full py-4 rounded-xl text-white font-bold text-sm disabled:opacity-40"
             style={{ background: "linear-gradient(135deg,#8B1A2F,#C0392B)" }}>
             ✨ Generar plantilla automáticamente
           </button>
+
+          {/* Separador con acceso a macros manuales */}
+          <details className="rounded-2xl overflow-hidden" style={{ background: "#0D0D0D", border: "1px solid #1A1A1A" }}>
+            <summary className="px-4 py-3 text-[10px] uppercase tracking-wider text-neutral-600 cursor-pointer select-none">
+              ↳ Introducir macros manualmente
+            </summary>
+            <div className="px-4 pb-4 space-y-3">
+              <div className="grid grid-cols-3 gap-3 pt-2">
+                {([
+                  { label: "💪 Proteína", val: tplProtein, set: setTplProtein, color: "text-red-400" },
+                  { label: "🌾 Hidratos", val: tplCarbs,   set: setTplCarbs,   color: "text-amber-400" },
+                  { label: "🥑 Grasa",    val: tplFat,     set: setTplFat,     color: "text-blue-400" },
+                ] as const).map(({ label, val, set, color }) => (
+                  <div key={label} className="flex flex-col gap-1.5">
+                    <label className={`text-[10px] font-semibold uppercase tracking-wider ${color}`}>{label}</label>
+                    <div className="flex items-center gap-1">
+                      <input type="number" step="1" value={val} onChange={e => { set(e.target.value); }}
+                        className="w-full rounded-lg px-2 py-2.5 text-white text-sm font-bold text-center focus:outline-none"
+                        style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+                      <span className="text-neutral-600 text-xs shrink-0">g</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {previewKcal > 0 && !calcResult && (
+                <p className="text-center text-neutral-500 text-xs">{previewKcal} kcal</p>
+              )}
+            </div>
+          </details>
         </div>
       </div>
     );
