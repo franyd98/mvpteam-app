@@ -915,6 +915,13 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                       {log.weight_fasting && (
                         <p className="text-white font-bold text-sm tabular-nums">{log.weight_fasting} kg</p>
                       )}
+                      <button
+                        onClick={() => deleteWeight(log.id)}
+                        disabled={deletingId === log.id}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-600 hover:text-red-400 disabled:opacity-40 shrink-0 transition-colors active:scale-90"
+                        style={{ background: "#1A1A1A" }}>
+                        {deletingId === log.id ? "…" : "✕"}
+                      </button>
                     </div>
                   );
                 })}
