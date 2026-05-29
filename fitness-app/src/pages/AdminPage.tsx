@@ -92,6 +92,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
   // Clientes colapsados/expandidos en tab Programas
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   // Edición inline de ejercicios
   type EditingEx = { id: number; name: string; muscle_group: string; video_ref: string; coach_note: string };
@@ -1214,14 +1215,22 @@ export default function AdminPage({ profile }: { profile: Profile }) {
               })}
 
               {/* ── Plantillas (sin cliente asignado) ── */}
-              <div className="bg-neutral-900 border border-neutral-700/50 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <p className="text-neutral-400 text-sm font-semibold flex-1">📁 Plantillas</p>
-                  <p className="text-neutral-600 text-xs">Base para nuevos bloques</p>
-                </div>
+              <div className="bg-neutral-900 border border-neutral-700/50 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setTemplatesOpen(o => !o)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-800/50 transition-colors text-left">
+                  <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs shrink-0">📁</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-neutral-300 font-medium text-sm">Plantillas</p>
+                    <p className="text-neutral-600 text-xs">{templates.length === 0 ? "Sin plantillas" : `${templates.length} plantilla${templates.length !== 1 ? "s" : ""}`}</p>
+                  </div>
+                  <span className="text-neutral-500 text-xs">{templatesOpen ? "▲" : "▼"}</span>
+                </button>
+                {templatesOpen && (
+                <div className="px-4 pb-4 border-t border-neutral-800 pt-3">
                 {templates.length === 0 ? (
                   <p className="text-neutral-600 text-xs text-center py-3">
-                    No hay plantillas. Los programas sin cliente asignado aparecen aquí.
+                    No hay plantillas. Los programas sin cliente aparecen aquí.
                   </p>
                 ) : (
                   <div className="space-y-3">
@@ -1297,6 +1306,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                       </div>
                     ))}
                   </div>
+                )}
+                </div>
                 )}
               </div>
             </div>
