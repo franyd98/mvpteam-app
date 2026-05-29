@@ -62,12 +62,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [substitutions, setSubstitutions] = useState<Record<string, { name: string; muscleGroup: string }>>({});
   const [swapTarget, setSwapTarget] = useState<{ dayId: string; mcNum: number; exIdx: number; origName: string } | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
+  // Lista completa de ejercicios de la BD (para el buscador de sustitución)
+  const [dbExercises, setDbExercises] = useState<{ name: string; muscleGroup: string }[]>([]);
 
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
 
-  // Lista de todos los ejercicios del programa (para el modal de sustitución)
+  // Lista completa de ejercicios para el modal de sustitución:
+  // usa la BD si está cargada; si no, cae al programa asignado.
   const allExercises = useMemo(() => {
+    if (dbExercises.length > 0) return dbExercises;
     if (!program) return [];
     const seen = new Set<string>();
     const list: { name: string; muscleGroup: string }[] = [];
@@ -80,12 +84,22 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       });
     });
     return list.sort((a, b) => (a.muscleGroup ?? "").localeCompare(b.muscleGroup ?? "") || a.name.localeCompare(b.name));
-  }, [program]);
+  }, [dbExercises, program]);
 
   const subKey = (dId: string, mcNum: number, exIdx: number) => `${dId}:${mcNum}:${exIdx}`;
 
   useEffect(() => {
     loadAssignedProgram();
+    // Cargar todos los ejercicios de la BD para el buscador de sustitución
+    supabase
+      .from("exercises")
+      .select("name, muscle_group")
+      .order("muscle_group")
+      .then(({ data }) => {
+        if (data) {
+          setDbExercises(data.map((e: any) => ({ name: e.name, muscleGroup: e.muscle_group ?? "" })));
+        }
+      });
   }, []);
 
   // ── Helpers de bloqueo ────────────────────────────────────────
