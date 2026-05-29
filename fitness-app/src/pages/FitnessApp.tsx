@@ -65,6 +65,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [exHistory, setExHistory] = useState<{ name: string; dayId: string; exerciseIndex: number } | null>(null);
   const [showStats, setShowStats] = useState(false);
 
+  // Calendario mensual de entrenamientos
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calYear,  setCalYear]  = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+
   // Sustituciones de ejercicio (sesión actual)
   const [substitutions, setSubstitutions] = useState<Record<string, { name: string; muscleGroup: string }>>({});
   const [swapTarget, setSwapTarget] = useState<{ dayId: string; mcNum: number; exIdx: number; origName: string } | null>(null);
@@ -607,6 +612,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             {/* Acciones del header */}
             <div className="flex gap-2 shrink-0">
               <button
+                onClick={() => { setCalYear(new Date().getFullYear()); setCalMonth(new Date().getMonth()); setShowCalendar(true); }}
+                className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
+                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                title="Calendario"
+              >📅</button>
+              <button
                 onClick={() => setShowStats(true)}
                 className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
                 style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
@@ -871,6 +882,115 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           ))}
         </div>
       </nav>
+
+      {/* ── Modal: Calendario mensual de entrenamientos ── */}
+      {showCalendar && (() => {
+        const trainedDates = new Set(logs.map(l => l.loggedAt.slice(0, 10)));
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const firstDay = new Date(calYear, calMonth, 1);
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        // Día de la semana del primer día (0=Dom → ajustamos a Lunes=0)
+        const startDow = (firstDay.getDay() + 6) % 7;
+        const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+        const DAY_LABELS = ["L","M","X","J","V","S","D"];
+
+        // Contar días entrenados en el mes
+        const trainedThisMonth = Array.from({ length: daysInMonth }, (_, i) => {
+          const d = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`;
+          return trainedDates.has(d);
+        }).filter(Boolean).length;
+
+        // Total días pasados del mes (hasta hoy)
+        const today = new Date();
+        const isCurrentMonth = today.getFullYear() === calYear && today.getMonth() === calMonth;
+        const daysPassed = isCurrentMonth ? today.getDate() : daysInMonth;
+
+        // Celdas del grid (blancos al inicio + días del mes)
+        const cells: (number | null)[] = [
+          ...Array(startDow).fill(null),
+          ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+        ];
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowCalendar(false)}>
+            <div className="w-full max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden"
+              style={{ background: "#111", border: "1px solid #222" }}
+              onClick={e => e.stopPropagation()}>
+
+              {/* Cabecera */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <button
+                  onClick={() => { const d = new Date(calYear, calMonth - 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()); }}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 active:bg-neutral-800 text-lg">‹</button>
+                <div className="text-center">
+                  <p className="text-white font-bold text-base">{MONTH_NAMES[calMonth]} {calYear}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#C0394F" }}>
+                    {trainedThisMonth} {trainedThisMonth === 1 ? "día entrenado" : "días entrenados"}
+                    {isCurrentMonth && daysPassed > 0 && (
+                      <span className="text-neutral-500"> · {Math.round(trainedThisMonth / daysPassed * 100)}% del mes</span>
+                    )}
+                  </p>
+                </div>
+                <button
+                  onClick={() => { const d = new Date(calYear, calMonth + 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()); }}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 active:bg-neutral-800 text-lg">›</button>
+              </div>
+
+              {/* Días de la semana */}
+              <div className="grid grid-cols-7 px-3 pb-1">
+                {DAY_LABELS.map(l => (
+                  <div key={l} className="text-center text-[10px] font-semibold text-neutral-600 py-1">{l}</div>
+                ))}
+              </div>
+
+              {/* Grid de días */}
+              <div className="grid grid-cols-7 px-3 pb-5 gap-1">
+                {cells.map((day, i) => {
+                  if (!day) return <div key={`e${i}`} />;
+                  const ds = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                  const trained = trainedDates.has(ds);
+                  const isToday = ds === todayStr;
+                  const isPast = ds < todayStr;
+                  const isFuture = ds > todayStr;
+
+                  return (
+                    <div key={day}
+                      className="aspect-square flex items-center justify-center rounded-xl text-sm font-semibold relative"
+                      style={
+                        trained
+                          ? { background: "#8B1A2F", color: "#fff" }
+                          : isToday
+                          ? { background: "#1A1A2E", color: "#fff", border: "1px solid #444" }
+                          : isPast
+                          ? { background: "#0D0D0D", color: "#444" }
+                          : { background: "transparent", color: "#2A2A2A" }
+                      }>
+                      {day}
+                      {isToday && !trained && (
+                        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white opacity-60" />
+                      )}
+                      {trained && isToday && (
+                        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white opacity-80" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Leyenda */}
+              <div className="flex items-center justify-center gap-5 pb-5 text-xs text-neutral-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded" style={{ background: "#8B1A2F" }} /> Entrenado
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded" style={{ background: "#0D0D0D", border: "1px solid #222" }} /> Descanso
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Modales (siempre por encima de todo) ── */}
       {editing && editingExercise && editingTargetSet && (
