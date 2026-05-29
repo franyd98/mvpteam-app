@@ -87,9 +87,7 @@ export default function RestTimer({
         try {
           new Notification("🏋️ ¡Descanso terminado!", {
             body: "Hora de continuar el entrenamiento 💪",
-            tag: "rest-timer",   // reemplaza notificaciones anteriores del mismo timer
-            renotify: true,      // vuelve a sonar/vibrar aunque el tag sea el mismo
-            silent: false,
+            tag: "rest-timer",
           });
         } catch {
           // Safari puede no soportar todas las opciones
