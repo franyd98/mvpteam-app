@@ -1,6 +1,7 @@
 // Barra flotante con cronómetro de descanso.
 // Aparece pegada al fondo de la pantalla cuando hay un "endAt" activo.
 // Al llegar a cero: pitido (sintetizado) + vibración + barra en verde durante unos segundos.
+// Notificación al terminar: aparece en pantalla de bloqueo del iPhone.
 
 import { useEffect, useRef, useState } from "react";
 
@@ -31,6 +32,75 @@ export default function RestTimer({
     return () => window.clearInterval(id);
   }, []);
 
+  // ── Pedir permiso de notificaciones al montar el componente ──────────────
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // ── Audio silencioso en loop para que iOS no suspenda el JS ─────────────
+  // iOS detiene los timers de JS cuando la pantalla se bloquea, a menos que
+  // haya un AudioContext activo. Este buffer silencioso (0.001 de volumen)
+  // mantiene el contexto vivo sin molestar al usuario.
+  const silentCtxRef = useRef<AudioContext | null>(null);
+  const silentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  useEffect(() => {
+    let ctx: AudioContext | null = null;
+    let source: AudioBufferSourceNode | null = null;
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioCtx) return;
+      ctx = new AudioCtx();
+      // Buffer de 3 segundos de silencio en loop
+      const buffer = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate);
+      source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.001; // casi inaudible
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start();
+      silentCtxRef.current = ctx;
+      silentSourceRef.current = source;
+    } catch {
+      // Si falla (ej. sin interacción previa del usuario), no pasa nada.
+    }
+    return () => {
+      try { source?.stop(); } catch { /* noop */ }
+      try { ctx?.close(); } catch { /* noop */ }
+    };
+  }, [endAt]);
+
+  // ── Programar notificación cuando arranca el timer ───────────────────────
+  useEffect(() => {
+    const delay = endAt - Date.now();
+    if (delay <= 0) return;
+
+    const id = window.setTimeout(() => {
+      if ("Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification("🏋️ ¡Descanso terminado!", {
+            body: "Hora de continuar el entrenamiento 💪",
+            tag: "rest-timer",   // reemplaza notificaciones anteriores del mismo timer
+            renotify: true,      // vuelve a sonar/vibrar aunque el tag sea el mismo
+            silent: false,
+          });
+        } catch {
+          // Safari puede no soportar todas las opciones
+          try { new Notification("🏋️ ¡Descanso terminado!"); } catch { /* noop */ }
+        }
+      }
+    }, delay);
+
+    return () => window.clearTimeout(id);
+  }, [endAt]);
+
   // Reseteamos el "ya he pitado" cuando cambia endAt (nueva serie).
   useEffect(() => {
     finishedRef.current = false;
@@ -48,6 +118,9 @@ export default function RestTimer({
       if (typeof navigator !== "undefined" && navigator.vibrate) {
         navigator.vibrate([200, 100, 200, 100, 200]);
       }
+      // Parar el audio silencioso (ya no hace falta mantener JS despierto)
+      try { silentSourceRef.current?.stop(); } catch { /* noop */ }
+      try { silentCtxRef.current?.close(); } catch { /* noop */ }
     }
   }, [isDone]);
 
