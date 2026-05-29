@@ -487,14 +487,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             const trained = trainedDates.has(ds);
             const isToday = ds === todayStr;
 
-            // Días de descanso recomendado: exactamente después de 3 entrenos consecutivos.
-            // Miramos los 3 días anteriores en el set real de fechas entrenadas.
-            const dDate = new Date(ds);
-            const isRecommendedRest = !trained && [1, 2, 3].every(k => {
-              const prev = new Date(dDate);
-              prev.setDate(dDate.getDate() - k);
-              return trainedDates.has(prev.toISOString().slice(0, 10));
-            });
+            // Día de descanso: no entrenado y ya pasó (o es hoy) → burdeos
+            const isRecommendedRest = !trained && ds <= todayStr;
 
             return (
               <div key={ds} className="flex-1 flex flex-col items-center gap-1">
