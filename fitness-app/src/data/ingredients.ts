@@ -72,6 +72,15 @@ export const ingredients: Ingredient[] = [
   { id: "sepia",           name: "Sepia",                                          category: "lean_protein",   kcal: 78,    protein: 18,    carbs: 0.6,  fat: 0.5  },
   { id: "calamar",         name: "Calamar",                                        category: "lean_protein",   kcal: 78,    protein: 16,    carbs: 0,    fat: 1.6  },
   { id: "gambas",          name: "Gambas",                                         category: "lean_protein",   kcal: 77,    protein: 16.4,  carbs: 0.7,  fat: 0.94 },
+  { id: "leche_vegetal_gen", name: "Leche Vegetal Sin Azúcar (Genérica)",          category: "lean_protein",   kcal: 26,    protein: 0.7,   carbs: 3.3,  fat: 1.3  },
+
+  // Combos proteína del Plan Nutricional (macros por 100g de ración completa)
+  { id: "combo_p_yogursl_iso10",      name: "Combo P: Yogur SL + 10g ISO (ración 135g)",          category: "lean_protein", kcal: 86,  protein: 9.9,  carbs: 4.5, fat: 3.1 },
+  { id: "combo_p_iso20_leche_veg",    name: "Combo P: 20g ISO + 200ml Leche Vegetal (ración 220g)", category: "lean_protein", kcal: 58,  protein: 8.8,  carbs: 3.2, fat: 1.3 },
+  { id: "combo_p_yogurhac_iso15",     name: "Combo P: Yogur Hacendado + 15g ISO (ración 115g)",   category: "lean_protein", kcal: 95,  protein: 20.4, carbs: 3.0, fat: 0.6 },
+  { id: "combo_p_qfresco_iso15",      name: "Combo P: Q.Fresco Batido + 15g ISO (ración 140g)",   category: "lean_protein", kcal: 82,  protein: 16.8, carbs: 3.4, fat: 0.2 },
+  { id: "combo_p_ygr_iso15",          name: "Combo P: Yogur Griego + 15g ISO (ración 165g)",      category: "lean_protein", kcal: 95,  protein: 17.3, carbs: 3.8, fat: 0.3 },
+  { id: "combo_p_iso25_almendra300",  name: "Combo P: 25g ISO + 300ml L.Almendra (ración 325g)", category: "lean_protein",  kcal: 41,  protein: 7.3,  carbs: 0.2, fat: 1.1 },
 
   // ── PROTEÍNAS GRASAS ─────────────────────────────────────────────
   { id: "mozza_light",     name: "Mozzarella Light (en agua)",                     category: "fatty_protein",  kcal: 153,   protein: 17,    carbs: 1.0,  fat: 9.0  },
@@ -110,6 +119,11 @@ export const ingredients: Ingredient[] = [
   { id: "tortas_legumbre", name: "Tortas de Legumbres (Hacendado)",                category: "protein_carb",   kcal: 366,   protein: 25,    carbs: 55,   fat: 3.1  },
   { id: "pan_fibra",       name: "Pan de Fibra y Sésamo (Hacendado)",              category: "protein_carb",   kcal: 391,   protein: 13,    carbs: 60,   fat: 7.6  },
   { id: "pan_wasa",        name: "Pan Wasa Fibra",                                 category: "protein_carb",   kcal: 339,   protein: 12.5,  carbs: 42,   fat: 13.0 },
+  { id: "legumbre_bote_gen", name: "Legumbre Cocida de Bote (Genérica)",           category: "protein_carb",   kcal: 100,   protein: 7.2,   carbs: 14.8, fat: 0.5  },
+
+  // Combos HC del Plan Nutricional (macros por 100g de ración completa)
+  { id: "combo_hc_arroz50_legumbre200", name: "Combo HC: 50g Arroz + 200g Legumbre Bote (ración 250g)", category: "protein_carb", kcal: 151, protein: 7.2, carbs: 27.2, fat: 0.5 },
+  { id: "combo_hc_arroz50_alubias200",  name: "Combo HC: 50g Arroz + 200g Alubias Heinz (ración 250g)", category: "protein_carb", kcal: 141, protein: 5.3, carbs: 26.6, fat: 0.4 },
 
   // ── HIDRATOS LIMPIOS ──────────────────────────────────────────────
   { id: "pasta",           name: "Pasta",                                          category: "clean_carb",     kcal: 354,   protein: 11,    carbs: 72,   fat: 1.2  },
