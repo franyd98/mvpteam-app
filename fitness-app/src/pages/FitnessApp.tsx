@@ -1,7 +1,7 @@
 // Vista del cliente: carga el programa asignado desde Supabase.
 // Los registros de entrenamiento se guardan en Supabase (set_logs).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Program, SetLog } from "../types";
 import { setKey } from "../types";
@@ -45,6 +45,13 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [editing, setEditing] = useState<EditingTarget>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("workout");
+
+  // Resetear scroll del contenedor al cambiar de tab (antes de pintar)
+  useLayoutEffect(() => {
+    const el = document.getElementById("tab-scroll");
+    if (el) el.scrollTop = 0;
+  }, [activeTab]);
+
   const [rest, setRest] = useState<RestState>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   // Clave: "dayId:mcNumber" → true si está bloqueado
@@ -575,10 +582,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   // ── Shell principal ────────────────────────────────────────────
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
+    <div className="h-dvh flex flex-col" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
 
       {/* ── Área de scroll por tab: se monta fresco en cada cambio ── */}
-      <div id="tab-scroll" className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div id="tab-scroll" tabIndex={-1} className="flex-1 overflow-y-auto overscroll-contain outline-none" style={{ WebkitOverflowScrolling: 'touch', overflowAnchor: 'none' }}>
 
       {/* ── Tab: Entrenamiento ── */}
       {activeTab === "workout" && (

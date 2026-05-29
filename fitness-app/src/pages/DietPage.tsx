@@ -3,7 +3,7 @@
 //  2. Mis Macros — objetivos calóricos del cliente (read-only)
 //  3. Generar  — DietGenerator en modo cliente (sin guardar)
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
   INGREDIENTS, CATEGORY_LABELS, calcMacros, sumMacros,
@@ -247,6 +247,12 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
     loadMacros();
     loadCustomIngredients();
   }, []);
+
+  // Reset scroll del contenedor al cambiar de sub-tab
+  useLayoutEffect(() => {
+    const el = document.getElementById("tab-scroll");
+    if (el) el.scrollTop = 0;
+  }, [dietTab]);
 
   const loadCustomIngredients = async () => {
     if (_customLoaded) return;
@@ -526,7 +532,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             { id: "macros"   as DietTab, label: "📊 Mis Macros" },
             { id: "generate" as DietTab, label: "🎲 Generar" },
           ]).map(({ id, label }) => (
-            <button key={id} onClick={() => { setDietTab(id); document.getElementById("tab-scroll")?.scrollTo({ top: 0, behavior: "instant" }); }}
+            <button key={id} onClick={() => setDietTab(id)}
               className={"flex-1 py-2 text-xs font-semibold rounded-t-lg transition-colors " +
                 (dietTab === id ? "text-white" : "text-neutral-500")}
               style={dietTab === id

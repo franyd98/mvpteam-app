@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import heic2any from "heic2any";
 import MiniChart from "../components/MiniChart";
@@ -164,7 +164,7 @@ export function AntroTable({ weightLogs, perimLogs, foldLogs }: {
       {/* Tabla principal */}
       <div className="overflow-x-auto rounded-xl border border-neutral-800">
         {/* Header */}
-        <div className="flex bg-neutral-900 border-b border-neutral-700 sticky top-0 z-10">
+        <div className="flex bg-neutral-900 border-b border-neutral-700">
           <div style={{ minWidth: LABEL_W }} className="px-2 py-2" />
           {allDates.map((date, i) => {
             const isP = !!(wByDate[date]?.is_presencial || pByDate[date]?.is_presencial || flByDate[date]?.is_presencial);
@@ -426,6 +426,12 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
 
   // ── BORRADO ───────────────────────────────────────────────────
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Reset scroll del contenedor al cambiar de pestaña principal
+  useLayoutEffect(() => {
+    const el = document.getElementById("tab-scroll");
+    if (el) el.scrollTop = 0;
+  }, [tab]);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -758,7 +764,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         style={{ background: "#030712" }}>
         <div className="flex gap-1.5 px-3 py-2.5 overflow-x-auto scrollbar-hide">
           {TABS.map(([t, label]) => (
-            <button key={t} onClick={() => { setTab(t); document.getElementById("tab-scroll")?.scrollTo({ top: 0, behavior: "instant" }); }}
+            <button key={t} onClick={() => setTab(t)}
               className={"shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all select-none " +
                 (tab === t
                   ? "bg-white text-black shadow-sm"
