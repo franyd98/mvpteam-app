@@ -6,6 +6,7 @@ import {
   type Ingredient,
   type IngredientCategory,
 } from "../data/ingredients";
+import FoodSearchModal from "./FoodSearchModal";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tipos
@@ -36,6 +37,8 @@ export default function IngredientsAdmin() {
 
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState<IngredientCategory | "all">("all");
+
+  const [showFoodSearch, setShowFoodSearch] = useState(false);
 
   // Panel de edición / creación
   const [editing, setEditing] = useState<(Omit<Ingredient, "id"> & { id: string }) | null>(null);
@@ -308,12 +311,21 @@ export default function IngredientsAdmin() {
             {mergedIngredients.length} alimentos · {customRows.length} personalizados
           </p>
         </div>
-        <button
-          onClick={openNew}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white shrink-0"
-          style={{ background: "#8B1A2F", border: "1px solid #A01F38" }}>
-          + Nuevo
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => setShowFoodSearch(true)}
+            className="px-3 py-2.5 rounded-xl text-sm font-semibold shrink-0"
+            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}
+            title="Buscar en Open Food Facts">
+            🔍 Buscar
+          </button>
+          <button
+            onClick={openNew}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white shrink-0"
+            style={{ background: "#8B1A2F", border: "1px solid #A01F38" }}>
+            + Nuevo
+          </button>
+        </div>
       </div>
 
       {/* Búsqueda */}
@@ -418,6 +430,14 @@ export default function IngredientsAdmin() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Modal búsqueda Open Food Facts */}
+      {showFoodSearch && (
+        <FoodSearchModal
+          onClose={() => setShowFoodSearch(false)}
+          onSaved={() => { loadCustom(); }}
+        />
       )}
     </div>
   );
