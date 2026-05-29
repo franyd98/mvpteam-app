@@ -11,6 +11,8 @@ interface MiniChartProps {
   height?: number;
   /** Mostrar todos los dots o solo el primero/último (default false = todos) */
   sparse?: boolean;
+  /** Modo sparkline: sin cabecera, sin ejes, padding mínimo */
+  hideLabels?: boolean;
 }
 
 export default function MiniChart({
@@ -19,6 +21,7 @@ export default function MiniChart({
   unit = "",
   height = 90,
   sparse = false,
+  hideLabels = false,
 }: MiniChartProps) {
   if (data.length < 2) {
     return (
@@ -30,7 +33,9 @@ export default function MiniChart({
 
   const W = 320;
   const H = height;
-  const PAD = { top: 10, right: 18, bottom: 22, left: 36 };
+  const PAD = hideLabels
+    ? { top: 4, right: 4, bottom: 4, left: 4 }
+    : { top: 10, right: 18, bottom: 22, left: 36 };
   const iW = W - PAD.left - PAD.right;
   const iH = H - PAD.top - PAD.bottom;
 
@@ -60,14 +65,16 @@ export default function MiniChart({
 
   return (
     <div className="w-full">
-      {/* Cabecera: rango y último valor */}
-      <div className="flex justify-between items-center px-1 mb-1">
-        <span className="text-[10px] text-neutral-600">{data[0].label}</span>
-        <span className="text-sm font-bold tabular-nums" style={{ color: trendColor }}>
-          {last.value.toFixed(1)}{unit}&nbsp;{trend}
-        </span>
-        <span className="text-[10px] text-neutral-600">{last.label}</span>
-      </div>
+      {/* Cabecera: rango y último valor (solo modo normal) */}
+      {!hideLabels && (
+        <div className="flex justify-between items-center px-1 mb-1">
+          <span className="text-[10px] text-neutral-600">{data[0].label}</span>
+          <span className="text-sm font-bold tabular-nums" style={{ color: trendColor }}>
+            {last.value.toFixed(1)}{unit}&nbsp;{trend}
+          </span>
+          <span className="text-[10px] text-neutral-600">{last.label}</span>
+        </div>
+      )}
 
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height, display: "block" }}>
         <defs>
@@ -77,8 +84,8 @@ export default function MiniChart({
           </linearGradient>
         </defs>
 
-        {/* Grid lines */}
-        {[minV, midV, maxV].map((v, gi) => {
+        {/* Grid lines (solo modo normal) */}
+        {!hideLabels && [minV, midV, maxV].map((v, gi) => {
           const y = toY(v);
           return (
             <g key={gi}>
@@ -102,7 +109,7 @@ export default function MiniChart({
         {/* Line */}
         <polyline
           points={polyline}
-          fill="none" stroke={color} strokeWidth="2"
+          fill="none" stroke={color} strokeWidth={hideLabels ? "2.5" : "2"}
           strokeLinecap="round" strokeLinejoin="round"
         />
 
@@ -111,16 +118,17 @@ export default function MiniChart({
           const isLast = i === data.length - 1;
           const isFirst = i === 0;
           if (sparse && !isFirst && !isLast) return null;
+          if (hideLabels && !isLast) return null; // sparkline: solo dot final
           const cx = toX(i);
           const cy = toY(d.value);
           return (
             <g key={i}>
               {isLast && (
-                <circle cx={cx} cy={cy} r={7} fill={color} opacity="0.2" />
+                <circle cx={cx} cy={cy} r={hideLabels ? 5 : 7} fill={color} opacity="0.2" />
               )}
               <circle
                 cx={cx} cy={cy}
-                r={isLast ? 4 : 2.5}
+                r={isLast ? (hideLabels ? 3 : 4) : 2.5}
                 fill={isLast ? color : "#111"}
                 stroke={color} strokeWidth="1.5"
               />
@@ -128,19 +136,15 @@ export default function MiniChart({
           );
         })}
 
-        {/* Etiquetas X: primera y última */}
-        <text
-          x={PAD.left} y={H - 4}
-          textAnchor="middle" fill="#444" fontSize="8"
-        >
-          {data[0].label}
-        </text>
-        <text
-          x={PAD.left + iW} y={H - 4}
-          textAnchor="middle" fill="#444" fontSize="8"
-        >
-          {last.label}
-        </text>
+        {/* Etiquetas X: primera y última (solo modo normal) */}
+        {!hideLabels && <>
+          <text x={PAD.left} y={H - 4} textAnchor="middle" fill="#444" fontSize="8">
+            {data[0].label}
+          </text>
+          <text x={PAD.left + iW} y={H - 4} textAnchor="middle" fill="#444" fontSize="8">
+            {last.label}
+          </text>
+        </>}
       </svg>
     </div>
   );

@@ -215,12 +215,20 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   );
 
   const openVideo = (url: string) => {
-    const match = url.match(/\/file\/d\/([^/]+)/);
-    if (match) {
-      setVideoUrl(`https://drive.google.com/file/d/${match[1]}/preview`);
-    } else {
-      setVideoUrl(url);
+    // YouTube: watch?v=ID o youtu.be/ID
+    const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&/?]+)/);
+    if (yt) {
+      setVideoUrl(`https://www.youtube.com/embed/${yt[1]}?autoplay=1&rel=0`);
+      return;
     }
+    // Google Drive
+    const gd = url.match(/\/file\/d\/([^/]+)/);
+    if (gd) {
+      setVideoUrl(`https://drive.google.com/file/d/${gd[1]}/preview`);
+      return;
+    }
+    // URL directa (mp4, etc.)
+    setVideoUrl(url);
   };
 
   const startRestTimer = () => {
@@ -838,12 +846,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             <div className="flex items-center justify-between p-4 border-b border-neutral-800 shrink-0">
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-neutral-500">Estadísticas</p>
-                <p className="text-white font-bold text-sm">Historial de entrenamientos</p>
+                <p className="text-white font-bold text-sm">Progresión de cargas</p>
               </div>
               <button onClick={() => setShowStats(false)}
                 className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 active:text-white flex items-center justify-center text-sm shrink-0">✕</button>
             </div>
-            {/* Lista de días y ejercicios */}
+            {/* Lista de días y ejercicios con sparklines */}
             <div className="overflow-y-auto">
               {program.days.map(d => {
                 const dayExercises = d.microcycles[0]?.exercises ?? [];
@@ -854,31 +862,69 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                       {d.name}
                     </p>
                     {dayExercises.map((ex, exIdx) => {
-                      const hasLogs = logs.some(l => l.dayId === d.id && l.exerciseIndex === exIdx);
+                      const exLogs = logs.filter(l => l.dayId === d.id && l.exerciseIndex === exIdx);
+                      const hasLogs = exLogs.length > 0;
+
+                      // Agrupar por microciclo → peso máximo
+                      const byMc: Record<number, number> = {};
+                      exLogs.forEach(l => {
+                        if (!byMc[l.microcycleNumber] || l.weight > byMc[l.microcycleNumber])
+                          byMc[l.microcycleNumber] = l.weight;
+                      });
+                      const sparkPts: ChartPoint[] = Object.entries(byMc)
+                        .sort((a, b) => Number(a[0]) - Number(b[0]))
+                        .map(([mc, w]) => ({ label: `S${mc}`, value: w }));
+
                       const latestLog = hasLogs
-                        ? [...logs.filter(l => l.dayId === d.id && l.exerciseIndex === exIdx)]
-                            .sort((a, b) => b.loggedAt.localeCompare(a.loggedAt))[0]
+                        ? [...exLogs].sort((a, b) => b.loggedAt.localeCompare(a.loggedAt))[0]
                         : null;
+
+                      // Tendencia: ↑ sube, = igual, ↓ baja
+                      const trend = sparkPts.length >= 2
+                        ? sparkPts[sparkPts.length - 1].value > sparkPts[sparkPts.length - 2].value ? "↑"
+                          : sparkPts[sparkPts.length - 1].value < sparkPts[sparkPts.length - 2].value ? "↓" : "="
+                        : null;
+                      const trendColor = trend === "↑" ? "#4ADE80" : trend === "↓" ? "#F87171" : "#FACC15";
+
                       return (
                         <button key={exIdx}
                           onClick={() => { setShowStats(false); setExHistory({ name: ex.name, dayId: d.id, exerciseIndex: exIdx }); }}
                           disabled={!hasLogs}
                           className={"w-full flex items-center gap-3 px-4 py-3 border-b text-left transition-colors " +
-                            (hasLogs ? "active:bg-neutral-800" : "opacity-40 cursor-default")}
+                            (hasLogs ? "active:bg-neutral-800/60" : "opacity-35 cursor-default")}
                           style={{ borderColor: "#1a1a1a" }}>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-neutral-400 truncate">{ex.muscleGroup}</p>
-                            <p className="text-sm text-white font-medium truncate">{ex.name}</p>
+
+                          {/* Info ejercicio */}
+                          <div className="min-w-0" style={{ width: "38%" }}>
+                            <p className="text-[10px] text-neutral-500 truncate">{ex.muscleGroup}</p>
+                            <p className="text-xs text-white font-medium leading-snug" style={{
+                              display: "-webkit-box", WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical", overflow: "hidden"
+                            }}>{ex.name}</p>
                           </div>
+
+                          {/* Sparkline */}
+                          <div className="flex-1 min-w-0">
+                            {sparkPts.length >= 2 ? (
+                              <MiniChart data={sparkPts} color="#C0394F" unit="" height={36} hideLabels />
+                            ) : hasLogs ? (
+                              <p className="text-[10px] text-neutral-600 text-center">1 registro</p>
+                            ) : null}
+                          </div>
+
+                          {/* Último + tendencia */}
                           {latestLog ? (
-                            <div className="text-right shrink-0">
-                              <p className="text-xs font-bold text-emerald-400">{latestLog.weight} {latestLog.unit} × {latestLog.reps}</p>
-                              <p className="text-[10px] text-neutral-600">último</p>
+                            <div className="text-right shrink-0" style={{ width: "22%" }}>
+                              <p className="text-xs font-bold text-white tabular-nums">
+                                {latestLog.weight}<span className="text-neutral-500 font-normal text-[10px]"> {latestLog.unit}</span>
+                              </p>
+                              <p className="text-[10px] tabular-nums" style={{ color: trendColor }}>
+                                {trend ?? "—"} {latestLog.reps} reps
+                              </p>
                             </div>
                           ) : (
-                            <span className="text-[10px] text-neutral-600">Sin datos</span>
+                            <span className="text-[10px] text-neutral-600 shrink-0">Sin datos</span>
                           )}
-                          {hasLogs && <span className="text-neutral-600 text-xs shrink-0">›</span>}
                         </button>
                       );
                     })}
