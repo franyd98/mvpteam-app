@@ -512,9 +512,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   }
 
   return (
-    <div className="min-h-full pb-8" style={{ background: "#0A0A0A" }}>
-      {/* Header */}
-      <header className="header-safe px-4 pb-0 sticky top-0 z-20"
+    <div className="flex flex-col h-full" style={{ background: "#0A0A0A" }}>
+
+      {/* ── Header (fuera del scroll) ── */}
+      <header className="header-safe shrink-0 px-4 pb-0"
         style={{ background: "#0F0F0F", borderBottom: "1px solid #1E1E1E" }}>
         <div className="flex items-center gap-3 pb-3">
           <button onClick={onBack}
@@ -543,6 +544,9 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
           ))}
         </div>
       </header>
+
+      {/* ── Scroll container (todo el contenido) ── */}
+      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
 
       {/* ── Sub-tab: Mis Macros ── */}
       {dietTab === "macros" && (
@@ -1020,6 +1024,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
           )}
         </div>
       ) : null}
+      </div>{/* fin scroll container */}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import heic2any from "heic2any";
 import MiniChart from "../components/MiniChart";
@@ -358,6 +358,7 @@ function ProgresoTab({ weightLogs, foldLogs, perimLogs, foldKeys }: {
 export default function CheckInPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("hoy");
   const [regTab, setRegTab] = useState<RegTab>("peso");
+  const contentScrollRef = useRef<HTMLDivElement>(null);
 
   // ── REGISTRO RÁPIDO ───────────────────────────────────────────
   const [quickDate,   setQuickDate]   = useState(today());
@@ -427,10 +428,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   // ── BORRADO ───────────────────────────────────────────────────
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Reset scroll del contenedor al cambiar de pestaña principal
+  // Reset scroll del contenedor interno al cambiar de pestaña
   useLayoutEffect(() => {
-    const el = document.getElementById("tab-scroll");
-    if (el) el.scrollTop = 0;
+    if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0;
   }, [tab]);
 
   useEffect(() => { loadAll(); }, []);
@@ -748,9 +748,10 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   };
 
   return (
-    <div className="min-h-full bg-neutral-950 pb-8">
-      {/* Cabecera */}
-      <header className="header-safe bg-neutral-900 border-b border-neutral-800 px-4 pb-3 flex items-center gap-3 sticky top-0 z-20">
+    <div className="flex flex-col h-full bg-neutral-950">
+
+      {/* ── Cabecera (fuera del scroll) ── */}
+      <header className="header-safe shrink-0 bg-neutral-900 border-b border-neutral-800 px-4 pb-3 flex items-center gap-3">
         <button onClick={onBack}
           className="w-10 h-10 rounded-xl bg-neutral-800 text-neutral-300 active:bg-neutral-700 flex items-center justify-center text-xl shrink-0">←</button>
         <div className="flex-1 min-w-0">
@@ -759,8 +760,8 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         </div>
       </header>
 
-      {/* Tabs — scrollables con fade derecho */}
-      <div className="tabs-fade-right max-w-2xl mx-auto sticky top-[calc(max(env(safe-area-inset-top),16px)+52px)] z-10"
+      {/* ── Tabs (fuera del scroll) ── */}
+      <div className="tabs-fade-right shrink-0 max-w-2xl mx-auto w-full"
         style={{ background: "#030712" }}>
         <div className="flex gap-1.5 px-3 py-2.5 overflow-x-auto scrollbar-hide">
           {TABS.map(([t, label]) => (
@@ -792,6 +793,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         )}
       </div>
 
+      {/* ── Área de contenido con scroll propio ── */}
+      <div ref={contentScrollRef} className="flex-1 overflow-y-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch' }}>
       <div className="max-w-2xl mx-auto px-4 space-y-4 pt-4 pb-8">
 
         {/* ── HOY — Registro rápido ── */}
@@ -1334,9 +1338,10 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
           </div>
         )}
 
-      </div>
+      </div>{/* fin max-w-2xl content */}
+      </div>{/* fin scroll container */}
 
-      {/* Lightbox */}
+      {/* Modal de preview de foto (fixed, fuera del scroll) */}
       {previewUrl && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/95"
