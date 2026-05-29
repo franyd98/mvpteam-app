@@ -508,17 +508,17 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     background: trained
                       ? "#8B1A2F"
                       : isRecommendedRest
-                        ? "#1A2535"
+                        ? "#1E0D12"
                         : isToday ? "#1E1E1E" : "#131313",
                     border: isToday
                       ? "1px solid #333"
                       : isRecommendedRest
-                        ? "1px solid #2A3F5F"
+                        ? "1px solid #4A1828"
                         : "1px solid transparent",
                   }}
                 >
                   {trained && <span className="text-white text-xs">✓</span>}
-                  {isRecommendedRest && <span style={{ fontSize: 10, color: "#4A6FA5" }}>💤</span>}
+                  {isRecommendedRest && <span style={{ fontSize: 11, color: "#7A2A3A", fontWeight: 700, letterSpacing: -1 }}>zz</span>}
                 </div>
               </div>
             );
