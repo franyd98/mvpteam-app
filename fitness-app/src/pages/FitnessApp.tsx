@@ -235,27 +235,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     );
   };
 
-  const handleSave = async (data: { weight: number; reps: number; rpe: number }) => {
+  const handleSave = (data: { weight: number; reps: number; rpe: number }) => {
     if (!editing) return;
 
-    const k = setKey(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber);
-    const exerciseSetId = setKeyToIdRef.current.get(k);
-
-    if (exerciseSetId) {
-      await supabase.from("set_logs").upsert(
-        {
-          client_id: profile.id,
-          exercise_set_id: exerciseSetId,
-          weight: data.weight,
-          reps: data.reps,
-          rpe: data.rpe,
-          unit: settings.weightUnit,
-          logged_at: new Date().toISOString(),
-        },
-        { onConflict: "client_id,exercise_set_id" },
-      );
-    }
-
+    // ── Optimistic update: cierra el modal y actualiza la UI al instante ──
     const newLog: SetLog = {
       ...editing,
       weight: data.weight,
@@ -278,22 +261,30 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     ]);
     setEditing(null);
     if (settings.autoStartRestTimer) startRestTimer();
-  };
 
-  const handleDelete = async () => {
-    if (!editing) return;
-
+    // ── Persistir en Supabase en segundo plano (sin bloquear la UI) ──
     const k = setKey(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber);
     const exerciseSetId = setKeyToIdRef.current.get(k);
-
     if (exerciseSetId) {
-      await supabase
-        .from("set_logs")
-        .delete()
-        .eq("client_id", profile.id)
-        .eq("exercise_set_id", exerciseSetId);
+      supabase.from("set_logs").upsert(
+        {
+          client_id: profile.id,
+          exercise_set_id: exerciseSetId,
+          weight: data.weight,
+          reps: data.reps,
+          rpe: data.rpe,
+          unit: settings.weightUnit,
+          logged_at: new Date().toISOString(),
+        },
+        { onConflict: "client_id,exercise_set_id" },
+      );
     }
+  };
 
+  const handleDelete = () => {
+    if (!editing) return;
+
+    // ── Optimistic update: elimina de la UI al instante ──
     setLogs((prev) =>
       prev.filter(
         (l) =>
@@ -306,6 +297,17 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       ),
     );
     setEditing(null);
+
+    // ── Borrar en Supabase en segundo plano ──
+    const k = setKey(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber);
+    const exerciseSetId = setKeyToIdRef.current.get(k);
+    if (exerciseSetId) {
+      supabase
+        .from("set_logs")
+        .delete()
+        .eq("client_id", profile.id)
+        .eq("exercise_set_id", exerciseSetId);
+    }
   };
 
   // IMPORTANTE: se deriva del editing.dayId/microcycleNumber, NO del selector de UI.
