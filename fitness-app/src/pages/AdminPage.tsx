@@ -86,6 +86,10 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [inviteName, setInviteName] = useState("");
   const [inviting, setInviting] = useState(false);
 
+  // Renombrar programa inline
+  const [renamingProgId, setRenamingProgId] = useState<number | null>(null);
+  const [renamingName, setRenamingName] = useState("");
+
   // Edición inline de ejercicios
   type EditingEx = { id: number; name: string; muscle_group: string; video_ref: string; coach_note: string };
   const [editingEx, setEditingEx] = useState<EditingEx | null>(null);
@@ -331,6 +335,16 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     await supabase.from("programs").update({ owner_client_id: clientId }).eq("id", progId);
     setPrograms(prev => prev.map(p => p.id === progId ? { ...p, owner_client_id: clientId } : p));
     showToast("✅ Bloque vinculado al cliente");
+  };
+
+  // Renombrar programa
+  const handleRenameProgram = async (progId: number) => {
+    const name = renamingName.trim();
+    if (!name) return;
+    await supabase.from("programs").update({ name }).eq("id", progId);
+    setPrograms(prev => prev.map(p => p.id === progId ? { ...p, name } : p));
+    setRenamingProgId(null);
+    showToast("✅ Nombre actualizado");
   };
 
   const handleDuplicate = async (prog: ProgramRow, ownerClientId?: string) => {
@@ -1175,20 +1189,56 @@ export default function AdminPage({ profile }: { profile: Profile }) {
               })}
 
               {/* ── Plantillas (sin cliente asignado) ── */}
-              {templates.length > 0 && (
-                <div className="bg-neutral-900 border border-neutral-700/50 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <p className="text-neutral-400 text-sm font-semibold flex-1">📁 Plantillas</p>
-                    <p className="text-neutral-600 text-xs">Sin cliente asignado</p>
-                  </div>
-                  <div className="space-y-2">
+              <div className="bg-neutral-900 border border-neutral-700/50 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-neutral-400 text-sm font-semibold flex-1">📁 Plantillas</p>
+                  <p className="text-neutral-600 text-xs">Base para nuevos bloques</p>
+                </div>
+                {templates.length === 0 ? (
+                  <p className="text-neutral-600 text-xs text-center py-3">
+                    No hay plantillas. Los programas sin cliente asignado aparecen aquí.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
                     {templates.map(prog => (
                       <div key={prog.id} className="rounded-xl p-3 bg-neutral-800/60 border border-neutral-700/50">
-                        <p className="text-neutral-300 text-sm font-medium mb-2">{prog.name}</p>
-                        <div className="flex gap-1.5 mb-2">
+
+                        {/* Nombre con edición inline */}
+                        {renamingProgId === prog.id ? (
+                          <div className="flex gap-2 mb-2">
+                            <input
+                              autoFocus
+                              value={renamingName}
+                              onChange={e => setRenamingName(e.target.value)}
+                              onKeyDown={e => { if (e.key === "Enter") handleRenameProgram(prog.id); if (e.key === "Escape") setRenamingProgId(null); }}
+                              className="flex-1 px-2 py-1.5 rounded-lg bg-neutral-700 border border-neutral-500 text-white text-sm focus:outline-none focus:border-neutral-300"
+                            />
+                            <button onClick={() => handleRenameProgram(prog.id)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+                              style={{ background: "#8B1A2F" }}>
+                              ✓
+                            </button>
+                            <button onClick={() => setRenamingProgId(null)}
+                              className="px-2 py-1.5 rounded-lg text-xs text-neutral-400 bg-neutral-700">
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 mb-2">
+                            <p className="flex-1 text-neutral-200 text-sm font-medium truncate">{prog.name}</p>
+                            <button
+                              onClick={() => { setRenamingProgId(prog.id); setRenamingName(prog.name); }}
+                              className="text-neutral-500 hover:text-neutral-300 text-xs px-2 py-1 rounded-lg hover:bg-neutral-700 transition-colors shrink-0">
+                              ✏️ Renombrar
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Acciones */}
+                        <div className="flex gap-1.5 mb-3">
                           <button onClick={() => setEditingProgramId(prog.id)}
                             className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
-                            ✏️ Editar
+                            ✏️ Editar entreno
                           </button>
                           <button onClick={() => handleDuplicate(prog)}
                             className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
@@ -1200,15 +1250,19 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                             🗑️
                           </button>
                         </div>
-                        {/* Asignar plantilla a un cliente */}
+
+                        {/* Asignar a cliente */}
                         {clients.length > 0 && (
                           <div>
-                            <p className="text-neutral-600 text-[10px] uppercase tracking-wider mb-1">Vincular a cliente →</p>
-                            <div className="flex flex-wrap gap-1">
+                            <p className="text-neutral-600 text-[10px] uppercase tracking-wider mb-1.5">Asignar a cliente →</p>
+                            <div className="flex flex-wrap gap-1.5">
                               {clients.map(c => (
                                 <button key={c.id}
                                   onClick={() => handleSetOwner(prog.id, c.id)}
-                                  className="px-2 py-1 rounded-lg text-xs bg-neutral-700 text-neutral-300 hover:bg-neutral-600 transition-colors">
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-neutral-700 text-neutral-300 hover:bg-neutral-600 transition-colors active:scale-95">
+                                  <span className="w-4 h-4 rounded-full bg-neutral-500 flex items-center justify-center text-[9px] font-bold">
+                                    {c.full_name.charAt(0).toUpperCase()}
+                                  </span>
                                   {c.full_name}
                                 </button>
                               ))}
@@ -1218,8 +1272,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           );
         })()}
