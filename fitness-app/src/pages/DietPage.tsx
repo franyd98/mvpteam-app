@@ -207,8 +207,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [planSource, setPlanSource] = useState<"trainer" | "client">("trainer");
 
   const [clientMacros, setClientMacros] = useState<ClientMacros | null>(null);
-  const [savingDay, setSavingDay] = useState(false);
-  const [savedDay, setSavedDay]   = useState(false);
+  const [savingDay, setSavingDay]       = useState(false);
+  const [savedDay, setSavedDay]         = useState(false);
+  const [showShopList, setShowShopList] = useState(false);
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadDiet();
@@ -360,6 +362,24 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
     });
     return sumMacros(allItems);
   })();
+
+  // ── Lista de la compra: agrupa todos los ingredientes seleccionados ──
+  const buildShopList = () => {
+    const totals: Record<string, { name: string; grams: number; category: string }> = {};
+    Object.values(mealStates).forEach(ms => {
+      const slots: Array<{ ingId: string; grams: number } | null> = [
+        ms.proteina, ms.hidrato, ms.grasa, ...ms.extras,
+      ];
+      slots.forEach(s => {
+        if (!s?.ingId) return;
+        const ing = INGREDIENTS.find(i => i.id === s.ingId);
+        if (!ing) return;
+        if (totals[s.ingId]) totals[s.ingId].grams += s.grams;
+        else totals[s.ingId] = { name: ing.name, grams: s.grams, category: CATEGORY_LABELS[ing.category] };
+      });
+    });
+    return Object.entries(totals).sort((a, b) => a[1].category.localeCompare(b[1].category));
+  };
 
   // Total de una comida
   const mealTotal = (ms: MealState): MacroResult => {
@@ -539,8 +559,8 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             </div>
           )}
 
-          {/* ── Botón guardar comidas del día ── */}
-          <div className="flex items-center gap-3">
+          {/* ── Botones guardar + lista de la compra ── */}
+          <div className="flex items-center gap-2">
             <button
               onClick={saveDayLogs}
               disabled={savingDay}
@@ -548,9 +568,115 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
               style={savedDay
                 ? { background: "#0A2A1A", border: "1px solid #1A4A2A", color: "#4ADE80" }
                 : { background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}>
-              {savingDay ? "Guardando…" : savedDay ? "✅ Comidas guardadas hoy" : "💾 Guardar comidas del día"}
+              {savingDay ? "Guardando…" : savedDay ? "✅ Guardado" : "💾 Guardar día"}
+            </button>
+            <button
+              onClick={() => { setCheckedItems(new Set()); setShowShopList(true); }}
+              className="py-3 px-4 rounded-xl text-sm font-bold active:opacity-70"
+              style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}
+              title="Lista de la compra">
+              🛒
             </button>
           </div>
+
+          {/* ── Modal: lista de la compra ── */}
+          {showShopList && (() => {
+            const shopList = buildShopList();
+            const allChecked = shopList.length > 0 && shopList.every(([id]) => checkedItems.has(id));
+            return (
+              <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+                onClick={() => setShowShopList(false)}>
+                <div className="w-full max-w-lg rounded-t-2xl overflow-hidden footer-safe"
+                  style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", maxHeight: "80dvh" }}
+                  onClick={e => e.stopPropagation()}>
+
+                  {/* Cabecera */}
+                  <div className="flex items-center justify-between px-4 py-4 border-b border-neutral-800">
+                    <div>
+                      <p className="text-white font-bold text-base">🛒 Lista de la compra</p>
+                      <p className="text-neutral-500 text-xs mt-0.5">
+                        Basada en tus comidas seleccionadas
+                      </p>
+                    </div>
+                    <button onClick={() => setShowShopList(false)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-500 hover:text-white"
+                      style={{ background: "#1A1A1A" }}>✕</button>
+                  </div>
+
+                  {/* Lista */}
+                  <div className="overflow-y-auto" style={{ maxHeight: "calc(80dvh - 130px)" }}>
+                    {shopList.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <p className="text-4xl mb-3">🥗</p>
+                        <p className="text-neutral-400 text-sm">Selecciona ingredientes en tus comidas primero</p>
+                      </div>
+                    ) : (
+                      <div className="px-4 py-3 space-y-1">
+                        {/* Agrupar por categoría */}
+                        {(() => {
+                          const byCategory: Record<string, typeof shopList> = {};
+                          shopList.forEach(entry => {
+                            const cat = entry[1].category;
+                            if (!byCategory[cat]) byCategory[cat] = [];
+                            byCategory[cat].push(entry);
+                          });
+                          return Object.entries(byCategory).map(([cat, items]) => (
+                            <div key={cat} className="mb-3">
+                              <p className="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold mb-1.5 px-1">
+                                {cat}
+                              </p>
+                              {items.map(([id, item]) => {
+                                const checked = checkedItems.has(id);
+                                return (
+                                  <button key={id}
+                                    onClick={() => setCheckedItems(prev => {
+                                      const s = new Set(prev);
+                                      checked ? s.delete(id) : s.add(id);
+                                      return s;
+                                    })}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-left active:opacity-70"
+                                    style={{ background: checked ? "#0A1A0A" : "#141414", border: `1px solid ${checked ? "#1A3A1A" : "#1E1E1E"}` }}>
+                                    <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                                      style={{ background: checked ? "#16A34A" : "#222", border: `1px solid ${checked ? "#16A34A" : "#333"}` }}>
+                                      {checked && <span className="text-white text-xs font-bold">✓</span>}
+                                    </div>
+                                    <span className="flex-1 text-sm" style={{ color: checked ? "#4A7A4A" : "#ddd", textDecoration: checked ? "line-through" : "none" }}>
+                                      {item.name}
+                                    </span>
+                                    <span className="text-xs tabular-nums" style={{ color: checked ? "#3A5A3A" : "#666" }}>
+                                      {Math.round(item.grams)}g
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {shopList.length > 0 && (
+                    <div className="px-4 py-3 border-t border-neutral-800 flex gap-2">
+                      <button
+                        onClick={() => setCheckedItems(allChecked ? new Set() : new Set(shopList.map(([id]) => id)))}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold active:opacity-70"
+                        style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#999" }}>
+                        {allChecked ? "Desmarcar todo" : "Marcar todo"}
+                      </button>
+                      <button
+                        onClick={() => setCheckedItems(new Set())}
+                        className="py-2.5 px-4 rounded-xl text-sm font-semibold active:opacity-70"
+                        style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#666" }}>
+                        Resetear
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── COMIDAS ── */}
           {filteredMeals.map(meal => {
