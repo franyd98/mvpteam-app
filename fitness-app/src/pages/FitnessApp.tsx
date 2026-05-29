@@ -267,10 +267,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     setEditing(null);
     if (settings.autoStartRestTimer) startRestTimer();
 
-    // ── 2. Persistir en Supabase ──
-    console.log("[SAVE] exerciseSetId:", exerciseSetId, "snap:", snap);
+    // ── 2. Persistir en Supabase (awaited) ──
     if (exerciseSetId) {
-      const { error } = await supabase.from("set_logs").upsert(
+      await supabase.from("set_logs").upsert(
         {
           client_id: profile.id,
           exercise_set_id: exerciseSetId,
@@ -282,9 +281,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         },
         { onConflict: "client_id,exercise_set_id" },
       );
-      console.log("[SAVE] result error:", error);
-    } else {
-      console.warn("[SAVE] exerciseSetId NOT FOUND for key:", k);
     }
   };
 
