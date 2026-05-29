@@ -426,33 +426,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const trainedDates = new Set(logs.map(l => l.loggedAt.slice(0, 10)));
     if (trainedDates.size === 0) return null;
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-
-    // ── Streak: permite 1 día de descanso, rompe con 2+ descansos seguidos ──
-    let streak = 0;
-    let restConsec = 0;
-    const checkDate = new Date();
-    for (let i = 0; i < 365; i++) {
-      const ds = checkDate.toISOString().slice(0, 10);
-      if (trainedDates.has(ds)) { streak++; restConsec = 0; }
-      else { restConsec++; if (restConsec > 1) break; }
-      checkDate.setDate(checkDate.getDate() - 1);
-    }
-
-    // ── Días CONSECUTIVOS sin descanso (para avisar de sobreentrenamiento) ──
-    let consecWithoutRest = 0;
-    const cd2 = new Date();
-    for (let i = 0; i < 365; i++) {
-      const ds = cd2.toISOString().slice(0, 10);
-      if (trainedDates.has(ds)) { consecWithoutRest++; cd2.setDate(cd2.getDate() - 1); }
-      else break; // primer día sin entrenar → para
-    }
-    // needsRest: lleva 3+ días seguidos sin ningún descanso
-    const needsRest = consecWithoutRest >= 3;
-    // overTrained: lleva 4+ días sin descansar (ya debería haber descansado)
-    const overTrained = consecWithoutRest >= 4;
-
     const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+
+    // ── Semana actual (L a D) ──
     const dow = now.getDay();
     const mondayOffset = dow === 0 ? -6 : 1 - dow;
     const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -460,7 +437,32 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       d.setDate(now.getDate() + mondayOffset + i);
       return d.toISOString().slice(0, 10);
     });
+    const mondayStr = weekDays[0]; // límite inferior del streak
     const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
+
+    // ── Streak: solo cuenta desde el lunes de esta semana,
+    //    permite 1 día de descanso consecutivo sin romper racha ──
+    let streak = 0;
+    let restConsec = 0;
+    const checkDate = new Date();
+    for (let i = 0; i < 14; i++) {
+      const ds = checkDate.toISOString().slice(0, 10);
+      if (ds < mondayStr) break; // no pasar del lunes de esta semana
+      if (trainedDates.has(ds)) { streak++; restConsec = 0; }
+      else { restConsec++; if (restConsec > 1) break; }
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    // ── Días CONSECUTIVOS sin ningún descanso (para avisar de sobreentrenamiento) ──
+    let consecWithoutRest = 0;
+    const cd2 = new Date();
+    for (let i = 0; i < 14; i++) {
+      const ds = cd2.toISOString().slice(0, 10);
+      if (trainedDates.has(ds)) { consecWithoutRest++; cd2.setDate(cd2.getDate() - 1); }
+      else break;
+    }
+    const needsRest  = consecWithoutRest >= 3; // llevas 3 seguidos: descansa mañana
+    const overTrained = consecWithoutRest >= 4; // llevas 4+ seguidos: descansa ya
 
     return (
       <div className="mb-4 rounded-2xl p-3 space-y-2" style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
@@ -484,13 +486,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           {weekDays.map((ds, i) => {
             const trained = trainedDates.has(ds);
             const isToday = ds === todayStr;
-            // Marca en azul/gris los días de descanso recomendado
-            // (el día siguiente a 3 consecutivos de entrenamiento)
-            const dayIdx = weekDays.indexOf(ds);
-            const prevThreeTrained =
-              dayIdx >= 3 &&
-              weekDays.slice(dayIdx - 3, dayIdx).every(d => trainedDates.has(d));
-            const isRecommendedRest = !trained && prevThreeTrained;
+
+            // Días de descanso recomendado: exactamente después de 3 entrenos consecutivos.
+            // Miramos los 3 días anteriores en el set real de fechas entrenadas.
+            const dDate = new Date(ds);
+            const isRecommendedRest = !trained && [1, 2, 3].every(k => {
+              const prev = new Date(dDate);
+              prev.setDate(dDate.getDate() - k);
+              return trainedDates.has(prev.toISOString().slice(0, 10));
+            });
+
             return (
               <div key={ds} className="flex-1 flex flex-col items-center gap-1">
                 <span className="text-[9px] font-semibold" style={{ color: isToday ? "#fff" : "#555" }}>
