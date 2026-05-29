@@ -90,6 +90,9 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [renamingProgId, setRenamingProgId] = useState<number | null>(null);
   const [renamingName, setRenamingName] = useState("");
 
+  // Clientes colapsados/expandidos en tab Programas
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+
   // Edición inline de ejercicios
   type EditingEx = { id: number; name: string; muscle_group: string; video_ref: string; coach_note: string };
   const [editingEx, setEditingEx] = useState<EditingEx | null>(null);
@@ -1142,46 +1145,68 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
           return (
             <div className="space-y-4">
-              {/* ── Sección por cliente ── */}
+              {/* ── Sección por cliente (colapsable) ── */}
               {clients.length === 0 ? (
                 <p className="text-neutral-500 text-sm text-center py-8">
                   Añade clientes primero en la pestaña Clientes.
                 </p>
               ) : clients.map(client => {
                 const clientProgs = progsByClient(client.id);
+                const isOpen = expandedClientId === client.id;
+                const activeProgId = assignments.find(a => a.client_id === client.id)?.program_id;
                 return (
-                  <div key={client.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
-                    {/* Header cliente */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-bold text-white shrink-0">
+                  <div key={client.id} className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+                    {/* Header colapsable */}
+                    <button
+                      onClick={() => setExpandedClientId(isOpen ? null : client.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-800/50 transition-colors text-left">
+                      <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
                         {client.full_name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-white font-semibold text-sm">{client.full_name}</p>
+                        <p className="text-white font-medium text-sm">{client.full_name}</p>
                         <p className="text-neutral-500 text-xs">
-                          {clientProgs.length === 0
-                            ? "Sin bloques"
-                            : `${clientProgs.length} bloque${clientProgs.length !== 1 ? "s" : ""}`}
+                          {clientProgs.length === 0 ? "Sin bloques" : `${clientProgs.length} bloque${clientProgs.length !== 1 ? "s" : ""}`}
+                          {activeProgId && clientProgs.find(p => p.id === activeProgId) && (
+                            <span className="ml-2 text-emerald-500">· Activo</span>
+                          )}
                         </p>
                       </div>
-                      <button
-                        onClick={() => handleCreateProgram(client.id, client.full_name)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                        style={{ background: "#1A1A2A", border: "1px solid #2A2A4A", color: "#a5b4fc" }}>
-                        ➕ Nuevo bloque
-                      </button>
-                    </div>
+                      <span className="text-neutral-500 text-xs">{isOpen ? "▲" : "▼"}</span>
+                    </button>
 
-                    {/* Bloques del cliente */}
-                    {clientProgs.length === 0 ? (
-                      <p className="text-neutral-600 text-xs text-center py-3">
-                        Sin bloques aún. Crea uno nuevo o asigna una plantilla.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {clientProgs.map(prog => (
-                          <ProgramCard key={prog.id} prog={prog} clientId={client.id} />
-                        ))}
+                    {/* Contenido expandido */}
+                    {isOpen && (
+                      <div className="px-4 pb-4 border-t border-neutral-800 pt-3">
+                        <button
+                          onClick={() => handleCreateProgram(client.id, client.full_name)}
+                          className="w-full mb-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                          style={{ background: "#12122A", border: "1px solid #2A2A4A", color: "#a5b4fc" }}>
+                          ➕ Nuevo bloque para {client.full_name}
+                        </button>
+                        {clientProgs.length === 0 ? (
+                          <p className="text-neutral-600 text-xs text-center py-2">
+                            Sin bloques. Crea uno nuevo o asigna una plantilla.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {clientProgs.map(prog => (
+                              <div key={prog.id}>
+                                <ProgramCard prog={prog} clientId={client.id} />
+                                {/* Mover a plantillas */}
+                                <button
+                                  onClick={async () => {
+                                    await supabase.from("programs").update({ owner_client_id: null }).eq("id", prog.id);
+                                    setPrograms(prev => prev.map(p => p.id === prog.id ? { ...p, owner_client_id: null } : p));
+                                    showToast("✅ Movido a Plantillas");
+                                  }}
+                                  className="mt-1 w-full py-1 rounded-lg text-[10px] text-neutral-600 hover:text-neutral-400 hover:bg-neutral-800 transition-colors">
+                                  → Mover a Plantillas
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
