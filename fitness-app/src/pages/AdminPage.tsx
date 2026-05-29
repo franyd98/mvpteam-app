@@ -11,7 +11,7 @@ import IngredientsAdmin from "../components/IngredientsAdmin";
 
 type Profile = { id: string; full_name: string; role: string };
 type CatalogEx = { id: number; muscle_group: string; name: string; video_ref: string | null; coach_note: string | null };
-type ProgramRow = { id: number; name: string; description: string | null };
+type ProgramRow = { id: number; name: string; description: string | null; owner_client_id: string | null };
 type Assignment = { client_id: string; program_id: number; program_name: string };
 type DietPlan = { id: string; name: string; kcal_on: number | null; kcal_off: number | null; notes: string | null };
 type DietAssignment = { client_id: string; plan_id: string; plan_name: string };
@@ -107,7 +107,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     setExercises(data ?? []);
   };
   const loadPrograms = async () => {
-    const { data } = await supabase.from("programs").select("id, name, description").order("name");
+    const { data } = await supabase.from("programs").select("id, name, description, owner_client_id").order("id");
     setPrograms(data ?? []);
   };
   const loadAssignments = async () => {
@@ -313,17 +313,38 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     showToast("✅ Nombre actualizado");
   };
 
-  const handleDuplicate = async (prog: ProgramRow) => {
+  // Crear nuevo bloque para un cliente específico
+  const handleCreateProgram = async (clientId: string, clientName: string) => {
+    const bloquesCliente = programs.filter(p => p.owner_client_id === clientId);
+    const nextNum = bloquesCliente.length + 1;
+    const { data, error } = await supabase.from("programs")
+      .insert({ name: `Bloque ${nextNum} - ${clientName}`, owner_client_id: clientId, created_by: profile.id })
+      .select("id, name, description, owner_client_id").single();
+    if (error || !data) { showToast("❌ Error al crear bloque"); return; }
+    setPrograms(prev => [...prev, data as ProgramRow]);
+    setEditingProgramId(data.id);
+    showToast(`✅ "${data.name}" creado`);
+  };
+
+  // Asignar owner_client_id a un programa existente (mover de Plantillas a cliente)
+  const handleSetOwner = async (progId: number, clientId: string) => {
+    await supabase.from("programs").update({ owner_client_id: clientId }).eq("id", progId);
+    setPrograms(prev => prev.map(p => p.id === progId ? { ...p, owner_client_id: clientId } : p));
+    showToast("✅ Bloque vinculado al cliente");
+  };
+
+  const handleDuplicate = async (prog: ProgramRow, ownerClientId?: string) => {
     showToast("⏳ Duplicando...");
 
     // 1. Crear programa copia
+    const finalOwner = ownerClientId !== undefined ? ownerClientId : prog.owner_client_id;
     const { data: newProg, error: progErr } = await supabase.from("programs")
-      .insert({ name: prog.name + " (copia)", description: prog.description, created_by: profile.id })
+      .insert({ name: prog.name + " (copia)", description: prog.description, owner_client_id: finalOwner, created_by: profile.id })
       .select().single();
     if (!newProg || progErr) { showToast("❌ Error al duplicar"); return; }
 
     // 2. Mostrar en lista inmediatamente (sin esperar a copiar estructura)
-    setPrograms(prev => [...prev, { id: newProg.id, name: newProg.name, description: newProg.description }]);
+    setPrograms(prev => [...prev, { id: newProg.id, name: newProg.name, description: newProg.description, owner_client_id: finalOwner ?? null }]);
     showToast(`✅ "${prog.name}" duplicado`);
 
     // 3. Cargar estructura completa del original
@@ -1049,83 +1070,159 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       <div className="max-w-3xl mx-auto px-4">
 
         {/* ── TAB PROGRAMAS ── */}
-        {tab === "programas" && (
-          <div>
-            {programs.length === 0 ? (
-              <div className="bg-amber-950/30 border border-amber-900/40 rounded-xl p-4">
-                <p className="text-amber-300 text-sm font-semibold mb-1">No hay programas</p>
-                <p className="text-amber-200/70 text-xs">Ejecuta 03_SQL_IMPORTAR_BLOQUE5.sql en Supabase → SQL Editor.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {programs.map((prog) => (
-                  <div key={prog.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
-                    <h2 className="text-white font-semibold mb-3">{prog.name}</h2>
+        {tab === "programas" && (() => {
+          // Programas agrupados por cliente
+          const progsByClient = (clientId: string) =>
+            programs.filter(p => p.owner_client_id === clientId);
+          const templates = programs.filter(p => !p.owner_client_id);
 
-                    <div className="flex gap-2 mb-3">
-                      <button onClick={() => setEditingProgramId(prog.id)}
-                        className="flex-1 py-2 rounded-lg bg-neutral-800 text-neutral-200 text-sm font-medium hover:bg-neutral-700 transition-colors">
-                        ✏️ Editar
-                      </button>
-                      <button onClick={() => handleDuplicate(prog)}
-                        className="flex-1 py-2 rounded-lg bg-neutral-800 text-neutral-200 text-sm font-medium hover:bg-neutral-700 transition-colors">
-                        📋 Duplicar
-                      </button>
-                      <button onClick={() => handleDeleteProgram(prog)}
-                        className="px-3 py-2 rounded-lg text-red-400 text-sm hover:bg-red-950/40 transition-colors"
-                        style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
-                        🗑️
+          const ProgramCard = ({ prog, clientId }: { prog: ProgramRow; clientId?: string }) => {
+            const isActive = !!assignments.find(a => a.client_id === clientId && a.program_id === prog.id);
+            return (
+              <div className={
+                "rounded-xl p-3 border transition-colors " +
+                (isActive
+                  ? "bg-emerald-950/30 border-emerald-800/50"
+                  : "bg-neutral-800/60 border-neutral-700/50")
+              }>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="flex-1 text-white text-sm font-medium truncate">{prog.name}</p>
+                  {isActive && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded-full shrink-0">
+                      Activo
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-1.5">
+                  <button onClick={() => setEditingProgramId(prog.id)}
+                    className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
+                    ✏️ Editar
+                  </button>
+                  <button onClick={() => handleDuplicate(prog)}
+                    className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
+                    📋 Duplicar
+                  </button>
+                  {clientId && !isActive && (
+                    <button onClick={() => handleAssign(prog.id, clientId, clients.find(c => c.id === clientId)?.full_name ?? "")}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      style={{ background: "#1A2A1A", border: "1px solid #2A4A2A", color: "#6ee7b7" }}>
+                      Activar
+                    </button>
+                  )}
+                  {clientId && isActive && (
+                    <button onClick={() => handleUnassign(clientId, "", true)}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      style={{ background: "#2A1A1A", border: "1px solid #4A2A2A", color: "#f87171" }}>
+                      Desactivar
+                    </button>
+                  )}
+                  <button onClick={() => handleDeleteProgram(prog)}
+                    className="w-8 py-1.5 rounded-lg text-red-500 text-xs hover:bg-red-950/40 transition-colors shrink-0"
+                    style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <div className="space-y-4">
+              {/* ── Sección por cliente ── */}
+              {clients.length === 0 ? (
+                <p className="text-neutral-500 text-sm text-center py-8">
+                  Añade clientes primero en la pestaña Clientes.
+                </p>
+              ) : clients.map(client => {
+                const clientProgs = progsByClient(client.id);
+                return (
+                  <div key={client.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+                    {/* Header cliente */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-bold text-white shrink-0">
+                        {client.full_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-semibold text-sm">{client.full_name}</p>
+                        <p className="text-neutral-500 text-xs">
+                          {clientProgs.length === 0
+                            ? "Sin bloques"
+                            : `${clientProgs.length} bloque${clientProgs.length !== 1 ? "s" : ""}`}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleCreateProgram(client.id, client.full_name)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                        style={{ background: "#1A1A2A", border: "1px solid #2A2A4A", color: "#a5b4fc" }}>
+                        ➕ Nuevo bloque
                       </button>
                     </div>
 
-                    {assigning === prog.id ? (
-                      <div>
-                        <p className="text-xs text-neutral-400 mb-2">Asignar a:</p>
-                        {clients.length === 0 ? (
-                          <p className="text-neutral-500 text-xs">No hay clientes. Añádelos en Supabase → Authentication → Users.</p>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {clients.map((c) => (
-                              <div key={c.id} className="flex items-center gap-2">
-                                <button onClick={() => handleAssign(prog.id, c.id, c.full_name)}
-                                  className={"flex-1 text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-colors " +
-                                    (assignments.find(a => a.client_id === c.id && a.program_id === prog.id)
-                                      ? "bg-emerald-950 border border-emerald-800 text-white"
-                                      : "bg-neutral-800 hover:bg-neutral-700 text-white")}>
-                                  <span className="w-7 h-7 rounded-full bg-neutral-600 flex items-center justify-center text-xs font-bold shrink-0">
-                                    {c.full_name.charAt(0).toUpperCase()}
-                                  </span>
-                                  <span className="flex-1">{c.full_name}</span>
-                                  {assignments.find(a => a.client_id === c.id && a.program_id === prog.id) && (
-                                    <span className="text-emerald-400 text-xs shrink-0">✓ Asignado</span>
-                                  )}
-                                </button>
-                                {assignments.find(a => a.client_id === c.id && a.program_id === prog.id) && (
-                                  <button
-                                    onClick={() => handleUnassign(c.id, c.full_name, true)}
-                                    className="w-8 h-8 rounded-lg bg-red-950/50 text-red-400 border border-red-900/40 hover:bg-red-950 flex items-center justify-center text-sm shrink-0"
-                                    title="Desasignar">
-                                    ✕
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <button onClick={() => setAssigning(null)} className="mt-2 text-xs text-neutral-500 hover:text-neutral-300">Cancelar</button>
-                      </div>
+                    {/* Bloques del cliente */}
+                    {clientProgs.length === 0 ? (
+                      <p className="text-neutral-600 text-xs text-center py-3">
+                        Sin bloques aún. Crea uno nuevo o asigna una plantilla.
+                      </p>
                     ) : (
-                      <button onClick={() => setAssigning(prog.id)}
-                        className="w-full py-2.5 rounded-lg bg-white text-black text-sm font-semibold hover:bg-neutral-200 transition-colors">
-                        Asignar a cliente →
-                      </button>
+                      <div className="space-y-2">
+                        {clientProgs.map(prog => (
+                          <ProgramCard key={prog.id} prog={prog} clientId={client.id} />
+                        ))}
+                      </div>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                );
+              })}
+
+              {/* ── Plantillas (sin cliente asignado) ── */}
+              {templates.length > 0 && (
+                <div className="bg-neutral-900 border border-neutral-700/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <p className="text-neutral-400 text-sm font-semibold flex-1">📁 Plantillas</p>
+                    <p className="text-neutral-600 text-xs">Sin cliente asignado</p>
+                  </div>
+                  <div className="space-y-2">
+                    {templates.map(prog => (
+                      <div key={prog.id} className="rounded-xl p-3 bg-neutral-800/60 border border-neutral-700/50">
+                        <p className="text-neutral-300 text-sm font-medium mb-2">{prog.name}</p>
+                        <div className="flex gap-1.5 mb-2">
+                          <button onClick={() => setEditingProgramId(prog.id)}
+                            className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
+                            ✏️ Editar
+                          </button>
+                          <button onClick={() => handleDuplicate(prog)}
+                            className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
+                            📋 Duplicar
+                          </button>
+                          <button onClick={() => handleDeleteProgram(prog)}
+                            className="w-8 py-1.5 rounded-lg text-red-500 text-xs hover:bg-red-950/40 transition-colors shrink-0"
+                            style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
+                            🗑️
+                          </button>
+                        </div>
+                        {/* Asignar plantilla a un cliente */}
+                        {clients.length > 0 && (
+                          <div>
+                            <p className="text-neutral-600 text-[10px] uppercase tracking-wider mb-1">Vincular a cliente →</p>
+                            <div className="flex flex-wrap gap-1">
+                              {clients.map(c => (
+                                <button key={c.id}
+                                  onClick={() => handleSetOwner(prog.id, c.id)}
+                                  className="px-2 py-1 rounded-lg text-xs bg-neutral-700 text-neutral-300 hover:bg-neutral-600 transition-colors">
+                                  {c.full_name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── TAB CLIENTES ── */}
         {tab === "clientes" && (
