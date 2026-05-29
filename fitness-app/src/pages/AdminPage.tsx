@@ -94,6 +94,10 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
 
+  // Tab Clientes: búsqueda + colapsable
+  const [clientSearch, setClientSearch] = useState("");
+  const [expandedClientCardId, setExpandedClientCardId] = useState<string | null>(null);
+
   // Edición inline de ejercicios
   type EditingEx = { id: number; name: string; muscle_group: string; video_ref: string; coach_note: string };
   const [editingEx, setEditingEx] = useState<EditingEx | null>(null);
@@ -1316,80 +1320,101 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
         {/* ── TAB CLIENTES ── */}
         {tab === "clientes" && (
-          <div>
+          <div className="space-y-3">
             {/* ── Formulario de invitación ── */}
-            <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-4">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
               <p className="text-white text-sm font-semibold mb-3">➕ Invitar nuevo cliente</p>
               <div className="space-y-2">
-                <input
-                  type="text"
-                  value={inviteName}
-                  onChange={(e) => setInviteName(e.target.value)}
+                <input type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)}
                   placeholder="Nombre del cliente (opcional)"
-                  className="w-full px-3 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-500"
-                />
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-500" />
+                <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="correo@ejemplo.com"
                   onKeyDown={(e) => e.key === "Enter" && handleInviteClient()}
-                  className="w-full px-3 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-500"
-                />
-                <button
-                  onClick={handleInviteClient}
-                  disabled={inviting || !inviteEmail.trim()}
+                  className="w-full px-3 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-500" />
+                <button onClick={handleInviteClient} disabled={inviting || !inviteEmail.trim()}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-opacity active:scale-95"
-                  style={{ background: "#8B1A2F" }}
-                >
+                  style={{ background: "#8B1A2F" }}>
                   {inviting ? "Enviando invitación…" : "Enviar invitación por email"}
                 </button>
               </div>
-              <p className="text-neutral-600 text-xs mt-2">
-                El cliente recibirá un email para crear su contraseña.
-              </p>
+              <p className="text-neutral-600 text-xs mt-2">El cliente recibirá un email para crear su contraseña.</p>
             </div>
+
+            {/* ── Buscador ── */}
+            {clients.length > 0 && (
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">🔍</span>
+                <input
+                  type="text"
+                  value={clientSearch}
+                  onChange={e => setClientSearch(e.target.value)}
+                  placeholder="Buscar cliente..."
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-600"
+                />
+              </div>
+            )}
+
+            {/* ── Lista de clientes ── */}
             {clients.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-4xl mb-3">👥</p>
                 <p className="text-neutral-400">Aún no hay clientes.</p>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {clients.map((c) => (
-                  <div key={c.id} className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-bold text-white shrink-0">
-                        {c.full_name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-medium">{c.full_name}</p>
-                        {(() => {
-                          const a = assignments.find(a => a.client_id === c.id);
-                          return a
-                            ? <p className="text-emerald-400 text-xs truncate">📋 {a.program_name}</p>
-                            : <p className="text-neutral-600 text-xs">Sin programa asignado</p>;
-                        })()}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openClientProgress(c)}
-                        className="flex-1 py-1.5 rounded-lg bg-neutral-800 text-neutral-300 text-xs hover:bg-neutral-700 transition-colors">
-                        📊 Progreso
-                      </button>
-                      {assignments.find(a => a.client_id === c.id) && (
+            ) : (() => {
+              const filtered = clients.filter(c =>
+                c.full_name.toLowerCase().includes(clientSearch.toLowerCase())
+              );
+              return filtered.length === 0 ? (
+                <p className="text-neutral-500 text-sm text-center py-6">Sin resultados para "{clientSearch}"</p>
+              ) : (
+                <div className="space-y-2">
+                  {filtered.map((c) => {
+                    const isOpen = expandedClientCardId === c.id;
+                    const assignment = assignments.find(a => a.client_id === c.id);
+                    const dietAssignment = dietAssignments.find(a => a.client_id === c.id);
+                    return (
+                      <div key={c.id} className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+                        {/* Header colapsable */}
                         <button
-                          onClick={() => handleUnassign(c.id, c.full_name)}
-                          className="flex-1 py-1.5 rounded-lg bg-red-950/40 text-red-400 border border-red-900/40 text-xs hover:bg-red-950/70 transition-colors">
-                          Desasignar
+                          onClick={() => setExpandedClientCardId(isOpen ? null : c.id)}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-800/50 transition-colors text-left">
+                          <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-bold text-white shrink-0">
+                            {c.full_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-medium">{c.full_name}</p>
+                            <p className="text-xs truncate">
+                              {assignment
+                                ? <span className="text-emerald-500">📋 {assignment.program_name}</span>
+                                : <span className="text-neutral-600">Sin programa</span>}
+                              {dietAssignment && <span className="text-orange-400 ml-2">🥗 {dietAssignment.plan_name}</span>}
+                            </p>
+                          </div>
+                          <span className="text-neutral-500 text-xs shrink-0">{isOpen ? "▲" : "▼"}</span>
                         </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+
+                        {/* Acciones expandidas */}
+                        {isOpen && (
+                          <div className="px-4 pb-3 pt-1 border-t border-neutral-800 flex flex-wrap gap-2">
+                            <button onClick={() => openClientProgress(c)}
+                              className="flex-1 py-2 rounded-lg bg-neutral-800 text-neutral-300 text-xs hover:bg-neutral-700 transition-colors">
+                              📊 Progreso
+                            </button>
+                            {assignment && (
+                              <button onClick={() => handleUnassign(c.id, c.full_name)}
+                                className="flex-1 py-2 rounded-lg bg-red-950/40 text-red-400 border border-red-900/40 text-xs hover:bg-red-950/70 transition-colors">
+                                Desasignar programa
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 
