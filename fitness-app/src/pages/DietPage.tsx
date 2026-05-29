@@ -3,14 +3,23 @@
 //  2. Mis Macros — objetivos calóricos del cliente (read-only)
 //  3. Generar  — DietGenerator en modo cliente (sin guardar)
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
   INGREDIENTS, CATEGORY_LABELS, calcMacros, sumMacros,
-  bySlot, type MainSlot, type MacroResult,
+  bySlot, type MainSlot, type MacroResult, type Ingredient, type IngredientCategory,
 } from "../data/ingredients";
 import DietGenerator from "../components/DietGenerator";
 import MacroCalculator from "../components/MacroCalculator";
+import FoodSearchModal from "../components/FoodSearchModal";
+
+// Ingredientes personalizados cargados de Supabase (se fusionan con INGREDIENTS en runtime)
+let _customLoaded = false;
+const injectCustomIngredients = (rows: Ingredient[]) => {
+  rows.forEach(r => {
+    if (!INGREDIENTS.find(i => i.id === r.id)) INGREDIENTS.push(r);
+  });
+};
 
 const ingName = (id: string) => INGREDIENTS.find(i => i.id === id)?.name ?? id;
 
@@ -225,6 +234,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [savedDay, setSavedDay]         = useState(false);
   const [showShopList, setShowShopList] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [showFoodSearch, setShowFoodSearch] = useState(false);
 
   // ── Lista de la compra (curada por el usuario) ─────────────────────
   const [shopItems, setShopItems] = useState<Record<string, { name: string; grams: number; category: string }>>({});
@@ -235,7 +245,22 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   useEffect(() => {
     loadDiet();
     loadMacros();
+    loadCustomIngredients();
   }, []);
+
+  const loadCustomIngredients = async () => {
+    if (_customLoaded) return;
+    const { data } = await supabase.from("custom_ingredients").select("*");
+    if (data) {
+      injectCustomIngredients(data.map((r: any) => ({
+        id: r.id, name: r.name,
+        category: r.category as IngredientCategory,
+        kcal: Number(r.kcal), protein: Number(r.protein),
+        carbs: Number(r.carbs), fat: Number(r.fat),
+      })));
+      _customLoaded = true;
+    }
+  };
 
   const loadMacros = async () => {
     const { data } = await supabase
@@ -636,16 +661,23 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             </div>
           )}
 
-          {/* ── Botón lista de la compra ── */}
-          <div className="flex justify-end">
+          {/* ── Botones: buscar alimento + lista de la compra ── */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFoodSearch(true)}
+              className="flex items-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold active:opacity-70"
+              style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}
+              title="Buscar alimento">
+              🔍 Buscar alimento
+            </button>
             <button
               onClick={() => { setCheckedItems(new Set()); setShowShopList(true); }}
               className="flex items-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold active:opacity-70"
               style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}
               title="Lista de la compra">
-              🛒 Lista de la compra
+              🛒
               {Object.keys(shopItems).length > 0 && (
-                <span className="ml-1 text-xs font-bold rounded-full px-1.5 py-0.5"
+                <span className="text-xs font-bold rounded-full px-1.5 py-0.5"
                   style={{ background: "#8B1A2F", color: "#fff" }}>
                   {Object.keys(shopItems).length}
                 </span>
@@ -959,6 +991,27 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             </div>
           )}
           </> /* fin vista entrenador */}
+
+          {/* ── Modal: Buscar alimento (Open Food Facts) ── */}
+          {showFoodSearch && (
+            <FoodSearchModal
+              onClose={() => setShowFoodSearch(false)}
+              onAddToShop={(name, grams) => {
+                setShopItems(prev => ({
+                  ...prev,
+                  [`_off_${name}`]: {
+                    name,
+                    grams: prev[`_off_${name}`] ? prev[`_off_${name}`].grams + grams : grams,
+                    category: "Buscador",
+                  },
+                }));
+              }}
+              onSaved={() => {
+                _customLoaded = false;
+                loadCustomIngredients();
+              }}
+            />
+          )}
         </div>
       ) : null}
     </div>
