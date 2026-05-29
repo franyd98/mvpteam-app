@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import heic2any from "heic2any";
 import MiniChart from "../components/MiniChart";
@@ -427,7 +427,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   // ── BORRADO ───────────────────────────────────────────────────
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
+  useLayoutEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {

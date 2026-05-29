@@ -3,7 +3,7 @@
 //  2. Mis Macros — objetivos calóricos del cliente (read-only)
 //  3. Generar  — DietGenerator en modo cliente (sin guardar)
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
   INGREDIENTS, CATEGORY_LABELS, calcMacros, sumMacros,
@@ -242,7 +242,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [savingMeals, setSavingMeals] = useState<Set<string>>(new Set());
   const [savedMeals,  setSavedMeals]  = useState<Set<string>>(new Set());
 
-  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
+  useLayoutEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
   useEffect(() => {
     loadDiet();
     loadMacros();
