@@ -512,7 +512,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   }}
                 >
                   {trained && <span className="text-white text-xs">✓</span>}
-                  {isRecommendedRest && <span style={{ fontSize: 11, color: "#7A2A3A", fontWeight: 700, letterSpacing: -1 }}>zz</span>}
+                  {isRecommendedRest && <span style={{ fontSize: 14 }}>😴</span>}
                 </div>
               </div>
             );
