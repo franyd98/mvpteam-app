@@ -703,25 +703,35 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                               {items.map(([id, item]) => {
                                 const checked = checkedItems.has(id);
                                 return (
-                                  <button key={id}
-                                    onClick={() => setCheckedItems(prev => {
-                                      const s = new Set(prev);
-                                      checked ? s.delete(id) : s.add(id);
-                                      return s;
-                                    })}
-                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-left active:opacity-70"
-                                    style={{ background: checked ? "#0A1A0A" : "#141414", border: `1px solid ${checked ? "#1A3A1A" : "#1E1E1E"}` }}>
-                                    <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-                                      style={{ background: checked ? "#16A34A" : "#222", border: `1px solid ${checked ? "#16A34A" : "#333"}` }}>
-                                      {checked && <span className="text-white text-xs font-bold">✓</span>}
-                                    </div>
-                                    <span className="flex-1 text-sm" style={{ color: checked ? "#4A7A4A" : "#ddd", textDecoration: checked ? "line-through" : "none" }}>
-                                      {item.name}
-                                    </span>
-                                    <span className="text-xs tabular-nums" style={{ color: checked ? "#3A5A3A" : "#666" }}>
-                                      {Math.round(item.grams)}g
-                                    </span>
-                                  </button>
+                                  <div key={id} className="flex items-center gap-1 mb-1">
+                                    <button
+                                      onClick={() => setCheckedItems(prev => {
+                                        const s = new Set(prev);
+                                        checked ? s.delete(id) : s.add(id);
+                                        return s;
+                                      })}
+                                      className="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:opacity-70"
+                                      style={{ background: checked ? "#0A1A0A" : "#141414", border: `1px solid ${checked ? "#1A3A1A" : "#1E1E1E"}` }}>
+                                      <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                                        style={{ background: checked ? "#16A34A" : "#222", border: `1px solid ${checked ? "#16A34A" : "#333"}` }}>
+                                        {checked && <span className="text-white text-xs font-bold">✓</span>}
+                                      </div>
+                                      <span className="flex-1 text-sm" style={{ color: checked ? "#4A7A4A" : "#ddd", textDecoration: checked ? "line-through" : "none" }}>
+                                        {item.name}
+                                      </span>
+                                      <span className="text-xs tabular-nums" style={{ color: checked ? "#3A5A3A" : "#666" }}>
+                                        {Math.round(item.grams)}g
+                                      </span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setShopItems(prev => { const n = { ...prev }; delete n[id]; return n; });
+                                        setCheckedItems(prev => { const s = new Set(prev); s.delete(id); return s; });
+                                      }}
+                                      className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-600 hover:text-red-400 active:scale-95 shrink-0"
+                                      style={{ background: "#1A1A1A" }}
+                                      title="Quitar de la lista">✕</button>
+                                  </div>
                                 );
                               })}
                             </div>
