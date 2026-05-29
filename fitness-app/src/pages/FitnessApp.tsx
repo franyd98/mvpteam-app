@@ -235,12 +235,17 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     );
   };
 
-  const handleSave = (data: { weight: number; reps: number; rpe: number }) => {
+  const handleSave = async (data: { weight: number; reps: number; rpe: number }) => {
     if (!editing) return;
 
-    // ── Optimistic update: cierra el modal y actualiza la UI al instante ──
+    // Capturar antes de cualquier setState (los setState son asíncronos)
+    const snap = { ...editing };
+    const k = setKey(snap.dayId, snap.microcycleNumber, snap.exerciseIndex, snap.setNumber);
+    const exerciseSetId = setKeyToIdRef.current.get(k);
+
+    // ── 1. Actualizar UI al instante (cierra modal, muestra la serie) ──
     const newLog: SetLog = {
-      ...editing,
+      ...snap,
       weight: data.weight,
       reps: data.reps,
       rpe: data.rpe,
@@ -251,10 +256,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       ...prev.filter(
         (l) =>
           !(
-            l.dayId === editing.dayId &&
-            l.microcycleNumber === editing.microcycleNumber &&
-            l.exerciseIndex === editing.exerciseIndex &&
-            l.setNumber === editing.setNumber
+            l.dayId === snap.dayId &&
+            l.microcycleNumber === snap.microcycleNumber &&
+            l.exerciseIndex === snap.exerciseIndex &&
+            l.setNumber === snap.setNumber
           ),
       ),
       newLog,
@@ -262,11 +267,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     setEditing(null);
     if (settings.autoStartRestTimer) startRestTimer();
 
-    // ── Persistir en Supabase en segundo plano (sin bloquear la UI) ──
-    const k = setKey(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber);
-    const exerciseSetId = setKeyToIdRef.current.get(k);
+    // ── 2. Persistir en Supabase (awaited para garantizar escritura) ──
     if (exerciseSetId) {
-      supabase.from("set_logs").upsert(
+      await supabase.from("set_logs").upsert(
         {
           client_id: profile.id,
           exercise_set_id: exerciseSetId,
@@ -281,28 +284,30 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!editing) return;
 
-    // ── Optimistic update: elimina de la UI al instante ──
+    const snap = { ...editing };
+    const k = setKey(snap.dayId, snap.microcycleNumber, snap.exerciseIndex, snap.setNumber);
+    const exerciseSetId = setKeyToIdRef.current.get(k);
+
+    // ── 1. Eliminar de la UI al instante ──
     setLogs((prev) =>
       prev.filter(
         (l) =>
           !(
-            l.dayId === editing.dayId &&
-            l.microcycleNumber === editing.microcycleNumber &&
-            l.exerciseIndex === editing.exerciseIndex &&
-            l.setNumber === editing.setNumber
+            l.dayId === snap.dayId &&
+            l.microcycleNumber === snap.microcycleNumber &&
+            l.exerciseIndex === snap.exerciseIndex &&
+            l.setNumber === snap.setNumber
           ),
       ),
     );
     setEditing(null);
 
-    // ── Borrar en Supabase en segundo plano ──
-    const k = setKey(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber);
-    const exerciseSetId = setKeyToIdRef.current.get(k);
+    // ── 2. Borrar en Supabase (awaited) ──
     if (exerciseSetId) {
-      supabase
+      await supabase
         .from("set_logs")
         .delete()
         .eq("client_id", profile.id)
