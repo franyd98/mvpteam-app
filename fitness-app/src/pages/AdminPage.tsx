@@ -81,6 +81,11 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   // Búsqueda en catálogo
   const [searchEx, setSearchEx] = useState("");
 
+  // Invitar nuevo cliente
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviting, setInviting] = useState(false);
+
   // Edición inline de ejercicios
   type EditingEx = { id: number; name: string; muscle_group: string; video_ref: string; coach_note: string };
   const [editingEx, setEditingEx] = useState<EditingEx | null>(null);
@@ -136,7 +141,35 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     );
   };
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
+
+  const handleInviteClient = async () => {
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/invite-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ email: inviteEmail.trim(), full_name: inviteName.trim() }),
+      });
+      const json = await res.json();
+      if (json.error) {
+        showToast("❌ " + json.error);
+      } else {
+        showToast("✅ Invitación enviada a " + inviteEmail.trim());
+        setInviteEmail("");
+        setInviteName("");
+        await loadClients();
+      }
+    } catch {
+      showToast("❌ Error de red al enviar la invitación");
+    }
+    setInviting(false);
+  };
 
   const openClientProgress = async (client: Profile) => {
     setViewingClient(client);
@@ -1097,9 +1130,37 @@ export default function AdminPage({ profile }: { profile: Profile }) {
         {/* ── TAB CLIENTES ── */}
         {tab === "clientes" && (
           <div>
-            <div className="bg-blue-950/30 border border-blue-900/40 rounded-xl p-4 mb-4">
-              <p className="text-blue-300 text-sm font-semibold mb-1">Añadir cliente</p>
-              <p className="text-blue-200/70 text-xs">Supabase → Authentication → Users → Add user</p>
+            {/* ── Formulario de invitación ── */}
+            <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-4">
+              <p className="text-white text-sm font-semibold mb-3">➕ Invitar nuevo cliente</p>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="Nombre del cliente (opcional)"
+                  className="w-full px-3 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-500"
+                />
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  onKeyDown={(e) => e.key === "Enter" && handleInviteClient()}
+                  className="w-full px-3 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-500"
+                />
+                <button
+                  onClick={handleInviteClient}
+                  disabled={inviting || !inviteEmail.trim()}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-opacity active:scale-95"
+                  style={{ background: "#8B1A2F" }}
+                >
+                  {inviting ? "Enviando invitación…" : "Enviar invitación por email"}
+                </button>
+              </div>
+              <p className="text-neutral-600 text-xs mt-2">
+                El cliente recibirá un email para crear su contraseña.
+              </p>
             </div>
             {clients.length === 0 ? (
               <div className="text-center py-12">
