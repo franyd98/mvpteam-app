@@ -427,6 +427,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
   // ── BORRADO ───────────────────────────────────────────────────
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
@@ -758,7 +759,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         style={{ background: "#030712" }}>
         <div className="flex gap-1.5 px-3 py-2.5 overflow-x-auto scrollbar-hide">
           {TABS.map(([t, label]) => (
-            <button key={t} onClick={() => { setTab(t); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            <button key={t} onClick={() => { setTab(t); window.scrollTo({ top: 0, behavior: "instant" }); }}
               className={"shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all select-none " +
                 (tab === t
                   ? "bg-white text-black shadow-sm"
