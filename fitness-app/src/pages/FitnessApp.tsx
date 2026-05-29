@@ -427,14 +427,30 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     if (trainedDates.size === 0) return null;
 
     const todayStr = new Date().toISOString().slice(0, 10);
+
+    // ── Streak: permite 1 día de descanso, rompe con 2+ descansos seguidos ──
     let streak = 0;
-    let checkDate = new Date();
-    if (!trainedDates.has(todayStr)) checkDate.setDate(checkDate.getDate() - 1);
+    let restConsec = 0;
+    const checkDate = new Date();
     for (let i = 0; i < 365; i++) {
       const ds = checkDate.toISOString().slice(0, 10);
-      if (trainedDates.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
-      else break;
+      if (trainedDates.has(ds)) { streak++; restConsec = 0; }
+      else { restConsec++; if (restConsec > 1) break; }
+      checkDate.setDate(checkDate.getDate() - 1);
     }
+
+    // ── Días CONSECUTIVOS sin descanso (para avisar de sobreentrenamiento) ──
+    let consecWithoutRest = 0;
+    const cd2 = new Date();
+    for (let i = 0; i < 365; i++) {
+      const ds = cd2.toISOString().slice(0, 10);
+      if (trainedDates.has(ds)) { consecWithoutRest++; cd2.setDate(cd2.getDate() - 1); }
+      else break; // primer día sin entrenar → para
+    }
+    // needsRest: lleva 3+ días seguidos sin ningún descanso
+    const needsRest = consecWithoutRest >= 3;
+    // overTrained: lleva 4+ días sin descansar (ya debería haber descansado)
+    const overTrained = consecWithoutRest >= 4;
 
     const now = new Date();
     const dow = now.getDay();
@@ -450,16 +466,31 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       <div className="mb-4 rounded-2xl p-3 space-y-2" style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
         <div className="flex items-center justify-between px-1">
           <p className="text-[10px] uppercase tracking-wider text-neutral-600">Esta semana</p>
-          {streak > 0 && (
+          {overTrained ? (
+            <span className="text-xs font-bold" style={{ color: "#EF4444" }}>
+              ⚠️ Necesitas descansar hoy
+            </span>
+          ) : needsRest ? (
+            <span className="text-xs font-bold" style={{ color: "#94A3B8" }}>
+              💤 Descansa mañana
+            </span>
+          ) : streak > 0 ? (
             <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>
               🔥 {streak} {streak === 1 ? "día seguido" : "días seguidos"}
             </span>
-          )}
+          ) : null}
         </div>
         <div className="flex gap-1.5">
           {weekDays.map((ds, i) => {
             const trained = trainedDates.has(ds);
             const isToday = ds === todayStr;
+            // Marca en azul/gris los días de descanso recomendado
+            // (el día siguiente a 3 consecutivos de entrenamiento)
+            const dayIdx = weekDays.indexOf(ds);
+            const prevThreeTrained =
+              dayIdx >= 3 &&
+              weekDays.slice(dayIdx - 3, dayIdx).every(d => trainedDates.has(d));
+            const isRecommendedRest = !trained && prevThreeTrained;
             return (
               <div key={ds} className="flex-1 flex flex-col items-center gap-1">
                 <span className="text-[9px] font-semibold" style={{ color: isToday ? "#fff" : "#555" }}>
@@ -469,11 +500,20 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   className="w-full rounded-lg flex items-center justify-center"
                   style={{
                     height: 28,
-                    background: trained ? "#8B1A2F" : isToday ? "#1E1E1E" : "#131313",
-                    border: isToday ? "1px solid #333" : "1px solid transparent",
+                    background: trained
+                      ? "#8B1A2F"
+                      : isRecommendedRest
+                        ? "#1A2535"
+                        : isToday ? "#1E1E1E" : "#131313",
+                    border: isToday
+                      ? "1px solid #333"
+                      : isRecommendedRest
+                        ? "1px solid #2A3F5F"
+                        : "1px solid transparent",
                   }}
                 >
                   {trained && <span className="text-white text-xs">✓</span>}
+                  {isRecommendedRest && <span style={{ fontSize: 10, color: "#4A6FA5" }}>💤</span>}
                 </div>
               </div>
             );
