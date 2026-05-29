@@ -58,8 +58,31 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [exHistory, setExHistory] = useState<{ name: string; dayId: string; exerciseIndex: number } | null>(null);
   const [showStats, setShowStats] = useState(false);
 
+  // Sustituciones de ejercicio (sesión actual)
+  const [substitutions, setSubstitutions] = useState<Record<string, { name: string; muscleGroup: string }>>({});
+  const [swapTarget, setSwapTarget] = useState<{ dayId: string; mcNum: number; exIdx: number; origName: string } | null>(null);
+  const [swapSearch, setSwapSearch] = useState("");
+
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
+
+  // Lista de todos los ejercicios del programa (para el modal de sustitución)
+  const allExercises = useMemo(() => {
+    if (!program) return [];
+    const seen = new Set<string>();
+    const list: { name: string; muscleGroup: string }[] = [];
+    program.days.forEach(d => {
+      d.microcycles[0]?.exercises.forEach(ex => {
+        if (!seen.has(ex.name)) {
+          seen.add(ex.name);
+          list.push({ name: ex.name, muscleGroup: ex.muscleGroup });
+        }
+      });
+    });
+    return list.sort((a, b) => (a.muscleGroup ?? "").localeCompare(b.muscleGroup ?? "") || a.name.localeCompare(b.name));
+  }, [program]);
+
+  const subKey = (dId: string, mcNum: number, exIdx: number) => `${dId}:${mcNum}:${exIdx}`;
 
   useEffect(() => {
     loadAssignedProgram();
@@ -664,30 +687,52 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           {/* Lista de ejercicios — espacio extra para el bottom nav */}
           {microcycle && (
             <section className="space-y-3 pb-28">
-              {microcycle.exercises.map((ex, idx) => (
-                <article key={idx} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
+              {microcycle.exercises.map((ex, idx) => {
+                const sub = substitutions[subKey(dayId, microcycleNumber, idx)];
+                const displayName = sub?.name ?? ex.name;
+                const displayGroup = sub?.muscleGroup ?? ex.muscleGroup;
+                return (
+                <article key={idx} className="rounded-2xl p-4"
+                  style={sub
+                    ? { background: "#0F1A10", border: "1px solid #1A3A1A" }
+                    : { background: "#171717", border: "1px solid #1F1F1F" }}>
                   <div className="flex justify-between items-start gap-2 mb-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">{ex.muscleGroup}</p>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-semibold text-white leading-snug line-clamp-2 flex-1" title={ex.name}>{ex.name}</h2>
-                      </div>
+                      <p className="text-[10px] uppercase tracking-wider mb-0.5"
+                        style={{ color: sub ? "#4ADE80" : "#6B6B6B" }}>{displayGroup}</p>
+                      <h2 className="text-sm font-semibold text-white leading-snug line-clamp-2" title={displayName}>{displayName}</h2>
+                      {sub && (
+                        <p className="text-[10px] text-neutral-600 mt-0.5 truncate">
+                          ↩ Pautado: {ex.name}
+                        </p>
+                      )}
                     </div>
-                    {ex.videoRef && ex.videoRef !== "-" && (
-                      ex.videoRef.startsWith("http") ? (
-                        <button
-                          onClick={() => openVideo(ex.videoRef!)}
-                          className="shrink-0 w-9 h-9 rounded-xl bg-neutral-800 active:bg-blue-900 flex items-center justify-center transition-colors"
-                          title="Ver vídeo"
-                        >
-                          📹
-                        </button>
-                      ) : (
-                        <span className="shrink-0 w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center opacity-40" title={ex.videoRef}>
-                          📹
-                        </span>
-                      )
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Botón cambiar ejercicio */}
+                      <button
+                        onClick={() => { setSwapTarget({ dayId, mcNum: microcycleNumber, exIdx: idx, origName: ex.name }); setSwapSearch(""); }}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-base transition-colors"
+                        style={sub
+                          ? { background: "#1A3A1A", border: "1px solid #2A5A2A", color: "#4ADE80" }
+                          : { background: "#1E1E1E", border: "1px solid #2A2A2A", color: "#666" }}
+                        title="Cambiar ejercicio">
+                        🔄
+                      </button>
+                      {ex.videoRef && ex.videoRef !== "-" && (
+                        ex.videoRef.startsWith("http") ? (
+                          <button
+                            onClick={() => openVideo(ex.videoRef!)}
+                            className="w-9 h-9 rounded-xl bg-neutral-800 active:bg-blue-900 flex items-center justify-center transition-colors"
+                            title="Ver vídeo">
+                            📹
+                          </button>
+                        ) : (
+                          <span className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center opacity-40" title={ex.videoRef}>
+                            📹
+                          </span>
+                        )
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     {ex.sets.map((s) => {
@@ -753,7 +798,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   </div>
                   {ex.note && <p className="mt-3 text-xs text-amber-400">{ex.note}</p>}
                 </article>
-              ))}
+                );
+              })}
             </section>
           )}
         </div>
@@ -935,6 +981,110 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           </div>
         </div>
       )}
+
+      {/* ── Modal: Cambiar ejercicio ── */}
+      {swapTarget && (() => {
+        const filtered = swapSearch.trim() === ""
+          ? allExercises
+          : allExercises.filter(e =>
+              e.name.toLowerCase().includes(swapSearch.toLowerCase()) ||
+              (e.muscleGroup ?? "").toLowerCase().includes(swapSearch.toLowerCase())
+            );
+        // Agrupar por músculo
+        const byGroup: Record<string, typeof filtered> = {};
+        filtered.forEach(e => {
+          const g = e.muscleGroup || "Otros";
+          if (!byGroup[g]) byGroup[g] = [];
+          byGroup[g].push(e);
+        });
+        const hasSub = !!substitutions[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)];
+        return (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setSwapTarget(null)}>
+            <div className="w-full max-w-lg rounded-t-2xl flex flex-col footer-safe"
+              style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", maxHeight: "80dvh" }}
+              onClick={e => e.stopPropagation()}>
+
+              {/* Cabecera */}
+              <div className="flex items-center justify-between px-4 py-4 border-b border-neutral-800 shrink-0">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Cambiar ejercicio</p>
+                  <p className="text-white font-bold text-sm truncate">{swapTarget.origName}</p>
+                </div>
+                <button onClick={() => setSwapTarget(null)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-500 hover:text-white shrink-0"
+                  style={{ background: "#1A1A1A" }}>✕</button>
+              </div>
+
+              {/* Buscador */}
+              <div className="px-4 py-3 border-b border-neutral-800 shrink-0">
+                <input
+                  type="text"
+                  value={swapSearch}
+                  onChange={e => setSwapSearch(e.target.value)}
+                  placeholder="Buscar ejercicio o músculo…"
+                  autoFocus
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
+                />
+              </div>
+
+              {/* Lista */}
+              <div className="overflow-y-auto flex-1">
+                {/* Opción: restablecer el original */}
+                {hasSub && (
+                  <button
+                    onClick={() => {
+                      setSubstitutions(prev => { const n = { ...prev }; delete n[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]; return n; });
+                      setSwapTarget(null);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 border-b text-left active:bg-neutral-800"
+                    style={{ borderColor: "#1a1a1a", background: "#0F1A0F" }}>
+                    <span className="text-lg">↩</span>
+                    <div>
+                      <p className="text-xs text-emerald-400 font-semibold">Restablecer ejercicio original</p>
+                      <p className="text-[11px] text-neutral-500">{swapTarget.origName}</p>
+                    </div>
+                  </button>
+                )}
+
+                {Object.entries(byGroup).map(([group, exs]) => (
+                  <div key={group}>
+                    <p className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-neutral-600 font-semibold sticky top-0"
+                      style={{ background: "#0F0F0F" }}>{group}</p>
+                    {exs.map((e, i) => {
+                      const isCurrent = e.name === (substitutions[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]?.name ?? swapTarget.origName);
+                      return (
+                        <button key={i}
+                          onClick={() => {
+                            if (e.name === swapTarget.origName) {
+                              // Selecciona el original → quita sustitución
+                              setSubstitutions(prev => { const n = { ...prev }; delete n[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]; return n; });
+                            } else {
+                              setSubstitutions(prev => ({ ...prev, [subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]: { name: e.name, muscleGroup: e.muscleGroup } }));
+                            }
+                            setSwapTarget(null);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 border-b text-left active:bg-neutral-800 transition-colors"
+                          style={{ borderColor: "#1a1a1a", background: isCurrent ? "#1A2A1A" : "transparent" }}>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate">{e.name}</p>
+                          </div>
+                          {isCurrent && <span className="text-emerald-400 text-xs font-bold shrink-0">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+                {filtered.length === 0 && (
+                  <div className="py-10 text-center">
+                    <p className="text-neutral-500 text-sm">Sin resultados para "{swapSearch}"</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal de vídeo */}
       {videoUrl && (
