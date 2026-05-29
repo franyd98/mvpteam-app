@@ -74,11 +74,12 @@ function IngSelect({ slot, value, onChange }: {
 }
 
 // ── Fila de ingrediente (slot principal) ─────────────────────────
-function SlotRow({ label, color, slot, entry, onChange, onClear, macroTarget, numMeals, siblProt, siblHyd }: {
+function SlotRow({ label, color, slot, entry, onChange, onClear, onAddToShop, macroTarget, numMeals, siblProt, siblHyd }: {
   label: string; color: string; slot: MainSlot;
   entry: SlotEntry | null;
   onChange: (e: SlotEntry) => void;
   onClear: () => void;
+  onAddToShop?: (ingId: string, grams: number) => void;
   macroTarget?: number | null;
   numMeals?: number;
   /** fat already contributed by the proteína slot this meal (for grasa slot) */
@@ -119,8 +120,15 @@ function SlotRow({ label, color, slot, entry, onChange, onClear, macroTarget, nu
           placeholder="g"
           className="w-16 shrink-0 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-neutral-500" />
         {entry?.ingId && (
-          <button onClick={onClear}
-            className="w-7 h-7 rounded bg-neutral-800 text-neutral-500 hover:text-red-400 text-sm shrink-0 flex items-center justify-center">✕</button>
+          <>
+            {onAddToShop && (
+              <button onClick={() => onAddToShop(entry.ingId, entry.grams)}
+                className="w-7 h-7 rounded bg-neutral-800 text-neutral-500 hover:text-white text-sm shrink-0 flex items-center justify-center"
+                title="Añadir a la lista de la compra">🛒</button>
+            )}
+            <button onClick={onClear}
+              className="w-7 h-7 rounded bg-neutral-800 text-neutral-500 hover:text-red-400 text-sm shrink-0 flex items-center justify-center">✕</button>
+          </>
         )}
       </div>
       {macros && entry?.ingId && (
@@ -136,10 +144,11 @@ function SlotRow({ label, color, slot, entry, onChange, onClear, macroTarget, nu
 }
 
 // ── Fila de extra ─────────────────────────────────────────────────
-function ExtraRow({ entry, onChange, onRemove }: {
+function ExtraRow({ entry, onChange, onRemove, onAddToShop }: {
   entry: ExtraEntry;
   onChange: (e: ExtraEntry) => void;
   onRemove: () => void;
+  onAddToShop?: (ingId: string, grams: number) => void;
 }) {
   const macros = entry.ingId ? calcMacros(entry.ingId, entry.grams) : null;
   return (
@@ -153,6 +162,11 @@ function ExtraRow({ entry, onChange, onRemove }: {
           onChange={e => onChange({ ...entry, grams: parseFloat(e.target.value) || 0 })}
           placeholder="g"
           className="w-16 shrink-0 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-neutral-500" />
+        {entry.ingId && onAddToShop && (
+          <button onClick={() => onAddToShop(entry.ingId, entry.grams)}
+            className="w-7 h-7 rounded bg-neutral-800 text-neutral-500 hover:text-white text-sm shrink-0 flex items-center justify-center"
+            title="Añadir a la lista de la compra">🛒</button>
+        )}
         <button onClick={onRemove}
           className="w-7 h-7 rounded bg-neutral-800 text-neutral-500 hover:text-red-400 text-sm shrink-0 flex items-center justify-center">✕</button>
       </div>
@@ -211,6 +225,12 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [savedDay, setSavedDay]         = useState(false);
   const [showShopList, setShowShopList] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+
+  // ── Lista de la compra (curada por el usuario) ─────────────────────
+  const [shopItems, setShopItems] = useState<Record<string, { name: string; grams: number; category: string }>>({});
+  // ── Estado de guardado por comida ─────────────────────────────────
+  const [savingMeals, setSavingMeals] = useState<Set<string>>(new Set());
+  const [savedMeals,  setSavedMeals]  = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadDiet();
@@ -363,22 +383,79 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
     return sumMacros(allItems);
   })();
 
-  // ── Lista de la compra: agrupa todos los ingredientes seleccionados ──
+  // ── Lista de la compra: lee del plan del entrenador (diet_options.content) ──
   const buildShopList = () => {
     const totals: Record<string, { name: string; grams: number; category: string }> = {};
-    Object.values(mealStates).forEach(ms => {
-      const slots: Array<{ ingId: string; grams: number } | null> = [
-        ms.proteina, ms.hidrato, ms.grasa, ...ms.extras,
-      ];
-      slots.forEach(s => {
-        if (!s?.ingId) return;
-        const ing = INGREDIENTS.find(i => i.id === s.ingId);
-        if (!ing) return;
-        if (totals[s.ingId]) totals[s.ingId].grams += s.grams;
-        else totals[s.ingId] = { name: ing.name, grams: s.grams, category: CATEGORY_LABELS[ing.category] };
+
+    const addIng = (ingId: string, grams: number) => {
+      const ing = INGREDIENTS.find(i => i.id === ingId);
+      if (!ing) return;
+      if (totals[ingId]) totals[ingId].grams += grams;
+      else totals[ingId] = { name: ing.name, grams, category: CATEGORY_LABELS[ing.category] };
+    };
+
+    // 1. Plan del entrenador — opción activa de cada comida
+    meals.forEach(meal => {
+      const ms = mealStates[meal.id];
+      const optIdx = ms?.optionTab ?? 0;
+      const opt = meal.options[optIdx] ?? meal.options[0];
+      if (!opt?.content) return;
+      (opt.content as any[]).forEach(fg => {
+        (fg.items ?? []).forEach((item: any) => {
+          if (typeof item === "object" && item.ingId) addIng(item.ingId, item.grams ?? 100);
+          else if (typeof item === "string" && item)  addIng(item, 100);
+        });
       });
     });
+
+    // 2. Selecciones manuales del usuario en los slots (si ha elegido algo)
+    Object.values(mealStates).forEach(ms => {
+      [ms.proteina, ms.hidrato, ms.grasa, ...ms.extras].forEach(s => {
+        if (s?.ingId) addIng(s.ingId, s.grams);
+      });
+    });
+
     return Object.entries(totals).sort((a, b) => a[1].category.localeCompare(b[1].category));
+  };
+
+  // ── Añadir ingrediente a la lista de la compra ────────────────────
+  const addToShop = (ingId: string, grams: number) => {
+    const ing = INGREDIENTS.find(i => i.id === ingId);
+    if (!ing) return;
+    setShopItems(prev => ({
+      ...prev,
+      [ingId]: prev[ingId]
+        ? { ...prev[ingId], grams: prev[ingId].grams + grams }
+        : { name: ing.name, grams, category: CATEGORY_LABELS[ing.category] },
+    }));
+  };
+
+  // ── Guardar una comida individual ─────────────────────────────────
+  const saveMealLog = async (mealId: string) => {
+    const ms = mealStates[mealId];
+    if (!ms) return;
+    setSavingMeals(prev => new Set(prev).add(mealId));
+    const meal = meals.find(m => m.id === mealId);
+    const hasContent = ms.proteina?.ingId || ms.hidrato?.ingId || ms.grasa?.ingId || ms.extras.some(e => e.ingId);
+    if (hasContent) {
+      await supabase.from("daily_food_logs").upsert({
+        client_id:   profile.id,
+        date:        todayDate(),
+        meal_id:     mealId,
+        meal_name:   meal?.name ?? mealId,
+        proteina_id: ms.proteina?.ingId ?? null,
+        proteina_g:  ms.proteina?.grams ?? null,
+        hidrato_id:  ms.hidrato?.ingId  ?? null,
+        hidrato_g:   ms.hidrato?.grams  ?? null,
+        grasa_id:    ms.grasa?.ingId    ?? null,
+        grasa_g:     ms.grasa?.grams    ?? null,
+        extras:      ms.extras.filter(e => e.ingId),
+        note:        ms.note || null,
+      }, { onConflict: "client_id,date,meal_id" });
+    }
+    setSavingMeals(prev => { const s = new Set(prev); s.delete(mealId); return s; });
+    setSavedMeals(prev => new Set(prev).add(mealId));
+    setTimeout(() => setSavedMeals(prev => { const s = new Set(prev); s.delete(mealId); return s; }), 3000);
   };
 
   // Total de una comida
@@ -559,29 +636,26 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             </div>
           )}
 
-          {/* ── Botones guardar + lista de la compra ── */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={saveDayLogs}
-              disabled={savingDay}
-              className="flex-1 py-3 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 active:opacity-70"
-              style={savedDay
-                ? { background: "#0A2A1A", border: "1px solid #1A4A2A", color: "#4ADE80" }
-                : { background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}>
-              {savingDay ? "Guardando…" : savedDay ? "✅ Guardado" : "💾 Guardar día"}
-            </button>
+          {/* ── Botón lista de la compra ── */}
+          <div className="flex justify-end">
             <button
               onClick={() => { setCheckedItems(new Set()); setShowShopList(true); }}
-              className="py-3 px-4 rounded-xl text-sm font-bold active:opacity-70"
+              className="flex items-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold active:opacity-70"
               style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}
               title="Lista de la compra">
-              🛒
+              🛒 Lista de la compra
+              {Object.keys(shopItems).length > 0 && (
+                <span className="ml-1 text-xs font-bold rounded-full px-1.5 py-0.5"
+                  style={{ background: "#8B1A2F", color: "#fff" }}>
+                  {Object.keys(shopItems).length}
+                </span>
+              )}
             </button>
           </div>
 
           {/* ── Modal: lista de la compra ── */}
           {showShopList && (() => {
-            const shopList = buildShopList();
+            const shopList = Object.entries(shopItems).sort((a, b) => a[1].category.localeCompare(b[1].category));
             const allChecked = shopList.length > 0 && shopList.every(([id]) => checkedItems.has(id));
             return (
               <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
@@ -595,7 +669,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                     <div>
                       <p className="text-white font-bold text-base">🛒 Lista de la compra</p>
                       <p className="text-neutral-500 text-xs mt-0.5">
-                        Basada en tus comidas seleccionadas
+                        {shopList.length > 0 ? `${shopList.length} ingrediente${shopList.length !== 1 ? "s" : ""}` : "Pulsa 🛒 junto a un ingrediente para añadirlo"}
                       </p>
                     </div>
                     <button onClick={() => setShowShopList(false)}
@@ -607,8 +681,9 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                   <div className="overflow-y-auto" style={{ maxHeight: "calc(80dvh - 130px)" }}>
                     {shopList.length === 0 ? (
                       <div className="py-12 text-center">
-                        <p className="text-4xl mb-3">🥗</p>
-                        <p className="text-neutral-400 text-sm">Selecciona ingredientes en tus comidas primero</p>
+                        <p className="text-4xl mb-3">🛒</p>
+                        <p className="text-neutral-400 text-sm">Pulsa el icono 🛒 junto a cualquier</p>
+                        <p className="text-neutral-400 text-sm">ingrediente para añadirlo aquí</p>
                       </div>
                     ) : (
                       <div className="px-4 py-3 space-y-1">
@@ -666,10 +741,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                         {allChecked ? "Desmarcar todo" : "Marcar todo"}
                       </button>
                       <button
-                        onClick={() => setCheckedItems(new Set())}
+                        onClick={() => { setShopItems({}); setCheckedItems(new Set()); }}
                         className="py-2.5 px-4 rounded-xl text-sm font-semibold active:opacity-70"
                         style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#666" }}>
-                        Resetear
+                        Vaciar
                       </button>
                     </div>
                   )}
@@ -709,6 +784,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                       entry={ms.proteina}
                       onChange={e => updMealState(meal.id, { proteina: e })}
                       onClear={() => updMealState(meal.id, { proteina: null })}
+                      onAddToShop={addToShop}
                       macroTarget={clientMacros?.protein_g}
                       numMeals={filteredMeals.length || 1}
                     />
@@ -717,6 +793,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                       entry={ms.hidrato}
                       onChange={e => updMealState(meal.id, { hidrato: e })}
                       onClear={() => updMealState(meal.id, { hidrato: null })}
+                      onAddToShop={addToShop}
                       macroTarget={dayType === "on"
                         ? clientMacros?.carbs_g
                         : (clientMacros?.carbs_off_g ?? clientMacros?.carbs_g)}
@@ -727,6 +804,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                       entry={ms.grasa}
                       onChange={e => updMealState(meal.id, { grasa: e })}
                       onClear={() => updMealState(meal.id, { grasa: null })}
+                      onAddToShop={addToShop}
                       macroTarget={dayType === "on"
                         ? clientMacros?.fat_g
                         : (clientMacros?.fat_off_g ?? clientMacros?.fat_g)}
@@ -744,6 +822,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                         onRemove={() => updMealState(meal.id, {
                           extras: ms.extras.filter(x => x._id !== ex._id)
                         })}
+                        onAddToShop={addToShop}
                       />
                     ))}
 
@@ -789,7 +868,19 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                                     const display = typeof item === "object" && item.ingId
                                       ? `${item.grams} gr. ${ingName(item.ingId)}`
                                       : typeof item === "string" ? item : "";
-                                    return <p key={ii} className="text-neutral-300 text-xs pl-2">• {display}</p>;
+                                    const canShop = typeof item === "object" && item.ingId;
+                                    return (
+                                      <div key={ii} className="flex items-center gap-1 pl-2">
+                                        <p className="flex-1 text-neutral-300 text-xs">• {display}</p>
+                                        {canShop && (
+                                          <button
+                                            onClick={() => addToShop(item.ingId, item.grams ?? 100)}
+                                            className="text-xs px-1.5 py-0.5 rounded text-neutral-500 hover:text-white active:scale-95 shrink-0"
+                                            style={{ background: "#1E1E1E" }}
+                                            title="Añadir a la lista de la compra">🛒</button>
+                                        )}
+                                      </div>
+                                    );
                                   })}
                                   {g.note && <p className="text-neutral-500 text-[10px] italic pl-2">※ {g.note}</p>}
                                 </div>
@@ -814,6 +905,19 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                         📝 {ms.showNote ? "Ocultar nota" : "Añadir nota"}
                       </button>
                     </div>
+
+                    {/* Guardar comida — aparece cuando hay alguna selección */}
+                    {hasSomething && (
+                      <button
+                        onClick={() => saveMealLog(meal.id)}
+                        disabled={savingMeals.has(meal.id)}
+                        className="w-full py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 active:opacity-70"
+                        style={savedMeals.has(meal.id)
+                          ? { background: "#0A2A1A", border: "1px solid #1A4A2A", color: "#4ADE80" }
+                          : { background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}>
+                        {savingMeals.has(meal.id) ? "Guardando…" : savedMeals.has(meal.id) ? "✅ Guardado" : "💾 Guardar comida"}
+                      </button>
+                    )}
 
                     {/* Nota opcional */}
                     {ms.showNote && (
