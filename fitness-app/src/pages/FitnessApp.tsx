@@ -842,7 +842,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           ] as const).map(({ tab, icon, label }) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => { setActiveTab(tab); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className={"flex-1 flex flex-col items-center justify-center py-3 gap-0.5 transition-colors active:scale-95 " +
                 (activeTab === tab ? "" : "opacity-40 active:opacity-60")}
               style={{ color: activeTab === tab ? "#C0394F" : "#888" }}

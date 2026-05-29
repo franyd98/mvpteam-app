@@ -526,7 +526,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             { id: "macros"   as DietTab, label: "📊 Mis Macros" },
             { id: "generate" as DietTab, label: "🎲 Generar" },
           ]).map(({ id, label }) => (
-            <button key={id} onClick={() => setDietTab(id)}
+            <button key={id} onClick={() => { setDietTab(id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className={"flex-1 py-2 text-xs font-semibold rounded-t-lg transition-colors " +
                 (dietTab === id ? "text-white" : "text-neutral-500")}
               style={dietTab === id
