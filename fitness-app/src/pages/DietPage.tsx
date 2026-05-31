@@ -82,6 +82,19 @@ function IngSelect({ slot, value, onChange }: {
   );
 }
 
+// ── Botón de lista de la compra con feedback visual ───────────────
+function ShopBtn({ onClick }: { onClick: () => void }) {
+  const [added, setAdded] = useState(false);
+  return (
+    <button
+      onClick={() => { onClick(); setAdded(true); setTimeout(() => setAdded(false), 1500); }}
+      className={`w-7 h-7 rounded text-sm shrink-0 flex items-center justify-center transition-all duration-200 ${added ? "bg-green-800 text-green-300 scale-110" : "bg-neutral-800 text-neutral-500 hover:text-white"}`}
+      title="Añadir a la lista de la compra">
+      {added ? "✓" : "🛒"}
+    </button>
+  );
+}
+
 // ── Fila de ingrediente (slot principal) ─────────────────────────
 function SlotRow({ label, color, slot, entry, onChange, onClear, onAddToShop, macroTarget, numMeals, siblProt, siblHyd }: {
   label: string; color: string; slot: MainSlot;
@@ -131,9 +144,7 @@ function SlotRow({ label, color, slot, entry, onChange, onClear, onAddToShop, ma
         {entry?.ingId && (
           <>
             {onAddToShop && (
-              <button onClick={() => onAddToShop(entry.ingId, entry.grams)}
-                className="w-7 h-7 rounded bg-neutral-800 text-neutral-500 hover:text-white text-sm shrink-0 flex items-center justify-center"
-                title="Añadir a la lista de la compra">🛒</button>
+              <ShopBtn onClick={() => onAddToShop(entry.ingId, entry.grams)} />
             )}
             <button onClick={onClear}
               className="w-7 h-7 rounded bg-neutral-800 text-neutral-500 hover:text-red-400 text-sm shrink-0 flex items-center justify-center">✕</button>
@@ -172,9 +183,7 @@ function ExtraRow({ entry, onChange, onRemove, onAddToShop }: {
           placeholder="g"
           className="w-16 shrink-0 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-neutral-500" />
         {entry.ingId && onAddToShop && (
-          <button onClick={() => onAddToShop(entry.ingId, entry.grams)}
-            className="w-7 h-7 rounded bg-neutral-800 text-neutral-500 hover:text-white text-sm shrink-0 flex items-center justify-center"
-            title="Añadir a la lista de la compra">🛒</button>
+          <ShopBtn onClick={() => onAddToShop(entry.ingId, entry.grams)} />
         )}
         <button onClick={onRemove}
           className="w-7 h-7 rounded bg-neutral-800 text-neutral-500 hover:text-red-400 text-sm shrink-0 flex items-center justify-center">✕</button>
@@ -928,11 +937,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                                       <div key={ii} className="flex items-center gap-1 pl-2">
                                         <p className="flex-1 text-neutral-300 text-xs">• {display}</p>
                                         {canShop && (
-                                          <button
-                                            onClick={() => addToShop(item.ingId, item.grams ?? 100)}
-                                            className="text-xs px-1.5 py-0.5 rounded text-neutral-500 hover:text-white active:scale-95 shrink-0"
-                                            style={{ background: "#1E1E1E" }}
-                                            title="Añadir a la lista de la compra">🛒</button>
+                                          <ShopBtn onClick={() => addToShop(item.ingId, item.grams ?? 100)} />
                                         )}
                                       </div>
                                     );
