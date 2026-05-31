@@ -13,7 +13,8 @@ export type IngredientCategory =
   | "fatty_carb"      // Hidratos grasos (pan integral, fajitas…)
   | "fruit"           // Fruta
   | "fat"             // Grasas y frutos secos
-  | "veggie_fat";     // Verduras con grasa (gazpacho, crema)
+  | "veggie_fat"      // Verduras con grasa (gazpacho, crema)
+  | "veggie";         // Verdura libre (brócoli, espinacas, pepino…)
 
 // Alias para compatibilidad con código antiguo
 export type IngCategory = IngredientCategory;
@@ -28,6 +29,7 @@ export const CATEGORY_LABELS: Record<IngredientCategory, string> = {
   fruit:          "Fruta",
   fat:            "Grasa / Fruto Seco",
   veggie_fat:     "Verdura Grasa",
+  veggie:         "Verdura",
 };
 
 export interface Ingredient {
