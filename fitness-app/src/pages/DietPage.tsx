@@ -21,7 +21,9 @@ const injectCustomIngredients = (rows: Ingredient[]) => {
   });
 };
 
-const ingName = (id: string) => INGREDIENTS.find(i => i.id === id)?.name ?? id;
+const ingName = (id: string) =>
+  INGREDIENTS.find(i => i.id === id)?.name ??
+  id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 
 type Profile = { id: string; full_name: string; role: string };
 type DayType = "on" | "off";

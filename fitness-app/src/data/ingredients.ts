@@ -167,6 +167,13 @@ export const ingredients: Ingredient[] = [
   { id: "muesli",          name: "Muesli Sin Azúcares (Hacendado)",                category: "fatty_carb",     kcal: 409,   protein: 9.3,   carbs: 64,   fat: 13.0 },
   { id: "pan_centeno",     name: "Pan de Centeno / Espelta",                      category: "fatty_carb",     kcal: 243,   protein: 8.5,   carbs: 42,   fat: 3.5  },
 
+  // ── PLACEHOLDERS (comodines para planes de dieta) ─────────────────
+  { id: "custom_fruta",    name: "Fruta que más te guste",    category: "fruit",        kcal: 55,  protein: 0.7,  carbs: 13,  fat: 0.2 },
+  { id: "custom_verdura",  name: "Verdura que más te guste",  category: "veggie",       kcal: 25,  protein: 2.0,  carbs: 4,   fat: 0.2 },
+  { id: "custom_proteina", name: "Proteína a elegir",         category: "lean_protein", kcal: 110, protein: 22,   carbs: 1,   fat: 2.0 },
+  { id: "custom_hidrato",  name: "Hidrato a elegir",          category: "clean_carb",   kcal: 350, protein: 8,    carbs: 72,  fat: 1.0 },
+  { id: "custom_grasa",    name: "Grasa a elegir",            category: "fat",          kcal: 200, protein: 2,    carbs: 2,   fat: 18  },
+
   // ── FRUTA ─────────────────────────────────────────────────────────
   { id: "fresas",          name: "Fresas",                                         category: "fruit",          kcal: 34.9,  protein: 0.65,  carbs: 6.14, fat: 0.2  },
   { id: "frambuesas",      name: "Frambuesas",                                     category: "fruit",          kcal: 51,    protein: 1.2,   carbs: 11.94,fat: 0.65 },
