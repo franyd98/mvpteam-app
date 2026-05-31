@@ -10,7 +10,7 @@ import {
 } from "../data/ingredients";
 
 // ── Tipos internos ────────────────────────────────────────────
-type SlotFilter = "proteina" | "hidrato" | "grasa" | "extra";
+type SlotFilter = "proteina" | "hidrato" | "grasa" | "verdura" | "extra";
 
 type DraftItem = { _id: string; ingId: string; grams: number };
 type DraftGroup = { _id: string; label: string; slot: SlotFilter; isChoice: boolean; items: DraftItem[]; note: string };
@@ -33,16 +33,16 @@ const EMOJIS = ["🍳","☕","🥗","🍽️","🥩","🥙","🥪","🍜","🥦"
 const newItem   = (): DraftItem  => ({ _id: uid(), ingId: "", grams: 100 });
 const newGroup  = (slot: SlotFilter = "proteina"): DraftGroup => ({
   _id: uid(), slot, isChoice: true, items: [newItem()], note: "",
-  label: slot === "proteina" ? "Proteína" : slot === "hidrato" ? "Hidratos" : slot === "grasa" ? "Grasa" : "",
+  label: slot === "proteina" ? "Proteína" : slot === "hidrato" ? "Hidratos" : slot === "grasa" ? "Grasa" : slot === "verdura" ? "Verdura" : "",
 });
 const newOption = (n = 1): DraftOption =>
   ({ _id: uid(), name: `Opción ${n}`, groups: [newGroup("proteina"), newGroup("hidrato"), newGroup("grasa")] });
 const newMeal   = (): DraftMeal =>
   ({ _id: uid(), name: "", emoji: "🍽️", day_type: "both", options: [newOption(1)], expanded: true });
 
-const SLOT_LABELS: Record<SlotFilter, string> = { proteina: "Proteína", hidrato: "Hidratos", grasa: "Grasa", extra: "" };
-const SLOT_COLORS: Record<SlotFilter, string> = { proteina: "#DC2626", hidrato: "#D97706", grasa: "#2563EB", extra: "#6B7280" };
-const SLOT_ICONS:  Record<SlotFilter, string> = { proteina: "🔴", hidrato: "🟡", grasa: "🔵", extra: "⚪" };
+const SLOT_LABELS: Record<SlotFilter, string> = { proteina: "Proteína", hidrato: "Hidratos", grasa: "Grasa", verdura: "Verdura", extra: "" };
+const SLOT_COLORS: Record<SlotFilter, string> = { proteina: "#DC2626", hidrato: "#D97706", grasa: "#2563EB", verdura: "#16A34A", extra: "#6B7280" };
+const SLOT_ICONS:  Record<SlotFilter, string> = { proteina: "🔴", hidrato: "🟡", grasa: "🔵", verdura: "🥦", extra: "⚪" };
 
 const emptyMeta = (): PlanMeta => ({
   name: "", kcal_on: 2000, kcal_off: 1800,
@@ -64,7 +64,8 @@ function IngSelect({
     proteina: ["lean_protein", "fatty_protein", "veggie_protein"],
     hidrato:  ["clean_carb", "fatty_carb", "protein_carb", "fruit"],
     grasa:    ["fat", "veggie_fat"],
-    extra:    ["lean_protein", "fatty_protein", "veggie_protein", "protein_carb", "clean_carb", "fatty_carb", "fruit", "fat", "veggie_fat"],
+    verdura:  ["veggie"],
+    extra:    ["lean_protein", "fatty_protein", "veggie_protein", "protein_carb", "clean_carb", "fatty_carb", "fruit", "fat", "veggie_fat", "veggie"],
   };
   const cats = slotCategories[slot];
   const filtered = allIngredients.filter(i => cats.includes(i.category as import("../data/ingredients").IngredientCategory));
@@ -332,6 +333,8 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
                         className="text-xs px-2 py-1 rounded text-yellow-400" style={{ background: "#1A1500" }}>🟡+</button>
                       <button onClick={() => updOpt(meal._id, opt._id, { groups: [...opt.groups, newGroup("grasa")] })}
                         className="text-xs px-2 py-1 rounded text-blue-400" style={{ background: "#0A0A1A" }}>🔵+</button>
+                      <button onClick={() => updOpt(meal._id, opt._id, { groups: [...opt.groups, newGroup("verdura")] })}
+                        className="text-xs px-2 py-1 rounded text-green-400" style={{ background: "#0A1A0A" }}>🥦+</button>
                       <button onClick={() => updOpt(meal._id, opt._id, { groups: [...opt.groups, newGroup("extra")] })}
                         className="text-xs px-2 py-1 rounded text-neutral-400" style={{ background: "#1A1A1A" }}>⚪+</button>
                       {meal.options.length > 1 && (
