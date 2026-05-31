@@ -274,7 +274,8 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
                   <div key={key}>
                     <label className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 block">{label}</label>
                     <input type="number" value={(meta as any)[key]}
-                      onChange={e => setMeta(v => ({ ...v, [key]: Number(e.target.value) }))}
+                      onFocus={e => e.target.select()}
+                      onChange={e => setMeta(v => ({ ...v, [key]: e.target.value === "" ? 0 : Number(e.target.value) }))}
                       className="w-full rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
                       style={{ background: "#1A1A1A", border: "1px solid #333" }} />
                   </div>
@@ -361,7 +362,8 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
                             <IngSelect value={item.ingId} slot={grp.slot} allIngredients={allIngredients}
                               onChange={v => updItem(meal._id, opt._id, grp._id, item._id, { ingId: v })} />
                             <input type="number" value={item.grams}
-                              onChange={e => updItem(meal._id, opt._id, grp._id, item._id, { grams: Number(e.target.value) })}
+                              onFocus={e => e.target.select()}
+                              onChange={e => updItem(meal._id, opt._id, grp._id, item._id, { grams: e.target.value === "" ? 0 : Number(e.target.value) })}
                               className="w-16 text-xs text-center rounded-lg px-2 py-1.5 text-white focus:outline-none"
                               style={{ background: "#1A1A1A", border: "1px solid #333" }} />
                             <span className="text-neutral-600 text-xs shrink-0">g</span>
