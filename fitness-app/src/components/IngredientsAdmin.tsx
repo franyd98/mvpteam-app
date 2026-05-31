@@ -249,7 +249,8 @@ export default function IngredientsAdmin() {
                       min={0}
                       step={0.1}
                       value={editing[field]}
-                      onChange={e => setEditing(prev => prev ? { ...prev, [field]: parseFloat(e.target.value) || 0 } : prev)}
+                      onFocus={e => e.target.select()}
+                      onChange={e => setEditing(prev => prev ? { ...prev, [field]: e.target.value === "" ? 0 : parseFloat(e.target.value) } : prev)}
                       className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-white text-sm tabular-nums"
                     />
                   </div>
