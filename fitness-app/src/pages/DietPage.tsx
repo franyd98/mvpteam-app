@@ -646,9 +646,9 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             ))}
           </div>
 
-          {/* Progreso diario — sticky bajo el header */}
+          {/* Progreso diario */}
           {(target.kcal || target.protein) && (
-            <div className="sticky z-10" style={{ top: 100 }}>
+            <div>
               <div className="rounded-2xl px-4 py-3 space-y-3"
                 style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", boxShadow: "0 4px 24px rgba(0,0,0,0.7)" }}>
                 <div className="flex justify-between items-center">
