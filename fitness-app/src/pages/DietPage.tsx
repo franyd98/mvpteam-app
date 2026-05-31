@@ -247,13 +247,21 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [showFoodSearch, setShowFoodSearch] = useState(false);
 
-  // ── Lista de la compra (curada por el usuario) ─────────────────────
-  const [shopItems, setShopItems] = useState<Record<string, { name: string; grams: number; category: string }>>({});
+  // ── Lista de la compra (persistida en localStorage) ───────────────
+  const SHOP_KEY = `shop_${profile.id}`;
+  const [shopItems, setShopItems] = useState<Record<string, { name: string; grams: number; category: string }>>(() => {
+    try { return JSON.parse(localStorage.getItem(SHOP_KEY) ?? "{}"); } catch { return {}; }
+  });
   // ── Estado de guardado por comida ─────────────────────────────────
   const [savingMeals, setSavingMeals] = useState<Set<string>>(new Set());
   const [savedMeals,  setSavedMeals]  = useState<Set<string>>(new Set());
   // ── Tick para forzar re-render cuando se inyectan custom_ingredients ──
   const [, setIngTick] = useState(0);
+
+  // Persistir lista de la compra en localStorage al cambiar
+  useEffect(() => {
+    try { localStorage.setItem(SHOP_KEY, JSON.stringify(shopItems)); } catch { /* noop */ }
+  }, [shopItems]);
 
   useEffect(() => {
     loadDiet();
@@ -728,9 +736,16 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                         {shopList.length > 0 ? `${shopList.length} ingrediente${shopList.length !== 1 ? "s" : ""}` : "Pulsa 🛒 junto a un ingrediente para añadirlo"}
                       </p>
                     </div>
-                    <button onClick={() => setShowShopList(false)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-500 hover:text-white"
-                      style={{ background: "#1A1A1A" }}>✕</button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => { setShowShopList(false); setShowFoodSearch(true); }}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 hover:text-white"
+                        style={{ background: "#1A1A1A" }}
+                        title="Buscar alimento para añadir">🔍</button>
+                      <button onClick={() => setShowShopList(false)}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-500 hover:text-white"
+                        style={{ background: "#1A1A1A" }}>✕</button>
+                    </div>
                   </div>
 
                   {/* Lista */}
