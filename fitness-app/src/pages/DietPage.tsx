@@ -241,6 +241,8 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   // ── Estado de guardado por comida ─────────────────────────────────
   const [savingMeals, setSavingMeals] = useState<Set<string>>(new Set());
   const [savedMeals,  setSavedMeals]  = useState<Set<string>>(new Set());
+  // ── Tick para forzar re-render cuando se inyectan custom_ingredients ──
+  const [, setIngTick] = useState(0);
 
   useEffect(() => {
     loadDiet();
@@ -257,14 +259,15 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const loadCustomIngredients = async () => {
     if (_customLoaded) return;
     const { data } = await supabase.from("custom_ingredients").select("*");
-    if (data) {
-      injectCustomIngredients(data.map((r: any) => ({
+    if (data && data.length > 0) {
+      injectCustomIngredients(data.map((r: { id: string; name: string; category: string; kcal: number; protein: number; carbs: number; fat: number }) => ({
         id: r.id, name: r.name,
         category: r.category as IngredientCategory,
         kcal: Number(r.kcal), protein: Number(r.protein),
         carbs: Number(r.carbs), fat: Number(r.fat),
       })));
       _customLoaded = true;
+      setIngTick(t => t + 1); // fuerza re-render para que IngSelect vea los nuevos ingredientes
     }
   };
 

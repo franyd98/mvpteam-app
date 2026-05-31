@@ -52,8 +52,22 @@ const emptyMeta = (): PlanMeta => ({
 });
 
 // ── IngSelect ─────────────────────────────────────────────────
-function IngSelect({ value, onChange, slot }: { value: string; onChange: (v: string) => void; slot: SlotFilter }) {
-  const filtered = bySlot(slot as MainSlot);
+function IngSelect({
+  value, onChange, slot, allIngredients,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  slot: SlotFilter;
+  allIngredients: import("../data/ingredients").Ingredient[];
+}) {
+  const slotCategories: Record<SlotFilter, import("../data/ingredients").IngredientCategory[]> = {
+    proteina: ["lean_protein", "fatty_protein", "veggie_protein"],
+    hidrato:  ["clean_carb", "fatty_carb", "protein_carb", "fruit"],
+    grasa:    ["fat", "veggie_fat"],
+    extra:    ["lean_protein", "fatty_protein", "veggie_protein", "protein_carb", "clean_carb", "fatty_carb", "fruit", "fat", "veggie_fat"],
+  };
+  const cats = slotCategories[slot];
+  const filtered = allIngredients.filter(i => cats.includes(i.category as import("../data/ingredients").IngredientCategory));
   const grouped  = filtered.reduce<Record<string, typeof filtered>>((acc, ing) => {
     if (!acc[ing.category]) acc[ing.category] = [];
     acc[ing.category].push(ing);
@@ -84,8 +98,24 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
   const [loading, setLoading] = useState(!!planId);
   const [toast, setToast]     = useState<string | null>(null);
   const [showMeta, setShowMeta] = useState(true);
+  const [allIngredients, setAllIngredients] = useState(INGREDIENTS);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+
+  // ── Cargar custom_ingredients y fusionar con la lista base ────
+  useEffect(() => {
+    supabase.from("custom_ingredients").select("*").then(({ data }) => {
+      if (data && data.length > 0) {
+        const custom = data.map((r: { id: string; name: string; category: string; kcal: number; protein: number; carbs: number; fat: number }) => ({
+          id: `custom_${r.id}`,
+          name: r.name,
+          category: r.category as import("../data/ingredients").IngredientCategory,
+          kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat,
+        }));
+        setAllIngredients([...INGREDIENTS, ...custom]);
+      }
+    });
+  }, []);
 
   // ── Cargar plan existente ─────────────────────────────────
   useEffect(() => {
@@ -325,7 +355,7 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
                         </div>
                         {grp.items.map(item => (
                           <div key={item._id} className="flex items-center gap-2">
-                            <IngSelect value={item.ingId} slot={grp.slot}
+                            <IngSelect value={item.ingId} slot={grp.slot} allIngredients={allIngredients}
                               onChange={v => updItem(meal._id, opt._id, grp._id, item._id, { ingId: v })} />
                             <input type="number" value={item.grams}
                               onChange={e => updItem(meal._id, opt._id, grp._id, item._id, { grams: Number(e.target.value) })}
