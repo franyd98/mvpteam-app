@@ -98,6 +98,11 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [clientSearch, setClientSearch] = useState("");
   const [expandedClientCardId, setExpandedClientCardId] = useState<string | null>(null);
 
+  // Tab Dietas: secciones colapsables + asignación inline
+  const [dietTemplatesOpen, setDietTemplatesOpen] = useState(true);
+  const [dietUsersOpen, setDietUsersOpen] = useState(true);
+  const [expandedDietClientId, setExpandedDietClientId] = useState<string | null>(null);
+
   // Edición inline de ejercicios
   type EditingEx = { id: number; name: string; muscle_group: string; video_ref: string; coach_note: string };
   const [editingEx, setEditingEx] = useState<EditingEx | null>(null);
@@ -1423,44 +1428,126 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           <div className="space-y-3">
             {/* Botones de acción */}
             <div className="flex gap-2">
-              <button
-                onClick={handleCreateDietPlan}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors"
+              <button onClick={handleCreateDietPlan}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
                 style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}>
                 + Crear plan vacío
               </button>
-              <button
-                onClick={() => { setViewingDietPlan({ id: "__new__", name: "", kcal_on: null, kcal_off: null, notes: null }); setDietPlanSubTab("generar"); }}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors"
+              <button onClick={() => { setViewingDietPlan({ id: "__new__", name: "", kcal_on: null, kcal_off: null, notes: null }); setDietPlanSubTab("generar"); }}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
                 style={{ background: "#8B1A2F", border: "1px solid #A01F38", color: "white" }}>
                 ✨ Generar plantilla
               </button>
             </div>
 
-            {dietPlans.filter(p => !p.notes?.includes("__CLIENT_GENERATED__")).length === 0 ? (
-              <div className="text-center py-16">
-                <p className="text-4xl mb-3">🥗</p>
-                <p className="text-neutral-400 text-sm">Aún no hay planes de dieta.</p>
-                <p className="text-neutral-600 text-xs mt-1">Crea uno vacío o genera una plantilla automáticamente.</p>
-              </div>
-            ) : (
+            {/* ── SECCIÓN PLANTILLAS ── */}
+            <button onClick={() => setDietTemplatesOpen(o => !o)}
+              className="w-full flex items-center justify-between px-1 py-1">
+              <span className="text-xs uppercase tracking-widest text-neutral-500 font-semibold">
+                📋 Plantillas ({dietPlans.filter(p => !p.notes?.includes("__CLIENT_GENERATED__")).length})
+              </span>
+              <span className="text-neutral-600 text-sm">{dietTemplatesOpen ? "▲" : "▼"}</span>
+            </button>
+
+            {dietTemplatesOpen && (
               <div className="space-y-2">
-                {dietPlans.filter(p => !p.notes?.includes("__CLIENT_GENERATED__")).map((plan) => {
-                  const assigned = dietAssignments.filter(a => a.plan_id === plan.id);
+                {dietPlans.filter(p => !p.notes?.includes("__CLIENT_GENERATED__")).length === 0 ? (
+                  <p className="text-neutral-600 text-xs text-center py-4">Sin plantillas. Crea una arriba.</p>
+                ) : (
+                  dietPlans.filter(p => !p.notes?.includes("__CLIENT_GENERATED__")).map(plan => {
+                    const assigned = dietAssignments.filter(a => a.plan_id === plan.id);
+                    return (
+                      <button key={plan.id}
+                        onClick={() => { setViewingDietPlan(plan); setEditingPlanName(plan.name); setDietPlanSubTab("editar"); }}
+                        className="w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 active:opacity-70"
+                        style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-semibold text-sm">{plan.name}</p>
+                          <p className="text-neutral-500 text-xs mt-0.5">
+                            {plan.kcal_on ? `🔥 ${plan.kcal_on} / ${plan.kcal_off ?? "—"} kcal` : "Sin kcal"}
+                            {assigned.length > 0 ? ` · Asignada a ${assigned.length} cliente${assigned.length > 1 ? "s" : ""}` : ""}
+                          </p>
+                        </div>
+                        <span className="text-neutral-600 text-lg">›</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* ── SECCIÓN USUARIOS ── */}
+            <button onClick={() => setDietUsersOpen(o => !o)}
+              className="w-full flex items-center justify-between px-1 py-1 mt-2">
+              <span className="text-xs uppercase tracking-widest text-neutral-500 font-semibold">
+                👥 Usuarios ({clients.length})
+              </span>
+              <span className="text-neutral-600 text-sm">{dietUsersOpen ? "▲" : "▼"}</span>
+            </button>
+
+            {dietUsersOpen && (
+              <div className="space-y-2">
+                {clients.map(client => {
+                  const da = dietAssignments.find(a => a.client_id === client.id);
+                  const isExpanded = expandedDietClientId === client.id;
                   return (
-                    <button key={plan.id}
-                      onClick={() => { setViewingDietPlan(plan); setEditingPlanName(plan.name); setDietPlanSubTab("editar"); }}
-                      className="w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 transition-colors active:opacity-70"
-                      style={{ background: "#111", border: "1px solid #1E1E1E" }}>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-semibold text-sm">{plan.name}</p>
-                        <p className="text-neutral-500 text-xs mt-0.5">
-                          {plan.kcal_on ? `🔥 ${plan.kcal_on} / ${plan.kcal_off ?? "—"} kcal` : "Sin kcal"}
-                          {assigned.length > 0 ? ` · ${assigned.length} cliente${assigned.length > 1 ? "s" : ""}` : ""}
-                        </p>
-                      </div>
-                      <span className="text-neutral-600 text-lg">›</span>
-                    </button>
+                    <div key={client.id} className="rounded-xl overflow-hidden" style={{ border: "1px solid #1E1E1E" }}>
+                      {/* Cabecera cliente */}
+                      <button
+                        onClick={() => setExpandedDietClientId(isExpanded ? null : client.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3.5"
+                        style={{ background: "#111" }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                          style={{ background: "#1E1E1E", color: "#8B1A2F" }}>
+                          {client.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-white text-sm font-semibold">{client.full_name}</p>
+                          <p className="text-neutral-500 text-xs truncate">
+                            {da ? `🥗 ${da.plan_name}` : "Sin dieta asignada"}
+                          </p>
+                        </div>
+                        <span className="text-neutral-600 text-xs">{isExpanded ? "▲" : "▼"}</span>
+                      </button>
+
+                      {/* Expansión: selector de plan */}
+                      {isExpanded && (
+                        <div className="px-4 py-3 space-y-2" style={{ background: "#0D0D0D", borderTop: "1px solid #1E1E1E" }}>
+                          <p className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Asignar plantilla</p>
+                          {dietPlans.filter(p => !p.notes?.includes("__CLIENT_GENERATED__")).length === 0 ? (
+                            <p className="text-neutral-600 text-xs">No hay plantillas disponibles.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {dietPlans.filter(p => !p.notes?.includes("__CLIENT_GENERATED__")).map(plan => (
+                                <button key={plan.id}
+                                  onClick={() => handleAssignDiet(plan.id, client.id, client.full_name)}
+                                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors active:opacity-70"
+                                  style={{
+                                    background: da?.plan_id === plan.id ? "#1A0810" : "#1A1A1A",
+                                    border: `1px solid ${da?.plan_id === plan.id ? "#8B1A2F" : "#2A2A2A"}`,
+                                    color: da?.plan_id === plan.id ? "#E88" : "#ccc",
+                                  }}>
+                                  <span>{plan.name}</span>
+                                  {da?.plan_id === plan.id && <span className="text-xs">✓ Asignada</span>}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {da && (
+                            <button
+                              onClick={async () => {
+                                await supabase.from("diet_assignments").update({ active: false }).eq("client_id", client.id);
+                                showToast(`Dieta desasignada de ${client.full_name}`);
+                                await loadDietAssignments();
+                              }}
+                              className="w-full py-2 rounded-lg text-xs text-red-500 mt-1"
+                              style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
+                              Quitar dieta asignada
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
