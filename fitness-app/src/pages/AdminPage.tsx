@@ -37,7 +37,7 @@ type ClientLog = {
 };
 
 export default function AdminPage({ profile }: { profile: Profile }) {
-  const [tab, setTab] = useState<Tab>("programas");
+  const [tab, setTab] = useState<Tab>("clientes");
   const [clients, setClients] = useState<Profile[]>([]);
   const [exercises, setExercises] = useState<CatalogEx[]>([]);
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
@@ -1107,7 +1107,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       )}
 
       <div className="flex gap-1.5 px-3 py-3 max-w-3xl mx-auto overflow-x-auto scrollbar-hide">
-        {([["programas", "📋 Programas"], ["clientes", "👥 Clientes"], ["dietas", "🥗 Dietas"], ["alimentos", "🍗 Alimentos"], ["ejercicios", "🏋️ Ejercicios"]] as [Tab, string][]).map(([t, label]) => (
+        {([["clientes", "👥 Clientes"], ["programas", "📋 Programas"], ["dietas", "🥗 Dietas"], ["alimentos", "🍗 Alimentos"], ["ejercicios", "🏋️ Ejercicios"]] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={"px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 " + (tab === t ? "text-white" : "text-neutral-400")}
             style={tab === t
