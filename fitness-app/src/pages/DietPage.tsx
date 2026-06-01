@@ -247,27 +247,69 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [showFoodSearch, setShowFoodSearch] = useState(false);
 
-  // ── Lista de la compra (persistida en localStorage) ───────────────
-  const SHOP_KEY = `shop_${profile.id}`;
-  const [shopItems, setShopItems] = useState<Record<string, { name: string; grams: number; category: string }>>(() => {
-    try { return JSON.parse(localStorage.getItem(SHOP_KEY) ?? "{}"); } catch { return {}; }
-  });
+  // ── Lista de la compra (persistida en Supabase) ──────────────────
+  const [shopItems, setShopItems] = useState<Record<string, { name: string; grams: number; category: string }>>({});
+  const [shopLoaded, setShopLoaded] = useState(false);
   // ── Estado de guardado por comida ─────────────────────────────────
   const [savingMeals, setSavingMeals] = useState<Set<string>>(new Set());
   const [savedMeals,  setSavedMeals]  = useState<Set<string>>(new Set());
   // ── Tick para forzar re-render cuando se inyectan custom_ingredients ──
   const [, setIngTick] = useState(0);
 
-  // Persistir lista de la compra en localStorage al cambiar
-  useEffect(() => {
-    try { localStorage.setItem(SHOP_KEY, JSON.stringify(shopItems)); } catch { /* noop */ }
-  }, [shopItems]);
-
   useEffect(() => {
     loadDiet();
     loadMacros();
     loadCustomIngredients();
+    loadShopList();
   }, []);
+
+  const loadShopList = async () => {
+    const { data } = await supabase
+      .from("shop_list_items")
+      .select("item_key, name, category, checked")
+      .eq("client_id", profile.id);
+    if (data) {
+      const map: Record<string, { name: string; grams: number; category: string }> = {};
+      const checked = new Set<string>();
+      data.forEach((r: any) => {
+        map[r.item_key] = { name: r.name, grams: 0, category: r.category };
+        if (r.checked) checked.add(r.item_key);
+      });
+      setShopItems(map);
+      setCheckedItems(checked);
+    }
+    setShopLoaded(true);
+  };
+
+  const addShopItem = async (key: string, item: { name: string; grams: number; category: string }) => {
+    setShopItems(prev => ({ ...prev, [key]: item }));
+    await supabase.from("shop_list_items").upsert({
+      client_id: profile.id, item_key: key, name: item.name, category: item.category, checked: false,
+    }, { onConflict: "client_id,item_key" });
+  };
+
+  const removeShopItem = async (key: string) => {
+    setShopItems(prev => { const n = { ...prev }; delete n[key]; return n; });
+    setCheckedItems(prev => { const s = new Set(prev); s.delete(key); return s; });
+    await supabase.from("shop_list_items").delete()
+      .eq("client_id", profile.id).eq("item_key", key);
+  };
+
+  const toggleShopChecked = async (key: string, checked: boolean) => {
+    setCheckedItems(prev => {
+      const s = new Set(prev);
+      checked ? s.add(key) : s.delete(key);
+      return s;
+    });
+    await supabase.from("shop_list_items").update({ checked })
+      .eq("client_id", profile.id).eq("item_key", key);
+  };
+
+  const clearShopList = async () => {
+    setShopItems({});
+    setCheckedItems(new Set());
+    await supabase.from("shop_list_items").delete().eq("client_id", profile.id);
+  };
 
   // Reset scroll del contenedor al cambiar de sub-tab
   useLayoutEffect(() => {
@@ -475,12 +517,12 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const addToShop = (ingId: string, grams: number) => {
     const ing = INGREDIENTS.find(i => i.id === ingId);
     if (!ing) return;
-    setShopItems(prev => ({
-      ...prev,
-      [ingId]: prev[ingId]
-        ? { ...prev[ingId], grams: prev[ingId].grams + grams }
-        : { name: ing.name, grams, category: CATEGORY_LABELS[ing.category] },
-    }));
+    const existing = shopItems[ingId];
+    addShopItem(ingId, {
+      name: ing.name,
+      grams: existing ? existing.grams + grams : grams,
+      category: CATEGORY_LABELS[ing.category],
+    });
   };
 
   // ── Guardar una comida individual ─────────────────────────────────
@@ -722,10 +764,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             const shopList = Object.entries(shopItems).sort((a, b) => a[1].category.localeCompare(b[1].category));
             const allChecked = shopList.length > 0 && shopList.every(([id]) => checkedItems.has(id));
             return (
-              <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
                 onClick={() => setShowShopList(false)}>
-                <div className="w-full max-w-lg rounded-t-2xl overflow-hidden footer-safe"
-                  style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", maxHeight: "80dvh" }}
+                <div className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden"
+                  style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", maxHeight: "calc(80dvh - env(safe-area-inset-bottom, 0px) - 4rem)" }}
                   onClick={e => e.stopPropagation()}>
 
                   {/* Cabecera */}
@@ -749,7 +791,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                   </div>
 
                   {/* Lista */}
-                  <div className="overflow-y-auto" style={{ maxHeight: "calc(80dvh - 130px)" }}>
+                  <div className="overflow-y-auto" style={{ maxHeight: "calc(80dvh - env(safe-area-inset-bottom, 0px) - 4rem - 130px)" }}>
                     {shopList.length === 0 ? (
                       <div className="py-12 text-center">
                         <p className="text-4xl mb-3">🛒</p>
@@ -776,11 +818,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                                 return (
                                   <div key={id} className="flex items-center gap-1 mb-1">
                                     <button
-                                      onClick={() => setCheckedItems(prev => {
-                                        const s = new Set(prev);
-                                        checked ? s.delete(id) : s.add(id);
-                                        return s;
-                                      })}
+                                      onClick={() => toggleShopChecked(id, !checked)}
                                       className="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:opacity-70"
                                       style={{ background: checked ? "#0A1A0A" : "#141414", border: `1px solid ${checked ? "#1A3A1A" : "#1E1E1E"}` }}>
                                       <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
@@ -790,15 +828,9 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                                       <span className="flex-1 text-sm" style={{ color: checked ? "#4A7A4A" : "#ddd", textDecoration: checked ? "line-through" : "none" }}>
                                         {item.name}
                                       </span>
-                                      <span className="text-xs tabular-nums" style={{ color: checked ? "#3A5A3A" : "#666" }}>
-                                        {Math.round(item.grams)}g
-                                      </span>
                                     </button>
                                     <button
-                                      onClick={() => {
-                                        setShopItems(prev => { const n = { ...prev }; delete n[id]; return n; });
-                                        setCheckedItems(prev => { const s = new Set(prev); s.delete(id); return s; });
-                                      }}
+                                      onClick={() => removeShopItem(id)}
                                       className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-600 hover:text-red-400 active:scale-95 shrink-0"
                                       style={{ background: "#1A1A1A" }}
                                       title="Quitar de la lista">✕</button>
@@ -816,13 +848,16 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                   {shopList.length > 0 && (
                     <div className="px-4 py-3 border-t border-neutral-800 flex gap-2">
                       <button
-                        onClick={() => setCheckedItems(allChecked ? new Set() : new Set(shopList.map(([id]) => id)))}
+                        onClick={() => {
+                          const newChecked = allChecked ? false : true;
+                          shopList.forEach(([id]) => toggleShopChecked(id, newChecked));
+                        }}
                         className="flex-1 py-2.5 rounded-xl text-sm font-semibold active:opacity-70"
                         style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#999" }}>
                         {allChecked ? "Desmarcar todo" : "Marcar todo"}
                       </button>
                       <button
-                        onClick={() => { setShopItems({}); setCheckedItems(new Set()); }}
+                        onClick={clearShopList}
                         className="py-2.5 px-4 rounded-xl text-sm font-semibold active:opacity-70"
                         style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#666" }}>
                         Vaciar
@@ -1032,14 +1067,12 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             <FoodSearchModal
               onClose={() => setShowFoodSearch(false)}
               onAddToShop={(name, grams) => {
-                setShopItems(prev => ({
-                  ...prev,
-                  [`_off_${name}`]: {
-                    name,
-                    grams: prev[`_off_${name}`] ? prev[`_off_${name}`].grams + grams : grams,
-                    category: "Buscador",
-                  },
-                }));
+                const key = `_off_${name}`;
+                addShopItem(key, {
+                  name,
+                  grams: shopItems[key] ? shopItems[key].grams + grams : grams,
+                  category: "Buscador",
+                });
               }}
               onSaved={() => {
                 _customLoaded = false;
