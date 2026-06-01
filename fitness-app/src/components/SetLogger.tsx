@@ -9,7 +9,7 @@ function volume(log: SetLog): number {
   return log.weight * log.reps;
 }
 
-type Field = "weight" | "reps" | "rpe";
+type Field = "weight" | "reps" | "rpe" | "rp_reps" | "drop_weight" | "drop_reps";
 
 type Props = {
   exerciseName: string;
@@ -17,15 +17,10 @@ type Props = {
   targetSet: ExerciseSet;
   setNumber: number;
   weightUnit: WeightUnit;
-  // Si la serie ya estaba registrada en el microciclo actual, lo pasamos para precargar.
   existingLog?: SetLog;
-  // Log del microciclo anterior (para mostrar referencia histórica).
   previousLog?: SetLog;
-  // Callback cuando el usuario guarda.
-  onSave: (data: { weight: number; reps: number; rpe: number }) => void;
-  // Callback cuando el usuario cierra sin guardar.
+  onSave: (data: { weight: number; reps: number; rpe: number; rp_reps?: number; drop_weight?: number; drop_reps?: number }) => void;
   onCancel: () => void;
-  // Callback para borrar el registro existente.
   onDelete?: () => void;
 };
 
@@ -41,74 +36,79 @@ export default function SetLogger({
   onCancel,
   onDelete,
 }: Props) {
-  // Estado: tres strings para que el usuario pueda escribir con decimales sin pelearse.
-  const [weight, setWeight] = useState<string>(
-    existingLog ? String(existingLog.weight) : "",
-  );
-  const [reps, setReps] = useState<string>(
-    existingLog ? String(existingLog.reps) : "",
-  );
-  const [rpe, setRpe] = useState<string>(
-    existingLog ? String(existingLog.rpe) : "",
-  );
+  // Detectar técnica especial según la nota del ejercicio
+  const isRP   = !!(coachNote && coachNote.toLowerCase().includes("r&p"));
+  const isDrop = !!(coachNote && coachNote.toLowerCase().includes("drop"));
+
+  // Estados principales
+  const [weight, setWeight] = useState<string>(existingLog ? String(existingLog.weight) : "");
+  const [reps,   setReps]   = useState<string>(existingLog ? String(existingLog.reps)   : "");
+  const [rpe,    setRpe]    = useState<string>(existingLog ? String(existingLog.rpe ?? "") : "");
+  // Estados extra para R&P y Drop Set
+  const [rpReps,     setRpReps]     = useState<string>((existingLog as any)?.rp_reps    != null ? String((existingLog as any).rp_reps)    : "");
+  const [dropWeight, setDropWeight] = useState<string>((existingLog as any)?.drop_weight != null ? String((existingLog as any).drop_weight) : "");
+  const [dropReps,   setDropReps]   = useState<string>((existingLog as any)?.drop_reps   != null ? String((existingLog as any).drop_reps)   : "");
+
   const [activeField, setActiveField] = useState<Field>("weight");
 
-  // Previene el "ghost-click" en móvil: el touchend que abrió el modal
-  // no debe cerrar el backdrop inmediatamente.
+  // Previene el "ghost-click" en móvil
   const [backdropReady, setBackdropReady] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setBackdropReady(true), 250);
     return () => clearTimeout(t);
   }, []);
 
-  // Tecla pulsada en el teclado numérico → actualiza el campo activo.
+  // Devuelve el valor y setter del campo activo
+  const getCurrent = (): string => {
+    if (activeField === "weight")      return weight;
+    if (activeField === "reps")        return reps;
+    if (activeField === "rpe")         return rpe;
+    if (activeField === "rp_reps")     return rpReps;
+    if (activeField === "drop_weight") return dropWeight;
+    if (activeField === "drop_reps")   return dropReps;
+    return "";
+  };
+  const getSetter = (): ((v: string) => void) => {
+    if (activeField === "weight")      return setWeight;
+    if (activeField === "reps")        return setReps;
+    if (activeField === "rpe")         return setRpe;
+    if (activeField === "rp_reps")     return setRpReps;
+    if (activeField === "drop_weight") return setDropWeight;
+    if (activeField === "drop_reps")   return setDropReps;
+    return () => {};
+  };
+
+  // El punto decimal no aplica en campos de reps enteras
+  const noDecimalFields: Field[] = ["reps", "rp_reps", "drop_reps"];
+
   const handleKey = (k: string) => {
     const current = getCurrent();
     const setter = getSetter();
-
-    if (k === "back") {
-      setter(current.slice(0, -1));
-      return;
-    }
+    if (k === "back") { setter(current.slice(0, -1)); return; }
     if (k === ".") {
-      // Solo válido en peso y RPE, no en reps.
-      if (activeField === "reps") return;
+      if (noDecimalFields.includes(activeField)) return;
       if (current.includes(".")) return;
       setter(current === "" ? "0." : current + ".");
       return;
     }
-    // Dígito 0-9
-    // Limitamos longitud para que no se rompa el layout.
     if (current.length >= 5) return;
     setter(current + k);
   };
 
-  const getCurrent = (): string => {
-    if (activeField === "weight") return weight;
-    if (activeField === "reps") return reps;
-    return rpe;
-  };
-  const getSetter = (): ((v: string) => void) => {
-    if (activeField === "weight") return setWeight;
-    if (activeField === "reps") return setReps;
-    return setRpe;
-  };
-
-  // Validación: peso y reps son obligatorios; RPE opcional pero recomendado.
   const isValid =
-    weight.trim() !== "" &&
-    !isNaN(Number(weight)) &&
-    reps.trim() !== "" &&
-    !isNaN(Number(reps)) &&
-    Number(reps) > 0;
+    weight.trim() !== "" && !isNaN(Number(weight)) &&
+    reps.trim()   !== "" && !isNaN(Number(reps)) && Number(reps) > 0;
 
   const handleSave = () => {
     if (!isValid) return;
     const rpeNum = rpe.trim() === "" ? 0 : Number(rpe);
     onSave({
       weight: Number(weight),
-      reps: Number(reps),
-      rpe: Math.max(0, Math.min(10, rpeNum)),
+      reps:   Number(reps),
+      rpe:    Math.max(0, Math.min(10, rpeNum)),
+      ...(isRP   && rpReps     ? { rp_reps:     Number(rpReps) }     : {}),
+      ...(isDrop && dropWeight ? { drop_weight: Number(dropWeight) } : {}),
+      ...(isDrop && dropReps   ? { drop_reps:   Number(dropReps) }   : {}),
     });
   };
 
@@ -172,12 +172,33 @@ export default function SetLogger({
               </div>
             )}
 
-            {/* Pestañas de campo */}
-            <div className="grid grid-cols-3 gap-2 p-3">
+            {/* Pestañas principales */}
+            <div className="grid grid-cols-3 gap-2 p-3 pb-2">
               <FieldTab label={`Peso (${weightUnit})`} value={weight} active={activeField === "weight"} onClick={() => setActiveField("weight")} />
               <FieldTab label="Reps" value={reps} active={activeField === "reps"} onClick={() => setActiveField("reps")} />
               <FieldTab label="RPE" value={rpe} active={activeField === "rpe"} onClick={() => setActiveField("rpe")} />
             </div>
+
+            {/* Tabs extra: R&P Última Serie */}
+            {isRP && (
+              <div className="px-3 pb-2">
+                <p className="text-[9px] uppercase tracking-widest text-amber-500 mb-1 px-1">🔁 Rest &amp; Pause — última serie</p>
+                <div className="grid grid-cols-1 gap-1.5">
+                  <FieldTabSmall label="Reps extra (R&P)" value={rpReps} active={activeField === "rp_reps"} onClick={() => setActiveField("rp_reps")} />
+                </div>
+              </div>
+            )}
+
+            {/* Tabs extra: Drop Set */}
+            {isDrop && (
+              <div className="px-3 pb-2">
+                <p className="text-[9px] uppercase tracking-widest text-purple-400 mb-1 px-1">📉 Drop Set</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <FieldTabSmall label={`Peso drop (${weightUnit})`} value={dropWeight} active={activeField === "drop_weight"} onClick={() => setActiveField("drop_weight")} />
+                  <FieldTabSmall label="Reps drop" value={dropReps} active={activeField === "drop_reps"} onClick={() => setActiveField("drop_reps")} />
+                </div>
+              </div>
+            )}
 
             {/* Teclado numérico */}
             <div className="grid grid-cols-3 gap-1.5 p-3">
@@ -227,6 +248,26 @@ function FieldTab({
     >
       <p className="text-[10px] uppercase tracking-wider opacity-70">{label}</p>
       <p className="text-2xl font-bold mt-0.5 tabular-nums min-h-[2rem]">
+        {value || "—"}
+      </p>
+    </button>
+  );
+}
+
+// Tab compacto para campos extra (R&P / Drop Set)
+function FieldTabSmall({
+  label, value, active, onClick,
+}: { label: string; value: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "rounded-xl px-2 py-2 text-center transition-colors active:scale-95 " +
+        (active ? "bg-white text-black" : "bg-neutral-800 text-neutral-300 active:bg-neutral-700")
+      }
+    >
+      <p className="text-[9px] uppercase tracking-wider opacity-70">{label}</p>
+      <p className="text-lg font-bold mt-0.5 tabular-nums min-h-[1.4rem]">
         {value || "—"}
       </p>
     </button>

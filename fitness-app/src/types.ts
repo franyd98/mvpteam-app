@@ -56,6 +56,11 @@ export type SetLog = {
   rpe: number; // 0-10
   unit: WeightUnit;
 
+  // Técnicas especiales (opcionales)
+  rp_reps?: number | null;     // Reps extra de Rest & Pause
+  drop_weight?: number | null; // Peso del drop set
+  drop_reps?: number | null;   // Reps del drop set
+
   // Cuándo se registró
   loggedAt: string; // ISO timestamp
 };

@@ -242,6 +242,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           rpe: row.rpe ?? 0,
           unit: (row.unit ?? settings.weightUnit) as "kg" | "lb",
           loggedAt: row.logged_at ?? new Date().toISOString(),
+          rp_reps:     row.rp_reps     ?? null,
+          drop_weight: row.drop_weight ?? null,
+          drop_reps:   row.drop_reps   ?? null,
         } as SetLog];
       });
       setLogs(converted);
@@ -292,7 +295,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     );
   };
 
-  const handleSave = async (data: { weight: number; reps: number; rpe: number }) => {
+  const handleSave = async (data: { weight: number; reps: number; rpe: number; rp_reps?: number; drop_weight?: number; drop_reps?: number }) => {
     if (!editing) return;
 
     // Capturar antes de cualquier setState (los setState son asíncronos)
@@ -335,6 +338,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           rpe: data.rpe,
           unit: settings.weightUnit,
           logged_at: new Date().toISOString(),
+          rp_reps:     data.rp_reps     ?? null,
+          drop_weight: data.drop_weight ?? null,
+          drop_reps:   data.drop_reps   ?? null,
         },
         { onConflict: "client_id,exercise_set_id" },
       );
@@ -805,10 +811,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                                 : ""}
                             </span>
                             {log ? (
-                              <span className="font-bold text-emerald-200 tabular-nums flex items-center gap-1.5 text-sm">
+                              <span className="font-bold text-emerald-200 tabular-nums flex flex-wrap items-center gap-1.5 text-sm">
                                 {log.weight} {log.unit} × {log.reps}
                                 {log.rpe > 0 && (
                                   <span className="text-emerald-400 font-normal text-xs">RPE {log.rpe}</span>
+                                )}
+                                {log.rp_reps != null && (
+                                  <span className="text-amber-300 font-normal text-xs bg-amber-950/40 px-1.5 py-0.5 rounded">🔁 +{log.rp_reps}r</span>
+                                )}
+                                {log.drop_weight != null && (
+                                  <span className="text-purple-300 font-normal text-xs bg-purple-950/40 px-1.5 py-0.5 rounded">📉 {log.drop_weight}×{log.drop_reps ?? "?"}</span>
                                 )}
                                 {prog && (
                                   <span className={"text-sm font-bold " +
