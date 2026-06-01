@@ -160,6 +160,30 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
+  const handleDeleteClient = async (clientId: string, clientName: string) => {
+    if (!confirm(`⚠️ ¿Eliminar a "${clientName}" definitivamente?\n\nSe borrarán todos sus datos: progreso, check-ins, fotos, dieta, etc.\n\nEsta acción no se puede deshacer.`)) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/delete-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ userId: clientId }),
+      });
+      const json = await res.json();
+      if (json.error) {
+        showToast("❌ " + json.error);
+      } else {
+        showToast(`✅ Cliente "${clientName}" eliminado`);
+        await loadClients();
+      }
+    } catch {
+      showToast("❌ Error de red al eliminar el cliente");
+    }
+  };
+
   const handleInviteClient = async () => {
     if (!inviteEmail.trim()) return;
     setInviting(true);
@@ -1401,17 +1425,25 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
                         {/* Acciones expandidas */}
                         {isOpen && (
-                          <div className="px-4 pb-3 pt-1 border-t border-neutral-800 flex flex-wrap gap-2">
-                            <button onClick={() => openClientProgress(c)}
-                              className="flex-1 py-2 rounded-lg bg-neutral-800 text-neutral-300 text-xs hover:bg-neutral-700 transition-colors">
-                              📊 Progreso
-                            </button>
-                            {assignment && (
-                              <button onClick={() => handleUnassign(c.id, c.full_name)}
-                                className="flex-1 py-2 rounded-lg bg-red-950/40 text-red-400 border border-red-900/40 text-xs hover:bg-red-950/70 transition-colors">
-                                Desasignar programa
+                          <div className="px-4 pb-3 pt-1 border-t border-neutral-800 space-y-2">
+                            <div className="flex flex-wrap gap-2">
+                              <button onClick={() => openClientProgress(c)}
+                                className="flex-1 py-2 rounded-lg bg-neutral-800 text-neutral-300 text-xs hover:bg-neutral-700 transition-colors">
+                                📊 Progreso
                               </button>
-                            )}
+                              {assignment && (
+                                <button onClick={() => handleUnassign(c.id, c.full_name)}
+                                  className="flex-1 py-2 rounded-lg bg-red-950/40 text-red-400 border border-red-900/40 text-xs hover:bg-red-950/70 transition-colors">
+                                  Desasignar programa
+                                </button>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDeleteClient(c.id, c.full_name)}
+                              className="w-full py-2 rounded-lg text-xs font-semibold transition-colors"
+                              style={{ background: "#1A0808", border: "1px solid #3A1515", color: "#F87171" }}>
+                              🗑 Eliminar cliente permanentemente
+                            </button>
                           </div>
                         )}
                       </div>
