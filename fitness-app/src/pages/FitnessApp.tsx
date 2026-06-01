@@ -735,7 +735,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] uppercase tracking-wider mb-0.5"
                         style={{ color: sub ? "#4ADE80" : "#6B6B6B" }}>{displayGroup}</p>
-                      <h2 className="text-sm font-semibold text-white leading-snug line-clamp-2" title={displayName}>{displayName}</h2>
+                      <h2 className="text-sm font-semibold text-white leading-snug" title={displayName}>{displayName}</h2>
                       {sub && (
                         <p className="text-[10px] text-neutral-600 mt-0.5 truncate">
                           ↩ Pautado: {ex.name}
