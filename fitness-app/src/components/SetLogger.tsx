@@ -123,119 +123,86 @@ export default function SetLogger({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end landscape:items-center justify-center p-0 landscape:p-2"
       onClick={backdropReady ? onCancel : undefined}
     >
       <div
-        className="bg-neutral-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden footer-safe"
+        className="bg-neutral-900 w-full landscape:max-w-2xl rounded-t-2xl landscape:rounded-2xl border border-neutral-800 shadow-2xl overflow-y-auto footer-safe landscape:max-h-[98dvh]"
+        style={{ WebkitOverflowScrolling: "touch" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Cabecera */}
-        <header className="px-4 pt-4 pb-3 border-b border-neutral-800">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-500">
-            Serie {setNumber} · Objetivo: {targetSet.targetReps ?? "-"}
-          </p>
-          <h2 className="text-base font-semibold text-white truncate">
-            {exerciseName}
-          </h2>
-          {coachNote && (
-            <p className="mt-1.5 text-xs text-amber-400 leading-snug">
-              📝 {coachNote}
-            </p>
-          )}
-        </header>
+        {/* En landscape: layout de dos columnas (info | teclado) */}
+        <div className="landscape:flex landscape:gap-0">
 
-        {/* Banner historial: muestra lo del microciclo anterior si existe */}
-        {previousLog && (
-          <div className="px-4 py-2.5 bg-blue-950/40 border-b border-blue-900/30 flex items-center gap-2">
-            <span className="text-blue-400 text-lg">📊</span>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-blue-500">
-                Mc {previousLog.microcycleNumber} — referencia anterior
+          {/* Columna izquierda: cabecera + campos + acciones */}
+          <div className="landscape:flex-1 landscape:flex landscape:flex-col landscape:justify-between">
+            {/* Cabecera */}
+            <header className="px-4 pt-4 pb-3 border-b border-neutral-800">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">
+                Serie {setNumber} · Objetivo: {targetSet.targetReps ?? "-"}
               </p>
-              <p className="text-sm font-semibold text-blue-200">
-                {previousLog.weight} {previousLog.unit} × {previousLog.reps} reps
-                {previousLog.rpe > 0 && (
-                  <span className="ml-2 text-blue-400 font-normal text-xs">
-                    · RPE {previousLog.rpe}
+              <h2 className="text-sm font-semibold text-white">
+                {exerciseName}
+              </h2>
+              {coachNote && (
+                <p className="mt-1 text-xs text-amber-400 leading-snug">
+                  📝 {coachNote}
+                </p>
+              )}
+            </header>
+
+            {/* Banner historial */}
+            {previousLog && (
+              <div className="px-4 py-2 bg-blue-950/40 border-b border-blue-900/30 flex items-center gap-2">
+                <span className="text-blue-400">📊</span>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-blue-500">
+                    Mc {previousLog.microcycleNumber} — referencia
+                  </p>
+                  <p className="text-xs font-semibold text-blue-200">
+                    {previousLog.weight} {previousLog.unit} × {previousLog.reps} reps
+                    {previousLog.rpe > 0 && <span className="ml-2 text-blue-400 font-normal">· RPE {previousLog.rpe}</span>}
+                  </p>
+                </div>
+                {existingLog && (
+                  <span className="ml-auto text-base font-bold">
+                    {volume(existingLog) > volume(previousLog) ? <span className="text-emerald-400">↑</span>
+                      : volume(existingLog) === volume(previousLog) ? <span className="text-yellow-400">=</span>
+                      : <span className="text-red-400">↓</span>}
                   </span>
                 )}
-              </p>
-            </div>
-            {/* Indicador de progresión si ya hay un log actual */}
-            {existingLog && (
-              <span className="ml-auto text-lg font-bold">
-                {volume(existingLog) > volume(previousLog) ? (
-                  <span className="text-emerald-400">↑</span>
-                ) : volume(existingLog) === volume(previousLog) ? (
-                  <span className="text-yellow-400">=</span>
-                ) : (
-                  <span className="text-red-400">↓</span>
-                )}
-              </span>
+              </div>
             )}
+
+            {/* Pestañas de campo */}
+            <div className="grid grid-cols-3 gap-2 p-3">
+              <FieldTab label={`Peso (${weightUnit})`} value={weight} active={activeField === "weight"} onClick={() => setActiveField("weight")} />
+              <FieldTab label="Reps" value={reps} active={activeField === "reps"} onClick={() => setActiveField("reps")} />
+              <FieldTab label="RPE" value={rpe} active={activeField === "rpe"} onClick={() => setActiveField("rpe")} />
+            </div>
+
+            {/* Acciones */}
+            <div className="flex gap-2 p-3 border-t border-neutral-800 bg-neutral-950">
+              {existingLog && onDelete && (
+                <button onClick={onDelete} className="px-3 py-3 rounded-xl text-sm font-medium bg-red-950 text-red-300 hover:bg-red-900">Borrar</button>
+              )}
+              <button onClick={onCancel} className="flex-1 py-3 rounded-xl text-sm font-medium bg-neutral-800 text-neutral-300 hover:bg-neutral-700">Cancelar</button>
+              <button onClick={handleSave} disabled={!isValid} className="flex-1 py-3 rounded-xl text-sm font-bold bg-white text-black disabled:opacity-30 disabled:cursor-not-allowed">Guardar</button>
+            </div>
           </div>
-        )}
 
-        {/* Pestañas de campo */}
-        <div className="grid grid-cols-3 gap-2 p-3">
-          <FieldTab
-            label={`Peso (${weightUnit})`}
-            value={weight}
-            active={activeField === "weight"}
-            onClick={() => setActiveField("weight")}
-          />
-          <FieldTab
-            label="Reps"
-            value={reps}
-            active={activeField === "reps"}
-            onClick={() => setActiveField("reps")}
-          />
-          <FieldTab
-            label="RPE"
-            value={rpe}
-            active={activeField === "rpe"}
-            onClick={() => setActiveField("rpe")}
-          />
-        </div>
+          {/* Columna derecha (landscape) / bloque normal (portrait): teclado numérico */}
+          <div className="landscape:border-l landscape:border-neutral-800 landscape:w-56 landscape:shrink-0">
+            <div className="grid grid-cols-3 gap-1.5 p-3">
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
+                <Key key={k} label={k} onClick={() => handleKey(k)} />
+              ))}
+              <Key label="." onClick={() => handleKey(".")} disabled={activeField === "reps"} />
+              <Key label="0" onClick={() => handleKey("0")} />
+              <Key label="⌫" onClick={() => handleKey("back")} />
+            </div>
+          </div>
 
-        {/* Teclado numérico */}
-        <div className="grid grid-cols-3 gap-1.5 px-3 pb-3">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
-            <Key key={k} label={k} onClick={() => handleKey(k)} />
-          ))}
-          <Key
-            label="."
-            onClick={() => handleKey(".")}
-            disabled={activeField === "reps"}
-          />
-          <Key label="0" onClick={() => handleKey("0")} />
-          <Key label="⌫" onClick={() => handleKey("back")} />
-        </div>
-
-        {/* Acciones */}
-        <div className="flex gap-2 p-3 border-t border-neutral-800 bg-neutral-950">
-          {existingLog && onDelete && (
-            <button
-              onClick={onDelete}
-              className="px-3 py-3 rounded-xl text-sm font-medium bg-red-950 text-red-300 hover:bg-red-900"
-            >
-              Borrar
-            </button>
-          )}
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 rounded-xl text-sm font-medium bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!isValid}
-            className="flex-1 py-3 rounded-xl text-sm font-bold bg-white text-black disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            Guardar
-          </button>
         </div>
       </div>
     </div>
