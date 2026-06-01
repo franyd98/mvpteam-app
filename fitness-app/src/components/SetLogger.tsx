@@ -134,8 +134,8 @@ export default function SetLogger({
         {/* En landscape: layout de dos columnas (info | teclado) */}
         <div className="landscape:flex landscape:gap-0">
 
-          {/* Columna izquierda: cabecera + campos + acciones */}
-          <div className="landscape:flex-1 landscape:flex landscape:flex-col landscape:justify-between">
+          {/* Columna izquierda: cabecera + campos */}
+          <div className="landscape:flex-1 landscape:flex landscape:flex-col landscape:overflow-y-auto">
             {/* Cabecera */}
             <header className="px-4 pt-4 pb-3 border-b border-neutral-800">
               <p className="text-[10px] uppercase tracking-wider text-neutral-500">
@@ -181,8 +181,8 @@ export default function SetLogger({
               <FieldTab label="RPE" value={rpe} active={activeField === "rpe"} onClick={() => setActiveField("rpe")} />
             </div>
 
-            {/* Acciones */}
-            <div className="flex gap-2 p-3 border-t border-neutral-800 bg-neutral-950">
+            {/* Acciones — solo en portrait */}
+            <div className="landscape:hidden flex gap-2 p-3 border-t border-neutral-800 bg-neutral-950">
               {existingLog && onDelete && (
                 <button onClick={onDelete} className="px-3 py-3 rounded-xl text-sm font-medium bg-red-950 text-red-300 hover:bg-red-900">Borrar</button>
               )}
@@ -191,8 +191,8 @@ export default function SetLogger({
             </div>
           </div>
 
-          {/* Columna derecha (landscape) / bloque normal (portrait): teclado numérico */}
-          <div className="landscape:border-l landscape:border-neutral-800 landscape:w-56 landscape:shrink-0">
+          {/* Columna derecha (landscape) / bloque normal (portrait): teclado numérico + acciones en landscape */}
+          <div className="landscape:border-l landscape:border-neutral-800 landscape:w-56 landscape:shrink-0 landscape:flex landscape:flex-col">
             <div className="grid grid-cols-3 gap-1.5 p-3">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
                 <Key key={k} label={k} onClick={() => handleKey(k)} />
@@ -200,6 +200,17 @@ export default function SetLogger({
               <Key label="." onClick={() => handleKey(".")} disabled={activeField === "reps"} />
               <Key label="0" onClick={() => handleKey("0")} />
               <Key label="⌫" onClick={() => handleKey("back")} />
+            </div>
+
+            {/* Acciones — solo en landscape, debajo del teclado */}
+            <div className="hidden landscape:flex flex-col gap-1.5 px-3 pb-3">
+              <div className="flex gap-1.5">
+                <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-xs font-medium bg-neutral-800 text-neutral-300 hover:bg-neutral-700">Cancelar</button>
+                <button onClick={handleSave} disabled={!isValid} className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-white text-black disabled:opacity-30 disabled:cursor-not-allowed">Guardar</button>
+              </div>
+              {existingLog && onDelete && (
+                <button onClick={onDelete} className="w-full py-2 rounded-xl text-xs font-medium bg-red-950 text-red-300 hover:bg-red-900">Borrar serie</button>
+              )}
             </div>
           </div>
 
