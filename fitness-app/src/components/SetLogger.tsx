@@ -14,6 +14,7 @@ type Field = "weight" | "reps" | "rpe" | "rp_reps" | "drop_weight" | "drop_reps"
 type Props = {
   exerciseName: string;
   coachNote?: string | null;
+  exerciseNote?: string | null; // nota del microciclo (microcycle_exercises.note)
   targetSet: ExerciseSet;
   setNumber: number;
   weightUnit: WeightUnit;
@@ -27,6 +28,7 @@ type Props = {
 export default function SetLogger({
   exerciseName,
   coachNote,
+  exerciseNote,
   targetSet,
   setNumber,
   weightUnit,
@@ -36,9 +38,10 @@ export default function SetLogger({
   onCancel,
   onDelete,
 }: Props) {
-  // Detectar técnica especial según la nota del ejercicio
-  const isRP   = !!(coachNote && coachNote.toLowerCase().includes("r&p"));
-  const isDrop = !!(coachNote && coachNote.toLowerCase().includes("drop"));
+  // Detectar técnica especial — busca en ambas notas (coach_note y microcycle note)
+  const allNotes = [coachNote ?? "", exerciseNote ?? ""].join(" ").toLowerCase();
+  const isRP   = allNotes.includes("r&p");
+  const isDrop = allNotes.includes("drop");
 
   // Estados principales
   const [weight, setWeight] = useState<string>(existingLog ? String(existingLog.weight) : "");

@@ -1012,6 +1012,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         <SetLogger
           exerciseName={editingExercise.name}
           coachNote={editingExercise.coachNote}
+          exerciseNote={editingExercise.note}
           targetSet={editingTargetSet}
           setNumber={editing.setNumber}
           weightUnit={settings.weightUnit}
