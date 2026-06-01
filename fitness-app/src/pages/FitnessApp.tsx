@@ -773,13 +773,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     {ex.sets.map((s) => {
                       const log = findLatestLog(logs, dayId, microcycleNumber, idx, s.number);
                       const prevLog = findPreviousMicrocycleLog(logs, dayId, microcycleNumber, idx, s.number);
+                      // Comparar 1RM estimado (Epley): peso × (1 + reps/30)
+                      // Mejor que volumen (peso×reps) porque captura subidas de carga con menos reps
+                      const est1RM = (w: number, r: number) => w * (1 + r / 30);
                       const prog =
                         log && prevLog
-                          ? log.weight * log.reps > prevLog.weight * prevLog.reps
+                          ? est1RM(log.weight, log.reps) > est1RM(prevLog.weight, prevLog.reps) + 0.5
                             ? "↑"
-                            : log.weight * log.reps === prevLog.weight * prevLog.reps
-                            ? "="
-                            : "↓"
+                            : est1RM(log.weight, log.reps) < est1RM(prevLog.weight, prevLog.reps) - 0.5
+                            ? "↓"
+                            : "="
                           : null;
                       const mcLocked = isLocked(dayId, microcycleNumber);
                       return (
