@@ -225,7 +225,7 @@ function MacroBar({ label, value, target, color }: {
 const todayDate = () => new Date().toISOString().slice(0, 10);
 
 export default function DietPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
-  const [dietTab, setDietTab]   = useState<DietTab>("plan");
+  const [dietTab, setDietTab]   = useState<DietTab>("macros");
 
   // ── Plan del entrenador ──────────────────────────────────────────
   const [plan, setPlan]         = useState<DietPlan | null>(null);
@@ -595,9 +595,9 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
         {/* Sub-pestañas */}
         <div className="flex gap-1 pb-0">
           {([
-            { id: "plan"     as DietTab, label: "📋 Mi Plan" },
             { id: "macros"   as DietTab, label: "📊 Mis Macros" },
             { id: "generate" as DietTab, label: "🎲 Generar" },
+            { id: "plan"     as DietTab, label: "📋 Mi Plan" },
           ]).map(({ id, label }) => (
             <button key={id} onClick={() => setDietTab(id)}
               className={"flex-1 py-2 text-xs font-semibold rounded-t-lg transition-colors " +
