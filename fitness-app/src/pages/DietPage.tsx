@@ -246,6 +246,8 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [showShopList, setShowShopList] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [showFoodSearch, setShowFoodSearch] = useState(false);
+  // Si el buscador se abrió desde la cesta, al cerrarlo volvemos a la cesta
+  const [foodSearchFromCart, setFoodSearchFromCart] = useState(false);
 
   // ── Lista de la compra (persistida en Supabase) ──────────────────
   const [shopItems, setShopItems] = useState<Record<string, { name: string; grams: number; category: string }>>({});
@@ -764,10 +766,11 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             const shopList = Object.entries(shopItems).sort((a, b) => a[1].category.localeCompare(b[1].category));
             const allChecked = shopList.length > 0 && shopList.every(([id]) => checkedItems.has(id));
             return (
-              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+              <div className="fixed inset-x-0 top-0 z-50 flex flex-col justify-end sm:justify-center bg-black/70 backdrop-blur-sm"
+                style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}
                 onClick={() => setShowShopList(false)}>
-                <div className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden"
-                  style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", maxHeight: "calc(80dvh - env(safe-area-inset-bottom, 0px) - 4rem)" }}
+                <div className="w-full max-w-lg mx-auto rounded-t-2xl sm:rounded-2xl overflow-hidden"
+                  style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", maxHeight: "80dvh" }}
                   onClick={e => e.stopPropagation()}>
 
                   {/* Cabecera */}
@@ -780,7 +783,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => { setShowShopList(false); setShowFoodSearch(true); }}
+                        onClick={() => { setShowShopList(false); setFoodSearchFromCart(true); setShowFoodSearch(true); }}
                         className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 hover:text-white"
                         style={{ background: "#1A1A1A" }}
                         title="Buscar alimento para añadir">🔍</button>
@@ -791,7 +794,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                   </div>
 
                   {/* Lista */}
-                  <div className="overflow-y-auto" style={{ maxHeight: "calc(80dvh - env(safe-area-inset-bottom, 0px) - 4rem - 130px)" }}>
+                  <div className="overflow-y-auto" style={{ maxHeight: "calc(80dvh - 130px)" }}>
                     {shopList.length === 0 ? (
                       <div className="py-12 text-center">
                         <p className="text-4xl mb-3">🛒</p>
@@ -1065,7 +1068,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
           {/* ── Modal: Buscar alimento (Open Food Facts) ── */}
           {showFoodSearch && (
             <FoodSearchModal
-              onClose={() => setShowFoodSearch(false)}
+              onClose={() => {
+                setShowFoodSearch(false);
+                if (foodSearchFromCart) { setFoodSearchFromCart(false); setShowShopList(true); }
+              }}
               onAddToShop={(name, grams) => {
                 const key = `_off_${name}`;
                 addShopItem(key, {
@@ -1073,10 +1079,14 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                   grams: shopItems[key] ? shopItems[key].grams + grams : grams,
                   category: "Buscador",
                 });
+                // Volver a la cesta tras añadir
+                if (foodSearchFromCart) { setShowFoodSearch(false); setFoodSearchFromCart(false); setShowShopList(true); }
               }}
               onSaved={() => {
                 _customLoaded = false;
                 loadCustomIngredients();
+                // Volver a la cesta tras guardar en catálogo
+                if (foodSearchFromCart) { setShowFoodSearch(false); setFoodSearchFromCart(false); setShowShopList(true); }
               }}
             />
           )}
