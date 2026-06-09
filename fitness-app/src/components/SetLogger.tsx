@@ -39,9 +39,10 @@ export default function SetLogger({
   onDelete,
 }: Props) {
   // Detectar técnica especial — busca en ambas notas (coach_note y microcycle note)
+  // "DS Últ. Serie" y "Drop Set Últ. Serie" son equivalentes
   const allNotes = [coachNote ?? "", exerciseNote ?? ""].join(" ").toLowerCase();
   const isRP   = allNotes.includes("r&p");
-  const isDrop = allNotes.includes("drop");
+  const isDrop = allNotes.includes("drop") || allNotes.includes("ds últ");
 
   // Estados principales
   const [weight, setWeight] = useState<string>(existingLog ? String(existingLog.weight) : "");

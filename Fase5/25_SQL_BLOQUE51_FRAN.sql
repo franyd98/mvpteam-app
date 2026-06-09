@@ -906,7 +906,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 5, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 5, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '12 a 15 (0)');
@@ -979,7 +979,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 5, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 5, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '12 a 15 (0)');
@@ -1056,7 +1056,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 5, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 5, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '12 a 15 (0)');
@@ -1135,7 +1135,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 5, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 5, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '12 a 15 (0)');
@@ -1218,7 +1218,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 5, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 5, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '12 a 15 (0)');
@@ -1299,7 +1299,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 5, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 5, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '12 a 15 (0)');
@@ -1380,7 +1380,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 5, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 5, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '12 a 15 (0)');
@@ -1512,7 +1512,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -1605,7 +1605,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -1702,7 +1702,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -1803,7 +1803,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -1908,7 +1908,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -2013,7 +2013,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -2118,7 +2118,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -2322,7 +2322,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 5, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 5, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '12 a 15 (0)');
@@ -2395,7 +2395,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 5, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 5, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '12 a 15 (0)');
@@ -2459,7 +2459,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -2536,7 +2536,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -2617,7 +2617,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -2698,7 +2698,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -2779,7 +2779,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '10 a 12 (0)');
@@ -2893,7 +2893,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 1, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 1, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -2915,7 +2915,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 3, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 3, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -2926,7 +2926,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -2948,7 +2948,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 6, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 6, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -2959,7 +2959,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 7, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 7, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -2988,7 +2988,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 1, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 1, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3010,7 +3010,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 3, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 3, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3021,7 +3021,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3043,7 +3043,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 6, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 6, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3054,7 +3054,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 7, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 7, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3083,7 +3083,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 1, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 1, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3107,7 +3107,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 3, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 3, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3120,7 +3120,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3144,7 +3144,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 6, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 6, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3155,7 +3155,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 7, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 7, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3184,7 +3184,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 1, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 1, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3208,7 +3208,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 3, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 3, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3221,7 +3221,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3245,7 +3245,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 6, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 6, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3256,7 +3256,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 7, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 7, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3285,7 +3285,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 1, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 1, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3311,7 +3311,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 3, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 3, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3324,7 +3324,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3348,7 +3348,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 6, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 6, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3361,7 +3361,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 7, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 7, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3392,7 +3392,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 1, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 1, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3418,7 +3418,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 3, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 3, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3431,7 +3431,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3455,7 +3455,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 6, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 6, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3468,7 +3468,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 7, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 7, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3499,7 +3499,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 1, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 1, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3525,7 +3525,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 3, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 3, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3538,7 +3538,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 4, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 4, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '9 a 12 (0)');
@@ -3562,7 +3562,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 6, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 6, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
@@ -3575,7 +3575,7 @@ BEGIN
     ON CONFLICT (name) DO UPDATE SET muscle_group=EXCLUDED.muscle_group, video_ref=EXCLUDED.video_ref
     RETURNING id INTO ex_id;
   INSERT INTO microcycle_exercises (microcycle_id, exercise_id, order_index, note)
-    VALUES (mc_id, ex_id, 7, 'DS Últ. Serie')
+    VALUES (mc_id, ex_id, 7, 'Drop Set Últ. Serie')
     RETURNING id INTO mex_id;
   INSERT INTO exercise_sets (microcycle_exercise_id, set_number, target_reps)
     VALUES (mex_id, 1, '8 a 10 (0)');
