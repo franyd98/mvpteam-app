@@ -330,7 +330,7 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
               </select>
               <input value={meal.name} onChange={e => updMeal(meal._id, { name: e.target.value })}
                 placeholder={`Comida ${mIdx + 1}`}
-                className="flex-1 bg-transparent text-white text-sm font-semibold focus:outline-none" />
+                className="flex-1 bg-transparent text-white text-sm font-semibold focus:outline-none border-b border-transparent hover:border-neutral-600 focus:border-neutral-400 transition-colors" />
               <select value={meal.day_type} onChange={e => updMeal(meal._id, { day_type: e.target.value as any })}
                 className="text-xs rounded-lg px-2 py-1 text-neutral-300"
                 style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
