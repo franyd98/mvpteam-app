@@ -205,6 +205,31 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
   // ── Helpers de edición ────────────────────────────────────
   const updMeal = (id: string, patch: Partial<DraftMeal>) =>
     setMeals(ms => ms.map(m => m._id === id ? { ...m, ...patch } : m));
+
+  const duplicateMeal = (meal: DraftMeal) => {
+    const deepClone = (m: DraftMeal): DraftMeal => ({
+      ...m,
+      _id: uid(),
+      name: m.name ? `${m.name} (copia)` : "",
+      expanded: true,
+      options: m.options.map(opt => ({
+        ...opt,
+        _id: uid(),
+        groups: opt.groups.map(grp => ({
+          ...grp,
+          _id: uid(),
+          items: grp.items.map(it => ({ ...it, _id: uid() })),
+        })),
+      })),
+    });
+    setMeals(ms => {
+      const idx = ms.findIndex(m => m._id === meal._id);
+      const copy = deepClone(meal);
+      const next = [...ms];
+      next.splice(idx + 1, 0, copy);
+      return next;
+    });
+  };
   const updOpt = (mId: string, oId: string, patch: Partial<DraftOption>) =>
     setMeals(ms => ms.map(m => m._id === mId ? { ...m, options: m.options.map(o => o._id === oId ? { ...o, ...patch } : o) } : m));
   const updGroup = (mId: string, oId: string, gId: string, patch: Partial<DraftGroup>) =>
@@ -315,6 +340,8 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
               </select>
               <button onClick={() => updMeal(meal._id, { expanded: !meal.expanded })}
                 className="text-neutral-500 text-xs px-2">{meal.expanded ? "▲" : "▼"}</button>
+              <button onClick={() => duplicateMeal(meal)}
+                className="text-neutral-500 hover:text-yellow-400 text-sm" title="Duplicar comida">⧉</button>
               <button onClick={() => setMeals(ms => ms.filter(m => m._id !== meal._id))}
                 className="text-neutral-600 hover:text-red-400 text-sm">✕</button>
             </div>
