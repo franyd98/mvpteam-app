@@ -40,7 +40,7 @@ BEGIN
 
   -- === Día: Tirón ===
   -- Microciclo 1
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_0_id, 1)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -135,7 +135,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 2
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_0_id, 2)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -230,7 +230,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 3
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_0_id, 3)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -331,7 +331,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 4
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_0_id, 4)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -432,7 +432,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 5
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_0_id, 5)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -537,7 +537,7 @@ BEGIN
     VALUES (mex_id, 3, '12 a 15 (0)');
 
   -- Microciclo 6
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_0_id, 6)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -642,7 +642,7 @@ BEGIN
     VALUES (mex_id, 3, '12 a 15 (0)');
 
   -- Microciclo 7
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_0_id, 7)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -747,7 +747,7 @@ BEGIN
     VALUES (mex_id, 3, '12 a 15 (0)');
 
   -- Microciclo 8
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_0_id, 8)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -841,7 +841,7 @@ BEGIN
 
   -- === Día: Cuádriceps ===
   -- Microciclo 1
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_1_id, 1)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -914,7 +914,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 2
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_1_id, 2)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -987,7 +987,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 3
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_1_id, 3)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1066,7 +1066,7 @@ BEGIN
     VALUES (mex_id, 3, '12 a 15 (fallo)');
 
   -- Microciclo 4
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_1_id, 4)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1145,7 +1145,7 @@ BEGIN
     VALUES (mex_id, 3, '12 a 15 (fallo)');
 
   -- Microciclo 5
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_1_id, 5)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1226,7 +1226,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 6
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_1_id, 6)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1307,7 +1307,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 7
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_1_id, 7)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1388,7 +1388,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 8
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_1_id, 8)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1460,7 +1460,7 @@ BEGIN
 
   -- === Día: Empuje ===
   -- Microciclo 1
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_2_id, 1)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1553,7 +1553,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 2
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_2_id, 2)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1646,7 +1646,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 3
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_2_id, 3)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1747,7 +1747,7 @@ BEGIN
     VALUES (mex_id, 3, '10 a 12 (fallo)');
 
   -- Microciclo 4
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_2_id, 4)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1848,7 +1848,7 @@ BEGIN
     VALUES (mex_id, 3, '10 a 12 (fallo)');
 
   -- Microciclo 5
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_2_id, 5)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -1953,7 +1953,7 @@ BEGIN
     VALUES (mex_id, 3, '10 a 12 (fallo)');
 
   -- Microciclo 6
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_2_id, 6)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2058,7 +2058,7 @@ BEGIN
     VALUES (mex_id, 3, '10 a 12 (fallo)');
 
   -- Microciclo 7
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_2_id, 7)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2163,7 +2163,7 @@ BEGIN
     VALUES (mex_id, 3, '10 a 12 (fallo)');
 
   -- Microciclo 8
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_2_id, 8)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2257,7 +2257,7 @@ BEGIN
 
   -- === Día: Femoral / Glúteo ===
   -- Microciclo 1
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_3_id, 1)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2330,7 +2330,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 2
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_3_id, 2)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2403,7 +2403,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 3
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_3_id, 3)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2480,7 +2480,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 4
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_3_id, 4)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2557,7 +2557,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 5
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_3_id, 5)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2638,7 +2638,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 6
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_3_id, 6)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2719,7 +2719,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 7
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_3_id, 7)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2800,7 +2800,7 @@ BEGIN
     VALUES (mex_id, 2, '12 a 15 (fallo)');
 
   -- Microciclo 8
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_3_id, 8)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2872,7 +2872,7 @@ BEGIN
 
   -- === Día: Repaso Torso ===
   -- Microciclo 1
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_4_id, 1)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -2967,7 +2967,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 2
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_4_id, 2)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -3062,7 +3062,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 3
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_4_id, 3)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -3163,7 +3163,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 4
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_4_id, 4)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -3264,7 +3264,7 @@ BEGIN
     VALUES (mex_id, 2, '10 a 12 (0)');
 
   -- Microciclo 5
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_4_id, 5)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -3371,7 +3371,7 @@ BEGIN
     VALUES (mex_id, 3, '12 a 15 (0)');
 
   -- Microciclo 6
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_4_id, 6)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -3478,7 +3478,7 @@ BEGIN
     VALUES (mex_id, 3, '12 a 15 (0)');
 
   -- Microciclo 7
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_4_id, 7)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
@@ -3585,7 +3585,7 @@ BEGIN
     VALUES (mex_id, 3, '12 a 15 (0)');
 
   -- Microciclo 8
-  INSERT INTO day_microcycles (day_id, number)
+  INSERT INTO microcycles (day_id, number)
     VALUES (day_4_id, 8)
     RETURNING id INTO mc_id;
   INSERT INTO exercises (muscle_group, name, video_ref)
