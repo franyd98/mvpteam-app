@@ -850,6 +850,15 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                     <>
                       <p className="text-[10px] uppercase tracking-wider text-neutral-500">{ex.muscle_group}</p>
                       <p className="text-white text-sm font-semibold leading-tight">{ex.name}</p>
+                      {ex.note && (
+                        <p className="mt-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded inline-block"
+                          style={{
+                            background: ex.note.toLowerCase().includes("drop") ? "#2d1a3a" : "#2a1f00",
+                            color: ex.note.toLowerCase().includes("drop") ? "#c084fc" : "#fbbf24",
+                          }}>
+                          {ex.note.toLowerCase().includes("drop") ? "📉" : "🔁"} {ex.note}
+                        </p>
+                      )}
                     </>
                   )}
                 </div>
