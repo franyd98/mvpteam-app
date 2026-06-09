@@ -86,6 +86,7 @@ interface GeneratedFood {
   grams:         number;
   macro:         MacroKey | "fixed";
   targetG:       number;
+  pct:           number;           // % del macro diario asignado a este slot
   availablePool: Ingredient[];  // opciones del desplegable para este slot
   noteText?:     string;
 }
@@ -502,36 +503,38 @@ function poolFromIds(ids: string[]): Ingredient[] {
 }
 
 /**
- * Devuelve la porción escalada (g) para un ingrediente.
+ * Devuelve la porción exacta (g) para que este slot aporte exactamente
+ * (clientMacroVal × pct/100) g del macro objetivo, usando el contenido
+ * real del ingrediente por 100g.
  *
- * Fórmula: porción = base_ref × (macro_cliente / macro_ref)
- *   - Proteína: escala con el target proteína del cliente
- *   - Hidratos: escala con el target HC del cliente (ON u OFF, el que corresponda)
- *   - Grasa: escala salvo para condimentos fijos (aceite, chocolate)
- *   - "fixed": porción fija siempre
+ *   grams = (clientMacroVal × pct/100) / (ing.macro / 100)
  *
  * Redondea al múltiplo de 5g más cercano. Mínimo 5g.
+ * Los condimentos fijos (aceite, chocolate) y los slots "fixed" mantienen
+ * su porción estándar sin escalar.
  */
-function getScaledPortionG(
-  ingId:          string,
+function calcExactGrams(
+  ing:            Ingredient,
   macro:          MacroKey | "fixed",
-  clientMacroVal: number,   // valor del macro del cliente para ese día
+  clientMacroVal: number,
+  pct:            number,
 ): number {
-  const baseG = STANDARD_PORTIONS[ingId] ?? 100;
+  const baseG = STANDARD_PORTIONS[ing.id] ?? 100;
 
-  // Condimentos fijos y slots "fixed" no escalan nunca
-  if (macro === "fixed" || FIXED_CONDIMENTS.has(ingId)) {
+  if (macro === "fixed" || FIXED_CONDIMENTS.has(ing.id)) {
     return baseG;
   }
 
-  const refVal =
-    macro === "protein" ? REF_ON.protein :
-    macro === "carbs"   ? REF_ON.carbs   :
-                          REF_ON.fat;
+  const ingMacroContent =
+    macro === "protein" ? ing.protein :
+    macro === "carbs"   ? ing.carbs   :
+                          ing.fat;
 
-  const scaleFactor = clientMacroVal / refVal;
-  const scaled      = Math.round(baseG * scaleFactor / 5) * 5;
-  return Math.max(scaled, 5);
+  if (!ingMacroContent || !pct) return baseG;
+
+  const targetMacroG = clientMacroVal * pct / 100;
+  const exactG       = (targetMacroG / ingMacroContent) * 100;
+  return Math.max(Math.round(exactG / 5) * 5, 5);
 }
 
 // ── Generación ────────────────────────────────────────────────────────────────
@@ -561,7 +564,7 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
             slot.macro === "protein" ? macros.protein_g :
             slot.macro === "carbs"   ? macros.carbs_g   :
                                        macros.fat_g;
-          grams = getScaledPortionG(ing.id, slot.macro, clientMacroVal);
+          grams = calcExactGrams(ing, slot.macro, clientMacroVal, slot.pct);
         }
 
         if (grams <= 0) return;
@@ -573,6 +576,7 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
           grams,
           macro:         slot.macro,
           targetG:       grams,
+          pct:           slot.pct,
           availablePool: pool,
           noteText:      slot.noteText,
         });
@@ -617,7 +621,7 @@ function selectFood(
                 food.macro === "protein" ? macros.protein_g :
                 food.macro === "carbs"   ? macros.carbs_g   :
                                            macros.fat_g;
-              grams = getScaledPortionG(newIngId, food.macro, clientMacroVal);
+              grams = calcExactGrams(ing, food.macro, clientMacroVal, food.pct);
             }
 
             return { ...food, ing, grams, targetG: grams };
