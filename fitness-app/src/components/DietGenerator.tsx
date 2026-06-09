@@ -482,15 +482,75 @@ const STANDARD_PORTIONS: Record<string, number> = {
   melon:            200,
 };
 
-// ── Macros de referencia (Plan Fran Villar — base de calibración) ─────────────
-// Todas las porciones estándar están calibradas para estos macros ON.
-// La escalada para otros clientes se calcula proporcionalmente.
-const REF_ON = { protein: 137, carbs: 359.5, fat: 36 };
-
 // Condimentos que SIEMPRE son fijos (independientemente del cliente)
 const FIXED_CONDIMENTS = new Set([
   "aceite_oliva", "aceite_coco", "chocolate85",
 ]);
+
+// ── Matriz de contribuciones cruzadas (calculada empíricamente) ───────────────
+// Cada columna = cuánto macro aportan los slots de ese tipo a PORCIÓN ESTÁNDAR (escala=1).
+// Filas: proteína total / HC total / grasa total que aportan slots de proteína, HC y grasa.
+// Contribuciones FIJAS (huevo, fruta, condimentos): no se escalan, se restan del objetivo.
+//
+//          slots_prot  slots_HC  slots_grasa
+// proteína [  107.2,    34.5,      5.8   ]
+// HC       [   15.3,   207.9,      1.9   ]
+// grasa    [    7.2,    12.6,     16.2   ]
+//
+// Fijos: prot=11.2g, HC=70.4g, grasa=16.2g (condimentos + huevo + fruta)
+const MC = {
+  pP: 107.2, pC:  34.5, pF:  5.8,
+  cP:  15.3, cC: 207.9, cF:  1.9,
+  fP:   7.2, fC:  12.6, fF: 16.2,
+  fixP: 11.2, fixC: 70.4, fixF: 16.2,
+};
+
+/**
+ * Calcula los factores de escala óptimos para este cliente resolviendo el
+ * sistema lineal 3×3: MC × [sP, sC, sF]' = [tP-fixP, tC-fixC, tF-fixF]'
+ *
+ * Si el objetivo de grasa ya está cubierto por las contribuciones fijas
+ * (sF resulta negativo), se resuelve el subsistema 2×2 con sF=0.
+ */
+function computeClientScales(macros: DailyMacros): { sP: number; sC: number; sF: number } {
+  const bP = macros.protein_g - MC.fixP;
+  const bC = macros.carbs_g   - MC.fixC;
+  const bF = macros.fat_g     - MC.fixF;
+
+  // Eliminación gaussiana con pivote parcial sobre la matriz aumentada 3×4
+  const m: number[][] = [
+    [MC.pP, MC.pC, MC.pF, bP],
+    [MC.cP, MC.cC, MC.cF, bC],
+    [MC.fP, MC.fC, MC.fF, bF],
+  ];
+  for (let col = 0; col < 3; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < 3; r++) {
+      if (Math.abs(m[r][col]) > Math.abs(m[pivot][col])) pivot = r;
+    }
+    [m[col], m[pivot]] = [m[pivot], m[col]];
+    if (Math.abs(m[col][col]) < 1e-8) continue;
+    for (let r = col + 1; r < 3; r++) {
+      const f = m[r][col] / m[col][col];
+      for (let k = col; k <= 3; k++) m[r][k] -= f * m[col][k];
+    }
+  }
+  // Sustitución regresiva
+  const sF3 = Math.abs(m[2][2]) > 1e-8 ? m[2][3] / m[2][2] : 0;
+  const sC3 = Math.abs(m[1][1]) > 1e-8 ? (m[1][3] - m[1][2] * sF3) / m[1][1] : 1;
+  const sP3 = Math.abs(m[0][0]) > 1e-8 ? (m[0][3] - m[0][1] * sC3 - m[0][2] * sF3) / m[0][0] : 1;
+
+  if (sP3 > 0 && sC3 > 0 && sF3 > 0) {
+    return { sP: sP3, sC: sC3, sF: sF3 };
+  }
+
+  // El objetivo de grasa es inalcanzable con porciones positivas de ingredientes grasos.
+  // Resolver solo el subsistema 2×2 (prot + HC) con sF = 0.
+  const det = MC.pP * MC.cC - MC.pC * MC.cP;
+  const sP2 = Math.abs(det) > 1e-8 ? (bP * MC.cC - bC * MC.pC) / det : 0.5;
+  const sC2 = Math.abs(det) > 1e-8 ? (MC.pP * bC - MC.cP * bP) / det : 1.0;
+  return { sP: Math.max(sP2, 0.05), sC: Math.max(sC2, 0.05), sF: 0 };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -503,21 +563,16 @@ function poolFromIds(ids: string[]): Ingredient[] {
 }
 
 /**
- * Devuelve la porción exacta (g) para que este slot aporte exactamente
- * (clientMacroVal × pct/100) g del macro objetivo, usando el contenido
- * real del ingrediente por 100g.
- *
- *   grams = (clientMacroVal × pct/100) / (ing.macro / 100)
- *
+ * Escala la porción estándar de un ingrediente con los factores por-cliente.
+ * Los condimentos fijos (aceite, chocolate) y los slots "fixed" siempre
+ * mantienen su porción estándar.
+ * Con sF=0 los slots de grasa no fijos se omiten (grams=0).
  * Redondea al múltiplo de 5g más cercano. Mínimo 5g.
- * Los condimentos fijos (aceite, chocolate) y los slots "fixed" mantienen
- * su porción estándar sin escalar.
  */
-function calcExactGrams(
-  ing:            Ingredient,
-  macro:          MacroKey | "fixed",
-  clientMacroVal: number,
-  pct:            number,
+function getScaledPortionG(
+  ing:    Ingredient,
+  macro:  MacroKey | "fixed",
+  scales: { sP: number; sC: number; sF: number },
 ): number {
   const baseG = STANDARD_PORTIONS[ing.id] ?? 100;
 
@@ -525,16 +580,13 @@ function calcExactGrams(
     return baseG;
   }
 
-  const ingMacroContent =
-    macro === "protein" ? ing.protein :
-    macro === "carbs"   ? ing.carbs   :
-                          ing.fat;
+  const s = macro === "protein" ? scales.sP
+          : macro === "carbs"   ? scales.sC
+                                : scales.sF;
 
-  if (!ingMacroContent || !pct) return baseG;
-
-  const targetMacroG = clientMacroVal * pct / 100;
-  const exactG       = (targetMacroG / ingMacroContent) * 100;
-  return Math.max(Math.round(exactG / 5) * 5, 5);
+  if (s <= 0) return 0;   // slot de grasa innecesario para este cliente
+  const scaledG = baseG * s;
+  return Math.max(Math.round(scaledG / 5) * 5, 5);
 }
 
 // ── Generación ────────────────────────────────────────────────────────────────
@@ -545,6 +597,8 @@ function calcExactGrams(
  * Las porciones se escalan proporcionalmente a los macros del cliente.
  */
 function generatePlan(macros: DailyMacros): GeneratedMeal[] {
+  const scales = computeClientScales(macros);
+
   return MEAL_DEFS.map(meal => {
     const options: GeneratedOption[] = meal.profiles.map(profile => {
       const foods: GeneratedFood[] = [];
@@ -560,14 +614,10 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
         if (slot.macro === "fixed") {
           grams = slot.fixedG ?? 100;
         } else {
-          const clientMacroVal =
-            slot.macro === "protein" ? macros.protein_g :
-            slot.macro === "carbs"   ? macros.carbs_g   :
-                                       macros.fat_g;
-          grams = calcExactGrams(ing, slot.macro, clientMacroVal, slot.pct);
+          grams = getScaledPortionG(ing, slot.macro, scales);
         }
 
-        if (grams <= 0) return;
+        if (grams <= 0) return;   // slot de grasa omitido (sF=0)
 
         foods.push({
           slotId:        slot.id,
@@ -599,6 +649,8 @@ function selectFood(
   newIngId:   string,
   macros:     DailyMacros,
 ): GeneratedMeal[] {
+  const scales = computeClientScales(macros);
+
   return plan.map(meal => {
     if (meal.mealId !== mealId) return meal;
 
@@ -617,11 +669,7 @@ function selectFood(
 
             let grams = food.grams;
             if (food.macro !== "fixed") {
-              const clientMacroVal =
-                food.macro === "protein" ? macros.protein_g :
-                food.macro === "carbs"   ? macros.carbs_g   :
-                                           macros.fat_g;
-              grams = calcExactGrams(ing, food.macro, clientMacroVal, food.pct);
+              grams = getScaledPortionG(ing, food.macro, scales);
             }
 
             return { ...food, ing, grams, targetG: grams };
