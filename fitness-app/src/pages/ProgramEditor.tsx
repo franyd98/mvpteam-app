@@ -3,12 +3,31 @@ import { supabase } from "../lib/supabase";
 
 type CatalogEx = { id: number; muscle_group: string; name: string; video_ref: string | null };
 type EditorSet = { id: number; set_number: number; target_reps: string | null; target_rpe: string | null };
-type EditorEx = { id: number; exercise_id: number; name: string; muscle_group: string; order_index: number; sets: EditorSet[] };
+type EditorEx = { id: number; exercise_id: number; name: string; muscle_group: string; order_index: number; note: string | null; sets: EditorSet[] };
 type EditorMc = { id: number; number: number; exercises: EditorEx[] };
 type EditorDay = { id: number; name: string; order_index: number; optional: boolean; microcycles: EditorMc[] };
 type EditorProgram = { id: number; name: string; description: string | null; days: EditorDay[] };
 
 type Props = { programId: number; onBack: () => void };
+
+// Opciones predefinidas de series: "X a Y (RIR)"
+const REPS_OPTIONS: string[] = [
+  "2 a 4 (3)", "2 a 4 (2)",
+  "3 a 5 (3)", "3 a 5 (2)",
+  "4 a 6 (2)",
+  "4 a 7 (2)",
+  "5 a 7 (2)", "5 a 7 (1)",
+  "5 a 8 (2)", "5 a 8 (1)",
+  "6 a 8 (3)", "6 a 8 (2)", "6 a 8 (1)", "6 a 8 (0)",
+  "6 a 9 (1)", "6 a 9 (0)",
+  "7 a 9 (3)", "7 a 9 (2)", "7 a 9 (1)", "7 a 9 (0)", "7 a 9 (fallo)",
+  "8 a 10 (3)", "8 a 10 (2)", "8 a 10 (1)", "8 a 10 (0)", "8 a 10 (fallo)",
+  "9 a 12 (3)", "9 a 12 (2)", "9 a 12 (1)", "9 a 12 (0)", "9 a 12 (fallo)",
+  "10 a 12 (3)", "10 a 12 (2)", "10 a 12 (1)", "10 a 12 (0)", "10 a 12 (fallo)",
+  "11 a 14 (3)", "11 a 14 (2)", "11 a 14 (1)", "11 a 14 (0)", "11 a 14 (fallo)",
+  "12 a 15 (3)", "12 a 15 (2)", "12 a 15 (1)", "12 a 15 (0)", "12 a 15 (fallo)",
+  "15 a 20 (3)", "15 a 20 (2)", "15 a 20 (1)", "15 a 20 (0)", "15 a 20 (fallo)",
+];
 
 export default function ProgramEditor({ programId, onBack }: Props) {
   const [program, setProgram] = useState<EditorProgram | null>(null);
@@ -50,7 +69,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
         id, name, description,
         program_days ( id, name, order_index, optional,
           microcycles ( id, number,
-            microcycle_exercises ( id, order_index,
+            microcycle_exercises ( id, order_index, note,
               exercises ( id, name, muscle_group ),
               exercise_sets ( id, set_number, target_reps, target_rpe )
             )
@@ -78,7 +97,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                 .map((me: any) => ({
                   id: me.id, exercise_id: me.exercises?.id,
                   name: me.exercises?.name ?? "?", muscle_group: me.exercises?.muscle_group ?? "",
-                  order_index: me.order_index,
+                  order_index: me.order_index, note: me.note ?? null,
                   sets: (me.exercise_sets ?? [])
                     .sort((a: any, b: any) => a.set_number - b.set_number)
                     .map((s: any) => ({ id: s.id, set_number: s.set_number, target_reps: s.target_reps ?? null, target_rpe: s.target_rpe ?? null })),
@@ -292,7 +311,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
       const newSets: EditorSet[] = ((setsData ?? []) as any[]).map(s => ({ id: s.id, set_number: s.set_number, target_reps: null, target_rpe: null }));
       const newEdits: Record<number, { target_reps: string; target_rpe: string }> = {};
       newSets.forEach(s => { newEdits[s.id] = { target_reps: "", target_rpe: "" }; });
-      const newEditorEx: EditorEx = { id: (newMe as any).id, exercise_id: ex.id, name: ex.name, muscle_group: ex.muscle_group, order_index: nextOrder, sets: newSets };
+      const newEditorEx: EditorEx = { id: (newMe as any).id, exercise_id: ex.id, name: ex.name, muscle_group: ex.muscle_group, order_index: nextOrder, note: null, sets: newSets };
       setProgram(p => {
         if (!p) return p;
         return {
@@ -433,14 +452,15 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     }
   };
 
-  // Guarda reps/RIR de una serie al perder el foco.
+  // Guarda reps/RIR de una serie.
+  // Puede recibir valores directos (desde el select) o leerlos del estado (al perder foco).
   // Si autoSync está activo, propaga el valor al mismo ejercicio+serie en todos los Mcs del día.
-  const saveSetField = async (setId: number) => {
+  const saveSetField = async (setId: number, overrideReps?: string | null) => {
     const edit = setEdits[setId];
-    if (!edit) return;
+    if (!edit && overrideReps === undefined) return;
 
-    const newReps = edit.target_reps.trim() || null;
-    const newRpe  = edit.target_rpe.trim()  || null;
+    const newReps = overrideReps !== undefined ? (overrideReps || null) : ((edit?.target_reps ?? "").trim() || null);
+    const newRpe  = overrideReps !== undefined ? null : ((edit?.target_rpe ?? "").trim() || null);
 
     // Guardar el campo actual
     await supabase.from("exercise_sets").update({
@@ -484,10 +504,10 @@ export default function ProgramEditor({ programId, onBack }: Props) {
             target_rpe:  newRpe,
           }).eq("id", sameSet.id);
 
-          // Actualizar estado local para que los inputs reflejen el nuevo valor
+          // Actualizar estado local para que el select refleje el nuevo valor
           setSetEdits(prev => ({
             ...prev,
-            [sameSet.id]: { target_reps: edit.target_reps, target_rpe: edit.target_rpe },
+            [sameSet.id]: { target_reps: newReps ?? "", target_rpe: newRpe ?? "" },
           }));
           synced++;
         }
@@ -547,6 +567,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
               exercise_id: srcEx.exercise_id,
               order_index: srcEx.order_index,
               total_sets: srcEx.sets.length,
+              note: srcEx.note ?? null,
             })
             .select()
             .single();
@@ -561,10 +582,10 @@ export default function ProgramEditor({ programId, onBack }: Props) {
             );
           }
         } else {
-          // 2b. Ejercicio ya existe: actualizar orden y ajustar series
+          // 2b. Ejercicio ya existe: actualizar orden, ajustar series y propagar note
           await supabase
             .from("microcycle_exercises")
-            .update({ order_index: srcEx.order_index, total_sets: srcEx.sets.length })
+            .update({ order_index: srcEx.order_index, total_sets: srcEx.sets.length, note: srcEx.note ?? null })
             .eq("id", destEx.id);
 
           const destSets = [...destEx.sets].sort((a, b) => a.set_number - b.set_number);
@@ -858,21 +879,26 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                   return (
                     <div key={s.id} className="flex items-center gap-2">
                       <span className="text-neutral-600 text-xs w-5 shrink-0 text-center">{s.set_number}</span>
-                      <input
-                        value={edit.target_reps}
-                        onChange={e => setSetEdits(prev => ({ ...prev, [s.id]: { ...edit, target_reps: e.target.value } }))}
-                        onBlur={() => saveSetField(s.id)}
-                        placeholder="Reps (ej: 8 a 10)"
-                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-xs placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
-                      />
-                      <span className="text-neutral-600 text-xs shrink-0">RIR</span>
-                      <input
-                        value={edit.target_rpe}
-                        onChange={e => setSetEdits(prev => ({ ...prev, [s.id]: { ...edit, target_rpe: e.target.value } }))}
-                        onBlur={() => saveSetField(s.id)}
-                        placeholder="0"
-                        className="w-14 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-xs placeholder-neutral-600 focus:outline-none focus:border-neutral-500 text-center"
-                      />
+                      <select
+                        value={edit.target_reps ?? ""}
+                        onChange={e => {
+                          const val = e.target.value;
+                          // Actualizar estado local
+                          setSetEdits(prev => ({ ...prev, [s.id]: { ...edit, target_reps: val, target_rpe: "" } }));
+                          // Guardar directamente pasando el valor (no esperar al estado)
+                          saveSetField(s.id, val);
+                        }}
+                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-neutral-500 appearance-none cursor-pointer"
+                      >
+                        <option value="">— Seleccionar —</option>
+                        {REPS_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                        {/* Si el valor actual no está en la lista predefinida, mostrarlo igualmente */}
+                        {edit.target_reps && !REPS_OPTIONS.includes(edit.target_reps) && (
+                          <option value={edit.target_reps}>{edit.target_reps}</option>
+                        )}
+                      </select>
                     </div>
                   );
                 })}
