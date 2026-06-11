@@ -725,6 +725,173 @@ function planTotalMacros(plan: GeneratedMeal[], activeOptions: Record<string, nu
   );
 }
 
+// ── Exportar PDF ─────────────────────────────────────────────────────────────
+
+/**
+ * Agrupa los alimentos de las 3 opciones de una comida por categoría (macro),
+ * eliminando duplicados. Resultado: lista única de opciones de proteína, hidrato,
+ * grasa y fijos para que el usuario los mezcle libremente.
+ */
+function getMealCategories(meal: GeneratedMeal) {
+  const seen = new Set<string>();
+  const protein: GeneratedFood[] = [];
+  const carbs:   GeneratedFood[] = [];
+  const fat:     GeneratedFood[] = [];
+  const fixed:   GeneratedFood[] = [];
+
+  meal.options.forEach(opt => {
+    opt.foods.forEach(food => {
+      if (seen.has(food.ing.id)) return;
+      seen.add(food.ing.id);
+      if (food.macro === "fixed" || FIXED_CONDIMENTS.has(food.ing.id)) fixed.push(food);
+      else if (food.macro === "protein") protein.push(food);
+      else if (food.macro === "carbs")   carbs.push(food);
+      else                               fat.push(food);
+    });
+  });
+
+  return { protein, carbs, fat, fixed };
+}
+
+function exportDietPDF(
+  planOn:    GeneratedMeal[],
+  planOff:   GeneratedMeal[],
+  macrosOn:  DailyMacros,
+  macrosOff: DailyMacros | null,
+  clientName: string,
+  planName:   string,
+) {
+  const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
+  const mealColors = ["#8B1A2F", "#6B3080", "#1A5E8F", "#1A6B3A", "#7A5C1A"];
+
+  // Una fila de ingrediente: nombre | gramos | P | HC | G
+  function foodRow(f: GeneratedFood, altBg = false): string {
+    const fm = foodMacros(f);
+    const bg = altBg ? "background:#fafafa;" : "";
+    return `<tr style="${bg}">
+      <td style="padding:4px 8px;font-size:11.5px;border-bottom:1px solid #f0f0f0;">${f.ing.name}</td>
+      <td style="padding:4px 6px;font-size:11.5px;font-weight:700;text-align:right;border-bottom:1px solid #f0f0f0;white-space:nowrap;">${f.grams}g</td>
+      <td style="padding:4px 5px;font-size:10.5px;text-align:right;border-bottom:1px solid #f0f0f0;color:#C0392B;">${fm.protein}</td>
+      <td style="padding:4px 5px;font-size:10.5px;text-align:right;border-bottom:1px solid #f0f0f0;color:#D68910;">${fm.carbs}</td>
+      <td style="padding:4px 5px;font-size:10.5px;text-align:right;border-bottom:1px solid #f0f0f0;color:#2980B9;">${fm.fat}</td>
+    </tr>`;
+  }
+
+  // Columna de una categoría (proteína / hidrato / grasa / fijo)
+  function categoryCol(
+    label: string, subLabel: string, foods: GeneratedFood[], accentColor: string,
+  ): string {
+    if (!foods.length) return "";
+    const rows = foods.map((f, i) => foodRow(f, i % 2 === 1)).join("");
+    return `
+      <td style="vertical-align:top;padding:0 6px 0 0;min-width:120px;">
+        <div style="background:${accentColor};color:white;padding:4px 8px;border-radius:4px 4px 0 0;margin-bottom:0;">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.06em;">${label}</div>
+          <div style="font-size:9px;opacity:.8;">${subLabel}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #eee;border-top:none;border-radius:0 0 4px 4px;">
+          <thead>
+            <tr style="background:#f8f8f8;">
+              <th style="padding:3px 8px;font-size:9px;text-align:left;color:#999;font-weight:600;border-bottom:1px solid #eee;">Alimento</th>
+              <th style="padding:3px 6px;font-size:9px;text-align:right;color:#999;font-weight:600;border-bottom:1px solid #eee;">g</th>
+              <th style="padding:3px 5px;font-size:9px;text-align:right;color:#C0392B;font-weight:600;border-bottom:1px solid #eee;">P</th>
+              <th style="padding:3px 5px;font-size:9px;text-align:right;color:#D68910;font-weight:600;border-bottom:1px solid #eee;">HC</th>
+              <th style="padding:3px 5px;font-size:9px;text-align:right;color:#2980B9;font-weight:600;border-bottom:1px solid #eee;">G</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </td>`;
+  }
+
+  function mealSection(meal: GeneratedMeal, mIdx: number): string {
+    const col = mealColors[mIdx % mealColors.length];
+    const { protein, carbs, fat, fixed } = getMealCategories(meal);
+
+    const cols = [
+      categoryCol("PROTEÍNA", "elige 1", protein, "#8B1A2F"),
+      categoryCol("HIDRATOS", "elige 1", carbs,   "#A0720A"),
+      categoryCol("GRASAS",   "elige 1", fat,     "#1A5E8F"),
+      categoryCol("FIJOS",    "siempre", fixed,   "#4A4A4A"),
+    ].filter(Boolean).join("");
+
+    return `
+      <div style="margin-bottom:16px;page-break-inside:avoid;">
+        <div style="background:${col};color:white;padding:6px 12px;border-radius:5px 5px 0 0;display:flex;align-items:center;gap:7px;">
+          <span style="font-size:14px;">${meal.emoji}</span>
+          <span style="font-size:12px;font-weight:800;letter-spacing:.05em;">${meal.name.toUpperCase()}</span>
+        </div>
+        <div style="border:1px solid #e0e0e0;border-top:none;border-radius:0 0 5px 5px;padding:8px;">
+          <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+            <tr>${cols}</tr>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  function macroBar(macros: DailyMacros): string {
+    return `<div style="display:flex;gap:16px;align-items:center;font-size:12px;">
+      <span style="color:#666;">${macros.kcal} kcal</span>
+      <span style="color:#C0392B;font-weight:600;">${macros.protein_g}g prot</span>
+      <span style="color:#D68910;font-weight:600;">${macros.carbs_g}g HC</span>
+      <span style="color:#2980B9;font-weight:600;">${macros.fat_g}g grasa</span>
+    </div>`;
+  }
+
+  function daySection(plan: GeneratedMeal[], macros: DailyMacros, label: string): string {
+    const meals = plan.map((m, i) => mealSection(m, i)).join("");
+    return `
+      <div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;padding-bottom:7px;border-bottom:2px solid #222;">
+          <h2 style="font-size:15px;font-weight:900;margin:0;letter-spacing:.05em;">${label}</h2>
+          ${macroBar(macros)}
+        </div>
+        ${meals}
+      </div>`;
+  }
+
+  const html = `<!DOCTYPE html><html lang="es"><head>
+    <meta charset="utf-8">
+    <title>Plan nutricional${clientName ? " · " + clientName : ""}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+             color: #111; margin: 0; padding: 24px 28px; font-size: 12px; }
+      @media print {
+        body { padding: 0; }
+        @page { size: A4 landscape; margin: 10mm 8mm; }
+      }
+    </style>
+  </head><body>
+    <!-- Cabecera -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;padding-bottom:10px;border-bottom:3px solid #111;">
+      <div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:.18em;color:#8B1A2F;margin-bottom:2px;">MVP TEAM</div>
+        <h1 style="font-size:20px;font-weight:900;margin:0 0 2px;">${planName || "Plan Nutricional"}</h1>
+        ${clientName ? `<div style="font-size:12px;color:#555;font-weight:500;">${clientName}</div>` : ""}
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:#999;">${today}</div>
+        <div style="font-size:9px;color:#bbb;margin-top:2px;">Combina libremente una opción de cada columna</div>
+      </div>
+    </div>
+
+    ${daySection(planOn, macrosOn, "💪 DÍA ON")}
+    ${macrosOff ? `<div style="page-break-before:always;padding-top:4px;"></div>${daySection(planOff, macrosOff, "😴 DÍA OFF")}` : ""}
+
+    <div style="margin-top:20px;padding-top:8px;border-top:1px solid #ddd;font-size:9px;color:#bbb;text-align:center;">
+      Generado por MVP Team · ${today} · Las cantidades están calculadas para los macros objetivo del cliente.
+    </div>
+  </body></html>`;
+
+  const w = window.open("", "_blank", "width=1200,height=850");
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 500);
+}
+
 // ── Componente ────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -1405,6 +1572,15 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
                 </div>
               </div>
             )}
+
+            {/* Exportar PDF */}
+            <button
+              onClick={() => exportDietPDF(planOn, planOff, macrosOn, macrosOff ?? null, clientName ?? "", planName)}
+              className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 active:opacity-70 transition-opacity"
+              style={{ background: "#1A1A1A", border: "1px solid #333", color: "#E5E7EB" }}
+            >
+              📄 Descargar PDF del plan completo
+            </button>
 
             {/* Comidas */}
             <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-1">
