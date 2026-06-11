@@ -606,7 +606,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     border: `1px solid ${borderColor}`,
                     cursor: canToggle ? "pointer" : "default",
                   }}
-                  title={canToggle ? (isManualRest ? "Quitar día de descanso" : "Marcar como descanso") : undefined}
+                  title={canToggle ? (isManualRest ? "Quitar descanso manual" : trained ? "Marcar como descanso (ignorar entreno)" : "Marcar como descanso") : undefined}
                 >
                   {trained && !isManualRest && <span className="text-white text-xs">✓</span>}
                   {isManualRest && <span style={{ fontSize: 13 }}>🌙</span>}
