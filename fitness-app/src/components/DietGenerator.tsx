@@ -57,13 +57,14 @@ interface DailyMacros {
 type MacroKey = "protein" | "carbs" | "fat";
 
 interface ProfileSlotDef {
-  id:        string;
-  label:     string;
-  ingIds:    string[];          // pool de ingredientes coherentes para este slot
-  macro:     MacroKey | "fixed";
-  pct:       number;            // % del macro diario, o gramos si macro="fixed"
-  fixedG?:   number;
-  noteText?: string;
+  id:           string;
+  label:        string;
+  ingIds:       string[];          // pool de ingredientes coherentes para este slot
+  macro:        MacroKey | "fixed";
+  pct:          number;            // % del macro diario, o gramos si macro="fixed"
+  fixedG?:      number;
+  noteText?:    string;
+  autoAddIso?:  boolean;   // en slots proteína-láctea: calcula gramos ISO complementarios para cuadrar macros
 }
 
 interface MealProfileDef {
@@ -144,7 +145,7 @@ const MEAL_DEFS: MealDef[] = [
           { id: "prot", label: "Proteína láctea", macro: "protein", pct: 20,
             // Solo lácteos que funcionan como base para cereales
             ingIds: ["yogur_prot","yogur_sln","mousse_prot","yogur_griego","qso_batido","leche_prot"],
-            noteText: "Para más proteína: añade 10-15g de Proteína ISO al lácteo que elijas." },
+            autoAddIso: true },  // ISO calculado dinámicamente para completar el objetivo proteico
           { id: "hc", label: "Cereales", macro: "carbs", pct: 25,
             ingIds: ["avena_crunchy","avena_copos","harina_avena",
                      "corn_flakes","weetabix","copos_trigo","rice_krispies","cereal_mix","crema_arroz","choco_zero"] },
@@ -290,7 +291,7 @@ const MEAL_DEFS: MealDef[] = [
         slots: [
           { id: "prot", label: "Proteína láctea", macro: "protein", pct: 20,
             ingIds: ["yogur_prot","yogur_griego","mousse_prot","qso_batido","leche_prot","yogur_sln"],
-            noteText: "Para más proteína añade 10-15g de Proteína ISO al lácteo." },
+            autoAddIso: true },  // ISO calculado dinámicamente para completar el objetivo proteico
           { id: "hc", label: "Cereales", macro: "carbs", pct: 15,
             ingIds: ["avena_crunchy","avena_copos","harina_avena","weetabix","corn_flakes",
                      "cereal_mix","rice_krispies","copos_trigo","crema_arroz","choco_zero"] },
@@ -784,24 +785,35 @@ function exportDietPDF(
     return slot.macro === "fat" && slot.ingIds.every(id => FIXED_CONDIMENTS.has(id));
   }
 
-  // ── Renderizado de un slot ────────────────────────────────────────────────
+  // ── Renderizado de un slot (dual-column ON / OFF) ─────────────────────────
 
-  function renderSlot(slot: ProfileSlotDef, scales: { sP: number; sC: number; sF: number }, col: string): string {
-    const pool = poolFromIds(slot.ingIds);
+  type Scales = { sP: number; sC: number; sF: number };
+  type DayData = { displayG: string; p: number; c: number; f: number };
 
-    // ── Slot FIJO (huevo o fruta) ──
+  function renderSlot(
+    slot:     ProfileSlotDef,
+    scOn:     Scales,
+    scOff:    Scales | null,
+    mOn:      DailyMacros,
+    mOff:     DailyMacros | null,
+    col:      string,
+  ): string {
+    const hasOff = !!scOff && !!mOff;
+    const pool   = poolFromIds(slot.ingIds);
+    const isoIng = poolFromIds(["iso"])[0] ?? null;   // para autoAddIso
+
+    // ── Slot FIJO (huevo / fruta) ──
     if (slot.macro === "fixed") {
       if (pool.length === 1) {
-        // Huevo: siempre incluido, único, con macros
         const ing = pool[0];
         const g   = slot.fixedG ?? (STANDARD_PORTIONS[ing.id] ?? 100);
         const m   = ingM(ing, g);
         return `<div style="padding:3px 10px 3px 12px;font-size:10px;color:#555;border-bottom:1px solid #eee;background:#fafafa;">
           ✅ <strong>Siempre:</strong> ${ing.name} <span style="font-weight:700;color:#333;">${g}g</span>
           <span style="color:#aaa;font-size:9px;margin-left:4px;">${m.p}P · ${m.c}HC · ${m.f}G</span>
+          ${slot.noteText ? `<span style="display:block;font-size:8.5px;color:#888;font-style:italic;margin-top:2px;">${slot.noteText}</span>` : ""}
         </div>`;
       } else {
-        // Fruta: cantidad fija, el cliente elige la variedad
         const g = slot.fixedG ?? 150;
         const names = pool.map(i => i.name).join(", ");
         return `<div style="padding:3px 10px 3px 12px;font-size:10px;color:#555;border-bottom:1px solid #eee;background:#fafafa;">
@@ -811,7 +823,7 @@ function exportDietPDF(
       }
     }
 
-    // ── Slot de grasa SOLO condimentos fijos → una línea breve ──
+    // ── Grasa SOLO condimentos fijos → línea compacta ──
     if (isAllCondiments(slot)) {
       const opts = pool.map(ing => {
         const g = STANDARD_PORTIONS[ing.id] ?? 5;
@@ -822,36 +834,71 @@ function exportDietPDF(
       </div>`;
     }
 
-    // ── Slot variable (proteína / hidratos / grasa con opciones) ──
+    // ── Slot variable (proteína / hidratos / grasa) ──
     const macroEmoji = slot.macro === "protein" ? "🥩" : slot.macro === "carbs" ? "🌾" : "🫒";
     const macroLabel = slot.macro === "protein" ? "Proteína" : slot.macro === "carbs" ? "Hidratos de carbono" : "Grasa";
     const liquidNote = isIsoWheyOnly(slot)
-      ? `<span style="font-size:8px;color:#E67E22;font-style:italic;"> — mezcla con 200-300ml leche vegetal sin azúcar o agua</span>`
+      ? `<span style="font-size:8px;color:#E67E22;font-style:italic;"> — mezcla con 200-300ml leche vegetal sin azúcar</span>`
       : "";
 
-    const rows = pool
-      .map(ing => {
-        const g = getScaledPortionG(ing, slot.macro, scales);
+    // Función para calcular datos de un ingrediente para un día concreto
+    function dayData(ing: Ingredient, sc: Scales, macros: DailyMacros): DayData | null {
+      if (slot.autoAddIso && isoIng && slot.macro === "protein") {
+        // Porción estándar de lácteo + ISO dinámico para cuadrar la proteína del slot
+        const dairyG     = STANDARD_PORTIONS[ing.id] ?? 200;
+        const protTarget = macros.protein_g * slot.pct / 100;
+        const dairyProt  = ing.protein * dairyG / 100;
+        const isoRawG    = Math.max(0, (protTarget - dairyProt) / (isoIng.protein / 100));
+        const isoG       = Math.round(isoRawG / 5) * 5;  // redondea a múltiplo de 5g
+        const totalP     = round1(dairyProt + isoIng.protein * isoG / 100);
+        const totalC     = round1(ing.carbs  * dairyG / 100);
+        const totalF     = round1(ing.fat    * dairyG / 100);
+        const displayG   = isoG > 0 ? `${dairyG}g + ${isoG}g ISO` : `${dairyG}g`;
+        return { displayG, p: totalP, c: totalC, f: totalF };
+      } else {
+        const g = getScaledPortionG(ing, slot.macro, sc);
         if (g <= 0) return null;
         const m = ingM(ing, g);
-        return { ing, g, m };
-      })
-      .filter((r): r is { ing: Ingredient; g: number; m: { p: number; c: number; f: number } } => r !== null);
+        return { displayG: `${g}g`, p: m.p, c: m.c, f: m.f };
+      }
+    }
+
+    interface RowEntry { ing: Ingredient; on: DayData; off: DayData | null }
+
+    const rows: RowEntry[] = pool.map(ing => {
+      const on = dayData(ing, scOn, mOn);
+      if (!on) return null;
+      const off = hasOff ? dayData(ing, scOff!, mOff!) : null;
+      return { ing, on, off } as RowEntry;
+    }).filter((r): r is RowEntry => r !== null);
 
     if (!rows.length) return "";
 
-    const listRows = rows.map((r, i) => `
-      <tr style="${i % 2 ? "background:#f9f9f9;" : ""}">
-        <td style="padding:2px 4px 2px 24px;font-size:9px;color:#bbb;width:16px;white-space:nowrap;">${i+1}.</td>
-        <td style="padding:2px 6px;font-size:10.5px;color:#222;">${r.ing.name}</td>
-        <td style="padding:2px 6px;font-size:10.5px;font-weight:700;text-align:right;white-space:nowrap;color:#333;">${r.g}g</td>
-        <td style="padding:2px 4px;font-size:9.5px;text-align:right;color:#C0392B;">${r.m.p}P</td>
-        <td style="padding:2px 4px;font-size:9.5px;text-align:right;color:#D68910;">${r.m.c}HC</td>
-        <td style="padding:2px 4px;font-size:9.5px;text-align:right;color:#2980B9;">${r.m.f}G</td>
-      </tr>`).join("");
+    // Cabecera ON / OFF (solo si hay día OFF)
+    const thHeader = hasOff ? `
+      <tr>
+        <td colspan="2" style="border-bottom:1px solid #e8e8e8;"></td>
+        <td colspan="2" style="font-size:8px;font-weight:800;color:#8B1A2F;text-align:center;padding:3px 4px;border-bottom:1px solid #e8e8e8;letter-spacing:.04em;">💪 DÍA ON</td>
+        <td colspan="2" style="font-size:8px;font-weight:800;color:#2471A3;text-align:center;padding:3px 4px;border-bottom:1px solid #e8e8e8;border-left:2px solid #ddd;letter-spacing:.04em;">😴 DÍA OFF</td>
+      </tr>` : "";
+
+    const listRows = rows.map((r, i) => {
+      const offCells = r.off ? `
+        <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#2471A3;white-space:nowrap;border-left:2px solid #e0e0e0;">${r.off.displayG}</td>
+        <td style="padding:2px 6px;font-size:9px;color:#555;white-space:nowrap;">${r.off.p}P&nbsp;·&nbsp;${r.off.c}HC&nbsp;·&nbsp;${r.off.f}G</td>` : "";
+
+      return `
+        <tr style="${i % 2 ? "background:#f9f9f9;" : ""}">
+          <td style="padding:2px 4px 2px 20px;font-size:9px;color:#bbb;width:14px;white-space:nowrap;">${i+1}.</td>
+          <td style="padding:2px 6px;font-size:10.5px;color:#222;">${r.ing.name}</td>
+          <td style="padding:2px 6px;font-size:10px;font-weight:700;color:#8B1A2F;white-space:nowrap;">${r.on.displayG}</td>
+          <td style="padding:2px 6px;font-size:9px;color:#555;white-space:nowrap;">${r.on.p}P&nbsp;·&nbsp;${r.on.c}HC&nbsp;·&nbsp;${r.on.f}G</td>
+          ${offCells}
+        </tr>`;
+    }).join("");
 
     const noteRow = slot.noteText
-      ? `<tr><td colspan="6" style="padding:1px 8px 4px 24px;font-size:9px;color:#888;font-style:italic;">${slot.noteText}</td></tr>`
+      ? `<tr><td colspan="${hasOff ? 6 : 4}" style="padding:1px 8px 4px 20px;font-size:9px;color:#888;font-style:italic;">${slot.noteText}</td></tr>`
       : "";
 
     return `
@@ -859,7 +906,7 @@ function exportDietPDF(
         <div style="padding:4px 10px 3px 12px;background:#f3f3f3;font-size:10px;font-weight:700;color:${col};">
           ${macroEmoji} ${macroLabel} — elige 1${liquidNote}
         </div>
-        <table style="width:100%;border-collapse:collapse;"><tbody>${listRows}${noteRow}</tbody></table>
+        <table style="width:100%;border-collapse:collapse;"><tbody>${thHeader}${listRows}${noteRow}</tbody></table>
       </div>`;
   }
 
@@ -867,12 +914,13 @@ function exportDietPDF(
 
   function renderProfile(
     profile: MealProfileDef,
-    scales:  { sP: number; sC: number; sF: number },
-    optIdx:  number,
-    col:     string,
+    scOn: Scales, scOff: Scales | null,
+    mOn:  DailyMacros, mOff: DailyMacros | null,
+    optIdx: number,
+    col: string,
   ): string {
     const label = ["A", "B", "C"][optIdx] ?? String(optIdx + 1);
-    const slots  = profile.slots.map(s => renderSlot(s, scales, col)).join("");
+    const slots = profile.slots.map(s => renderSlot(s, scOn, scOff, mOn, mOff, col)).join("");
     return `
       <div style="margin-bottom:6px;border:1px solid ${col}25;border-radius:4px;overflow:hidden;">
         <div style="background:${col}12;border-bottom:2px solid ${col};padding:4px 12px;display:flex;align-items:center;gap:10px;">
@@ -887,11 +935,12 @@ function exportDietPDF(
 
   function renderMeal(
     mealDef: MealDef,
-    scales:  { sP: number; sC: number; sF: number },
-    mIdx:    number,
+    scOn: Scales, scOff: Scales | null,
+    mOn:  DailyMacros, mOff: DailyMacros | null,
+    mIdx: number,
   ): string {
     const col      = mealColors[mIdx % mealColors.length];
-    const profiles = mealDef.profiles.map((p, i) => renderProfile(p, scales, i, col)).join("");
+    const profiles = mealDef.profiles.map((p, i) => renderProfile(p, scOn, scOff, mOn, mOff, i, col)).join("");
     return `
       <div style="margin-bottom:16px;page-break-inside:avoid;">
         <div style="background:${col};color:white;padding:6px 14px;border-radius:5px 5px 0 0;display:flex;align-items:center;gap:8px;">
@@ -904,33 +953,30 @@ function exportDietPDF(
       </div>`;
   }
 
-  // ── Sección de un día (ON u OFF) ─────────────────────────────────────────
+  // ── Bloque de macros ON + OFF en cabecera ─────────────────────────────────
 
-  function renderDay(
-    macros: DailyMacros,
-    scales: { sP: number; sC: number; sF: number },
-    label:  string,
-  ): string {
-    const meals = MEAL_DEFS.map((m, i) => renderMeal(m, scales, i)).join("");
+  function macroBox(macros: DailyMacros, label: string, borderColor: string, bg: string): string {
     return `
-      <div style="display:flex;align-items:baseline;justify-content:space-between;
-                  margin-bottom:12px;padding-bottom:8px;border-bottom:3px solid #111;">
-        <h2 style="font-size:15px;font-weight:900;margin:0;">${label}</h2>
-        <div style="display:flex;gap:14px;font-size:11px;">
+      <div style="flex:1;padding:8px 12px;background:${bg};border-left:3px solid ${borderColor};border-radius:4px;">
+        <div style="font-size:8.5px;font-weight:800;letter-spacing:.1em;color:${borderColor};margin-bottom:4px;">${label}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;">
           <span style="color:#555;">${macros.kcal} kcal</span>
-          <span style="color:#C0392B;font-weight:700;">${macros.protein_g}g proteína</span>
-          <span style="color:#D68910;font-weight:700;">${macros.carbs_g}g hidratos</span>
+          <span style="color:#C0392B;font-weight:700;">${macros.protein_g}g prot</span>
+          <span style="color:#D68910;font-weight:700;">${macros.carbs_g}g HC</span>
           <span style="color:#2980B9;font-weight:700;">${macros.fat_g}g grasa</span>
         </div>
-      </div>
-      ${meals}`;
+      </div>`;
   }
 
   // ── HTML final ────────────────────────────────────────────────────────────
 
-  const offHtml = macrosOff && scalesOff
-    ? `<div class="page-break">${renderDay(macrosOff, scalesOff, "😴 DÍA OFF")}</div>`
-    : "";
+  const meals = MEAL_DEFS.map((m, i) => renderMeal(m, scalesOn, scalesOff, macrosOn, macrosOff, i)).join("");
+
+  const macrosBar = `
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      ${macroBox(macrosOn, "💪 DÍA ON", "#8B1A2F", "#FDF2F2")}
+      ${macrosOff ? macroBox(macrosOff, "😴 DÍA OFF", "#2471A3", "#EAF2FB") : ""}
+    </div>`;
 
   const html = `<!DOCTYPE html><html lang="es"><head>
     <meta charset="utf-8">
@@ -942,12 +988,11 @@ function exportDietPDF(
       @media print {
         body { padding: 0; }
         @page { size: A4 portrait; margin: 8mm 7mm; }
-        .page-break { page-break-before: always; padding-top: 4px; }
       }
     </style>
   </head><body>
     <div style="display:flex;align-items:flex-end;justify-content:space-between;
-                margin-bottom:14px;padding-bottom:10px;border-bottom:3px solid #111;">
+                margin-bottom:10px;padding-bottom:10px;border-bottom:3px solid #111;">
       <div>
         <div style="font-size:9px;font-weight:800;letter-spacing:.18em;color:#8B1A2F;margin-bottom:2px;">MVP TEAM</div>
         <h1 style="font-size:18px;font-weight:900;margin:0 0 2px;">${planName || "Plan Nutricional"}</h1>
@@ -955,12 +1000,12 @@ function exportDietPDF(
       </div>
       <div style="text-align:right;font-size:9.5px;color:#999;">
         <div>${today}</div>
-        <div style="font-size:8.5px;color:#bbb;margin-top:2px;">En cada comida elige 1 opción (A, B o C) y dentro de ella combina proteína + hidrato + grasa</div>
+        <div style="font-size:8.5px;color:#bbb;margin-top:2px;">Elige 1 opción (A, B o C) por comida y combina proteína + hidrato + grasa</div>
       </div>
     </div>
 
-    ${renderDay(macrosOn, scalesOn, "💪 DÍA ON")}
-    ${offHtml}
+    ${macrosBar}
+    ${meals}
 
     <div style="margin-top:14px;padding-top:8px;border-top:1px solid #ddd;font-size:8px;color:#ccc;text-align:center;">
       Generado por MVP Team · ${today} · Cantidades calculadas para los macros objetivo del cliente.
