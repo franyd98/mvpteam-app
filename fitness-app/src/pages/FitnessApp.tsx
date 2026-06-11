@@ -580,8 +580,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             const isToday    = ds === todayStr;
             const isPast     = ds <= todayStr;
             const isManualRest = manualRestDays.has(ds);
-            // Clicable para marcar/desmarcar descanso manual (solo días pasados o hoy, no futuros)
-            const canToggle  = isPast && !trained;
+            // Clicable para marcar/desmarcar descanso manual (cualquier día pasado o hoy, incluidos entrenados)
+            const canToggle  = isPast;
 
             const bgColor = trained && !isManualRest
               ? "#8B1A2F"
