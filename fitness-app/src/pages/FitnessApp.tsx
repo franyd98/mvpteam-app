@@ -70,6 +70,22 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [calYear,  setCalYear]  = useState(() => new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
 
+  // Días de descanso marcados manualmente (persist en localStorage)
+  const [manualRestDays, setManualRestDays] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem("mvp_manual_rest_days");
+      return s ? new Set(JSON.parse(s)) : new Set();
+    } catch { return new Set(); }
+  });
+  const toggleManualRest = (ds: string) => {
+    setManualRestDays(prev => {
+      const next = new Set(prev);
+      if (next.has(ds)) next.delete(ds); else next.add(ds);
+      try { localStorage.setItem("mvp_manual_rest_days", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
+
   // Sustituciones de ejercicio (sesión actual)
   const [substitutions, setSubstitutions] = useState<Record<string, { name: string; muscleGroup: string }>>({});
   const [swapTarget, setSwapTarget] = useState<{ dayId: string; mcNum: number; exIdx: number; origName: string } | null>(null);
@@ -522,15 +538,19 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     }
 
     // ── Días CONSECUTIVOS sin ningún descanso (para avisar de sobreentrenamiento) ──
+    // Los días de descanso manuales cortan la racha igual que los días no entrenados.
     let consecWithoutRest = 0;
     const cd2 = new Date();
     for (let i = 0; i < 14; i++) {
       const ds = cd2.toISOString().slice(0, 10);
-      if (trainedDates.has(ds)) { consecWithoutRest++; cd2.setDate(cd2.getDate() - 1); }
-      else break;
+      if (trainedDates.has(ds) && !manualRestDays.has(ds)) {
+        consecWithoutRest++;
+        cd2.setDate(cd2.getDate() - 1);
+      } else break;
     }
-    const needsRest  = consecWithoutRest >= 3; // llevas 3 seguidos: descansa mañana
-    const overTrained = consecWithoutRest >= 4; // llevas 4+ seguidos: descansa ya
+    const todayIsManualRest = manualRestDays.has(todayStr);
+    const needsRest   = consecWithoutRest >= 3 && !todayIsManualRest;
+    const overTrained = consecWithoutRest >= 4 && !todayIsManualRest;
 
     return (
       <div className="mb-4 rounded-2xl p-3 space-y-2" style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
@@ -544,6 +564,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             <span className="text-xs font-bold" style={{ color: "#94A3B8" }}>
               💤 Descansa mañana
             </span>
+          ) : todayIsManualRest ? (
+            <span className="text-xs font-bold" style={{ color: "#60A5FA" }}>
+              🌙 Día de descanso
+            </span>
           ) : streak > 0 ? (
             <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>
               🔥 {streak} {streak === 1 ? "día seguido" : "días seguidos"}
@@ -552,40 +576,49 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         </div>
         <div className="flex gap-1.5">
           {weekDays.map((ds, i) => {
-            const trained = trainedDates.has(ds);
-            const isToday = ds === todayStr;
+            const trained    = trainedDates.has(ds);
+            const isToday    = ds === todayStr;
+            const isPast     = ds <= todayStr;
+            const isManualRest = manualRestDays.has(ds);
+            // Clicable para marcar/desmarcar descanso manual (solo días pasados o hoy, no futuros)
+            const canToggle  = isPast && !trained;
 
-            // Día de descanso: no entrenado y ya pasó (o es hoy) → burdeos
-            const isRecommendedRest = !trained && ds <= todayStr;
+            const bgColor = trained && !isManualRest
+              ? "#8B1A2F"
+              : isManualRest
+                ? "#0D1B2E"
+                : isToday ? "#1E1E1E" : "#131313";
+            const borderColor = isManualRest
+              ? "#1E3A5F"
+              : isToday ? "#333" : "transparent";
 
             return (
               <div key={ds} className="flex-1 flex flex-col items-center gap-1">
                 <span className="text-[9px] font-semibold" style={{ color: isToday ? "#fff" : "#555" }}>
                   {DAY_LABELS[i]}
                 </span>
-                <div
-                  className="w-full rounded-lg flex items-center justify-center"
+                <button
+                  onClick={() => canToggle && toggleManualRest(ds)}
+                  className="w-full rounded-lg flex items-center justify-center transition-opacity active:opacity-60"
                   style={{
                     height: 28,
-                    background: trained
-                      ? "#8B1A2F"
-                      : isRecommendedRest
-                        ? "#1E0D12"
-                        : isToday ? "#1E1E1E" : "#131313",
-                    border: isToday
-                      ? "1px solid #333"
-                      : isRecommendedRest
-                        ? "1px solid #4A1828"
-                        : "1px solid transparent",
+                    background: bgColor,
+                    border: `1px solid ${borderColor}`,
+                    cursor: canToggle ? "pointer" : "default",
                   }}
+                  title={canToggle ? (isManualRest ? "Quitar día de descanso" : "Marcar como descanso") : undefined}
                 >
-                  {trained && <span className="text-white text-xs">✓</span>}
-                  {isRecommendedRest && <span style={{ fontSize: 14 }}>😴</span>}
-                </div>
+                  {trained && !isManualRest && <span className="text-white text-xs">✓</span>}
+                  {isManualRest && <span style={{ fontSize: 13 }}>🌙</span>}
+                </button>
               </div>
             );
           })}
         </div>
+        {/* Hint discreto la primera vez */}
+        <p className="text-[9px] text-neutral-700 text-center">
+          Toca un día sin entrenar para marcarlo como descanso
+        </p>
       </div>
     );
   };
@@ -1015,6 +1048,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           exerciseNote={editingExercise.note}
           targetSet={editingTargetSet}
           setNumber={editing.setNumber}
+          totalSets={editingExercise.sets.length}
           weightUnit={settings.weightUnit}
           existingLog={editingExistingLog}
           previousLog={editingPreviousLog}

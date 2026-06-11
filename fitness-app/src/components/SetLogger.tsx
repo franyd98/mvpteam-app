@@ -17,6 +17,7 @@ type Props = {
   exerciseNote?: string | null; // nota del microciclo (microcycle_exercises.note)
   targetSet: ExerciseSet;
   setNumber: number;
+  totalSets?: number;           // total de series del ejercicio (para saber si es la última)
   weightUnit: WeightUnit;
   existingLog?: SetLog;
   previousLog?: SetLog;
@@ -31,6 +32,7 @@ export default function SetLogger({
   exerciseNote,
   targetSet,
   setNumber,
+  totalSets,
   weightUnit,
   existingLog,
   previousLog,
@@ -41,8 +43,13 @@ export default function SetLogger({
   // Detectar técnica especial — busca en ambas notas (coach_note y microcycle note)
   // "DS Últ. Serie" y "Drop Set Últ. Serie" son equivalentes
   const allNotes = [coachNote ?? "", exerciseNote ?? ""].join(" ").toLowerCase();
-  const isRP   = allNotes.includes("r&p");
-  const isDrop = allNotes.includes("drop") || allNotes.includes("ds últ");
+  const hasRP   = allNotes.includes("r&p");
+  const hasDrop = allNotes.includes("drop") || allNotes.includes("ds últ");
+
+  // Solo mostrar R&P y Drop Set en la ÚLTIMA serie del ejercicio
+  const isLastSet = totalSets == null || setNumber >= totalSets;
+  const isRP   = hasRP   && isLastSet;
+  const isDrop = hasDrop && isLastSet;
 
   // Estados principales
   const [weight, setWeight] = useState<string>(existingLog ? String(existingLog.weight) : "");
