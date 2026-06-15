@@ -753,191 +753,166 @@ function planTotalMacros(plan: GeneratedMeal[], activeOptions: Record<string, nu
 // ─────────────────────────────────────────────────────────────────────────────
 
 function exportDietPDF(
-  _planOn:    GeneratedMeal[],   // no usado directamente — se generan desde MEAL_DEFS
-  _planOff:   GeneratedMeal[],
+  planOn:     GeneratedMeal[],
+  planOff:    GeneratedMeal[],
   macrosOn:   DailyMacros,
   macrosOff:  DailyMacros | null,
   clientName: string,
   planName:   string,
 ) {
-  const today    = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
-  const scalesOn  = computeClientScales(macrosOn);
-  const scalesOff = macrosOff ? computeClientScales(macrosOff) : null;
+  const today      = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
+  const scalesOn   = computeClientScales(macrosOn);
+  const scalesOff  = macrosOff ? computeClientScales(macrosOff) : null;
   const mealColors = ["#8B1A2F", "#6B3080", "#1A5E8F", "#1A6B3A", "#7A5C1A"];
+  const isoIng     = ingredients.find(i => i.id === "iso") ?? null;
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  type Scales = { sP: number; sC: number; sF: number };
 
-  function ingM(ing: Ingredient, g: number) {
+  // ── Busca la definición de slot en MEAL_DEFS (para autoAddIso, noteText, ingIds) ──
+  function getSlotDef(mealId: string, profileId: string, slotId: string): ProfileSlotDef | null {
+    const meal = MEAL_DEFS.find(m => m.id === mealId);
+    const prof = meal?.profiles.find(p => p.id === profileId);
+    return prof?.slots.find(s => s.id === slotId) ?? null;
+  }
+
+  // ── Calcula gramos e info de macros para un food en un día concreto ──
+  interface FoodDisp { gDisplay: string; p: number; c: number; f: number }
+
+  function calcFoodDisp(
+    food: GeneratedFood, slotDef: ProfileSlotDef | null,
+    sc: Scales, macros: DailyMacros,
+  ): FoodDisp {
+    if (slotDef?.autoAddIso && isoIng && food.macro === "protein") {
+      const dairyG    = STANDARD_PORTIONS[food.ing.id] ?? 200;
+      const protTgt   = macros.protein_g * food.pct / 100;
+      const dairyProt = food.ing.protein * dairyG / 100;
+      const isoRaw    = Math.max(0, (protTgt - dairyProt) / (isoIng.protein / 100));
+      const isoG      = Math.round(isoRaw / 5) * 5;
+      const gDisplay  = isoG > 0 ? `${dairyG}g + ${isoG}g ISO` : `${dairyG}g`;
+      return {
+        gDisplay,
+        p: round1(dairyProt + isoIng.protein * isoG / 100),
+        c: round1(food.ing.carbs * dairyG / 100),
+        f: round1(food.ing.fat   * dairyG / 100),
+      };
+    }
+    if (food.macro === "fixed") {
+      const g = food.grams;
+      return {
+        gDisplay: `${g}g`,
+        p: round1(food.ing.protein * g / 100),
+        c: round1(food.ing.carbs   * g / 100),
+        f: round1(food.ing.fat     * g / 100),
+      };
+    }
+    const g = getScaledPortionG(food.ing, food.macro, sc);
     return {
-      p: round1(ing.protein * g / 100),
-      c: round1(ing.carbs   * g / 100),
-      f: round1(ing.fat     * g / 100),
+      gDisplay: `${g}g`,
+      p: round1(food.ing.protein * g / 100),
+      c: round1(food.ing.carbs   * g / 100),
+      f: round1(food.ing.fat     * g / 100),
     };
   }
 
-  // Slot de proteína con SOLO iso/whey → necesita indicar el líquido
-  function isIsoWheyOnly(slot: ProfileSlotDef): boolean {
-    return slot.macro === "protein" && slot.ingIds.every(id => id === "iso" || id === "whey");
-  }
-
-  // Slot de grasa con SOLO condimentos fijos (aceite, chocolate)
-  function isAllCondiments(slot: ProfileSlotDef): boolean {
-    return slot.macro === "fat" && slot.ingIds.every(id => FIXED_CONDIMENTS.has(id));
-  }
-
-  // ── Renderizado de un slot (dual-column ON / OFF) ─────────────────────────
-
-  type Scales = { sP: number; sC: number; sF: number };
-  type DayData = { displayG: string; p: number; c: number; f: number };
-
-  function renderSlot(
-    slot:     ProfileSlotDef,
-    scOn:     Scales,
-    scOff:    Scales | null,
-    mOn:      DailyMacros,
-    mOff:     DailyMacros | null,
-    col:      string,
-  ): string {
-    const hasOff = !!scOff && !!mOff;
-    const pool   = poolFromIds(slot.ingIds);
-    const isoIng = poolFromIds(["iso"])[0] ?? null;   // para autoAddIso
-
-    // ── Slot FIJO (huevo / fruta) ──
-    if (slot.macro === "fixed") {
-      if (pool.length === 1) {
-        const ing = pool[0];
-        const g   = slot.fixedG ?? (STANDARD_PORTIONS[ing.id] ?? 100);
-        return `<div class="fixed-item">
-          ✅ <strong>Siempre:</strong> <span class="portion">${g}g</span> ${ing.name}
-          ${slot.noteText ? `<div class="note">${slot.noteText}</div>` : ""}
-        </div>`;
-      } else {
-        const g     = slot.fixedG ?? 150;
-        const names = pool.map(i => i.name).join(" · ");
-        return `<div class="fixed-item">
-          🍓 <strong>Fruta — ${g}g</strong> <span style="color:#aaa;font-size:10px;">(${names})</span>
-        </div>`;
-      }
-    }
-
-    // ── Grasa SOLO condimentos fijos → línea compacta ──
-    if (isAllCondiments(slot)) {
-      const opts = pool.map(ing => {
-        const g = STANDARD_PORTIONS[ing.id] ?? 5;
-        return `<strong>${g}g</strong> ${ing.name}`;
-      }).join(" &nbsp;·&nbsp; ");
-      return `<div class="fixed-item">🫒 <strong>Grasa:</strong> ${opts}</div>`;
-    }
-
-    // ── Slot variable (proteína / hidratos / grasa) ──
-    const macroEmoji = slot.macro === "protein" ? "🥩" : slot.macro === "carbs" ? "🌾" : "🫒";
-    const macroLabel = slot.macro === "protein" ? "Proteína" : slot.macro === "carbs" ? "Hidratos" : "Grasa";
-    const liquidNote = isIsoWheyOnly(slot)
-      ? ` <span style="font-size:9px;color:#E67E22;font-style:italic;">— mezclar con 200-300ml leche vegetal</span>`
-      : "";
-
-    // Función para calcular datos de un ingrediente para un día concreto
-    function dayData(ing: Ingredient, sc: Scales, macros: DailyMacros): DayData | null {
-      if (slot.autoAddIso && isoIng && slot.macro === "protein") {
-        const dairyG     = STANDARD_PORTIONS[ing.id] ?? 200;
-        const protTarget = macros.protein_g * slot.pct / 100;
-        const dairyProt  = ing.protein * dairyG / 100;
-        const isoRawG    = Math.max(0, (protTarget - dairyProt) / (isoIng.protein / 100));
-        const isoG       = Math.round(isoRawG / 5) * 5;
-        const totalP     = round1(dairyProt + isoIng.protein * isoG / 100);
-        const totalC     = round1(ing.carbs  * dairyG / 100);
-        const totalF     = round1(ing.fat    * dairyG / 100);
-        const displayG   = isoG > 0 ? `${dairyG}g + ${isoG}g ISO` : `${dairyG}g`;
-        return { displayG, p: totalP, c: totalC, f: totalF };
-      } else {
-        const g = getScaledPortionG(ing, slot.macro, sc);
-        if (g <= 0) return null;
-        const m = ingM(ing, g);
-        return { displayG: `${g}g`, p: m.p, c: m.c, f: m.f };
-      }
-    }
-
-    interface RowEntry { ing: Ingredient; on: DayData; off: DayData | null }
-
-    const rows: RowEntry[] = pool.map(ing => {
-      const on = dayData(ing, scOn, mOn);
-      if (!on) return null;
-      const off = hasOff ? dayData(ing, scOff!, mOff!) : null;
-      return { ing, on, off } as RowEntry;
-    }).filter((r): r is RowEntry => r !== null);
-
-    if (!rows.length) return "";
-
-    const listRows = rows.map((r, i) => {
-      const offPart = r.off
-        ? ` <span class="off-tag">OFF: ${r.off.displayG}</span>`
-        : "";
-      return `<li>
-        <span style="color:#aaa;font-size:10px;margin-right:4px;">${i + 1}.</span>
-        ${r.ing.name} —
-        <span class="portion">${r.on.displayG}</span>
-        <span class="on-tag">ON</span>${offPart}
-        <span style="color:#aaa;font-size:9.5px;margin-left:4px;">${r.on.p}P · ${r.on.c}HC · ${r.on.f}G</span>
-      </li>`;
-    }).join("");
-
-    const noteHtml = slot.noteText
-      ? `<div class="note">${slot.noteText}</div>`
-      : "";
-
-    return `
-      <div style="margin-bottom:6px;">
-        <div class="slot-header" style="color:${col};">${macroEmoji} ${macroLabel} — elige 1${liquidNote}</div>
-        <ul class="items-list">${listRows}</ul>
-        ${noteHtml}
-      </div>`;
-  }
-
-  // ── Un perfil completo = OPCIÓN A / B / C ────────────────────────────────
-
-  function renderProfile(
-    profile: MealProfileDef,
-    scOn: Scales, scOff: Scales | null,
-    mOn:  DailyMacros, mOff: DailyMacros | null,
+  // ── Renderiza una OPCIÓN completa (A / B / C) como combo visual ──
+  function renderOption(
+    opt:    GeneratedOption,
+    mealId: string,
     optIdx: number,
-    col: string,
+    col:    string,
   ): string {
     const label = ["A", "B", "C"][optIdx] ?? String(optIdx + 1);
-    const slots  = profile.slots.map(s => renderSlot(s, scOn, scOff, mOn, mOff, col)).join("");
-    return `
-      <div class="option">
-        <span class="option-header" style="background:${col}18;color:${col};border:1px solid ${col}33;">
-          OPCIÓN ${label}
-        </span>
-        <span class="option-label">${profile.label}</span>
-        <div style="margin-top:6px;">${slots}</div>
-        <hr class="separator">
+
+    let totOnP = 0, totOnC = 0, totOnF = 0;
+    let totOffP = 0, totOffC = 0, totOffF = 0;
+    const hasOff = !!scalesOff && !!macrosOff;
+
+    const rows = opt.foods.map(food => {
+      const slotDef = getSlotDef(mealId, opt.profileId, food.slotId);
+      const on      = calcFoodDisp(food, slotDef, scalesOn, macrosOn);
+      const off     = hasOff ? calcFoodDisp(food, slotDef, scalesOff!, macrosOff!) : null;
+
+      totOnP  += on.p;  totOnC  += on.c;  totOnF  += on.f;
+      if (off) { totOffP += off.p; totOffC += off.c; totOffF += off.f; }
+
+      // Icono según macro
+      const icon = food.macro === "protein" ? "🥩"
+                 : food.macro === "carbs"   ? "🌾"
+                 : food.macro === "fat"     ? "🫒"
+                 : food.slotId === "fruta"  ? "🍓"
+                 : "✅";
+
+      // Para el slot de fruta mostramos todas las opciones disponibles
+      const isFruitSlot = food.slotId === "fruta";
+      const fruitOpts   = isFruitSlot && slotDef
+        ? poolFromIds(slotDef.ingIds).map(i => i.name).join(" · ")
+        : null;
+
+      // OFF solo si difiere de ON
+      const offTag = off && off.gDisplay !== on.gDisplay
+        ? `<span class="off-tag">OFF: ${off.gDisplay}</span>`
+        : "";
+
+      const noteHtml = slotDef?.noteText
+        ? `<div class="food-note">※ ${slotDef.noteText}</div>` : "";
+
+      return `<div class="food-row">
+        <span class="food-icon">${icon}</span>
+        <div class="food-info">
+          <span class="food-g">${on.gDisplay}</span>
+          <span class="food-nm">${isFruitSlot ? "Fruta" : food.ing.name}</span>
+          ${offTag}
+          ${isFruitSlot && fruitOpts ? `<div class="food-hint">${fruitOpts}</div>` : ""}
+          ${noteHtml}
+        </div>
       </div>`;
+    }).join("");
+
+    const onKcal  = Math.round(totOnP  * 4 + totOnC  * 4 + totOnF  * 9);
+    const offKcal = Math.round(totOffP * 4 + totOffC * 4 + totOffF * 9);
+
+    const totOnHtml = `<div class="opt-total on-total">
+      <span class="day-pill on-pill">ON</span>
+      <span>${onKcal} kcal</span>
+      <span class="mac-p">${round1(totOnP)}g P</span>
+      <span class="mac-c">${round1(totOnC)}g HC</span>
+      <span class="mac-f">${round1(totOnF)}g G</span>
+    </div>`;
+
+    const totOffHtml = hasOff ? `<div class="opt-total off-total">
+      <span class="day-pill off-pill">OFF</span>
+      <span>${offKcal} kcal</span>
+      <span class="mac-p">${round1(totOffP)}g P</span>
+      <span class="mac-c">${round1(totOffC)}g HC</span>
+      <span class="mac-f">${round1(totOffF)}g G</span>
+    </div>` : "";
+
+    return `<div class="opt">
+      <div class="opt-head" style="border-left:3px solid ${col};background:${col}0D;">
+        <span class="opt-badge" style="background:${col};color:#fff;">OPCIÓN ${label}</span>
+        <span class="opt-label">${opt.profileLabel}</span>
+      </div>
+      <div class="opt-foods">${rows}</div>
+      ${totOnHtml}${totOffHtml}
+    </div>`;
   }
 
-  // ── Una comida completa ───────────────────────────────────────────────────
-
-  function renderMeal(
-    mealDef: MealDef,
-    scOn: Scales, scOff: Scales | null,
-    mOn:  DailyMacros, mOff: DailyMacros | null,
-    mIdx: number,
-  ): string {
-    const col      = mealColors[mIdx % mealColors.length];
-    const profiles = mealDef.profiles.map((p, i) => renderProfile(p, scOn, scOff, mOn, mOff, i, col)).join("");
-    return `
-      <div class="meal">
-        <div class="meal-header" style="background:${col};">
-          <span style="font-size:16px;">${mealDef.emoji}</span>
-          <span>${mealDef.name.toUpperCase()}</span>
-        </div>
-        <div class="meal-body">${profiles}</div>
-      </div>`;
+  // ── Renderiza una comida completa ──
+  function renderMeal(meal: GeneratedMeal, mIdx: number): string {
+    const col  = mealColors[mIdx % mealColors.length];
+    const opts = meal.options.map((opt, i) => renderOption(opt, meal.mealId, i, col)).join("");
+    return `<div class="meal">
+      <div class="meal-head" style="background:${col};">
+        <span class="meal-em">${meal.emoji}</span>
+        <span>${meal.name.toUpperCase()}</span>
+      </div>
+      <div class="meal-body">${opts}</div>
+    </div>`;
   }
 
   // ── HTML final ────────────────────────────────────────────────────────────
 
-  const meals = MEAL_DEFS.map((m, i) => renderMeal(m, scalesOn, scalesOff, macrosOn, macrosOff, i)).join("");
+  const meals = planOn.map((m, i) => renderMeal(m, i)).join("");
 
   const html = `<!DOCTYPE html><html lang="es"><head>
     <meta charset="utf-8">
@@ -947,66 +922,58 @@ function exportDietPDF(
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-        color: #1a1a1a; background: #fff; padding: 24px 20px;
-        font-size: 12px; line-height: 1.5;
+        color: #1a1a1a; background: #fff; padding: 24px 20px; font-size: 12px; line-height: 1.5;
       }
       h1 { font-size: 22px; font-weight: 900; letter-spacing: -.3px; }
       .subtitle { font-size: 11px; color: #888; margin-top: 2px; }
       .brand { font-size: 9px; font-weight: 800; letter-spacing: .18em; color: #8B1A2F; margin-bottom: 3px; }
-      /* Macro boxes */
+
+      /* ── Macro summary boxes ── */
       .macro-row { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; }
-      .macro-box {
-        flex: 1; min-width: 160px;
-        border-radius: 8px; padding: 10px 14px;
-        border-left: 4px solid;
-      }
+      .macro-box { flex: 1; min-width: 160px; border-radius: 8px; padding: 10px 14px; border-left: 4px solid; }
       .macro-box .day-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; margin-bottom: 5px; }
       .macro-box .kcal { font-size: 18px; font-weight: 900; }
       .macro-box .macros-line { font-size: 10.5px; margin-top: 3px; }
-      /* Meals */
-      .meal { margin-bottom: 18px; page-break-inside: avoid; border-radius: 8px; overflow: hidden; border: 1px solid #e5e5e5; }
-      .meal-header {
-        display: flex; align-items: center; gap: 8px;
-        padding: 9px 14px; color: #fff;
-        font-size: 13px; font-weight: 800; letter-spacing: .04em;
-      }
-      .meal-body { padding: 10px 12px; }
-      /* Options */
-      .option { margin-bottom: 10px; }
-      .option:last-child { margin-bottom: 0; }
-      .option-header {
-        font-size: 10px; font-weight: 900; letter-spacing: .08em;
-        padding: 5px 10px; border-radius: 4px;
-        margin-bottom: 6px; display: inline-block;
-      }
-      .option-label { font-size: 10px; color: #777; margin-left: 6px; }
-      /* Items */
-      .items-list { list-style: none; padding: 0 0 0 4px; }
-      .items-list li {
-        padding: 3px 6px;
-        font-size: 11.5px;
-        color: #222;
-        border-left: 2px solid #e8e8e8;
-        margin-bottom: 2px;
-      }
-      .items-list li .portion { font-weight: 700; color: #111; }
-      .slot-header {
-        font-size: 9.5px; font-weight: 700; text-transform: uppercase;
-        letter-spacing: .07em; color: #999; margin: 5px 0 3px 4px;
-      }
-      .fixed-item {
-        font-size: 11px; color: #555; padding: 3px 4px; margin-bottom: 4px;
-      }
-      .note { font-size: 9.5px; color: #999; font-style: italic; margin-top: 3px; padding-left: 4px; }
-      .on-off-header { display: flex; gap: 8px; margin-bottom: 3px; }
-      .on-tag { font-size: 8px; font-weight: 700; color: #8B1A2F; background: #FDF2F2; border-radius: 3px; padding: 1px 5px; }
+
+      /* ── Meals ── */
+      .meal { margin-bottom: 20px; page-break-inside: avoid; border-radius: 10px; overflow: hidden; border: 1px solid #e5e5e5; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+      .meal-head { display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .05em; }
+      .meal-em { font-size: 18px; }
+      .meal-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+      /* ── Options (combo cards) ── */
+      .opt { border-radius: 8px; border: 1px solid #eee; overflow: hidden; }
+      .opt-head { display: flex; align-items: center; gap: 8px; padding: 7px 10px; }
+      .opt-badge { font-size: 9.5px; font-weight: 900; letter-spacing: .08em; padding: 3px 8px; border-radius: 4px; }
+      .opt-label { font-size: 10px; color: #666; }
+
+      /* ── Foods list ── */
+      .opt-foods { padding: 6px 10px 4px; display: flex; flex-direction: column; gap: 5px; }
+      .food-row { display: flex; align-items: flex-start; gap: 7px; }
+      .food-icon { font-size: 13px; flex-shrink: 0; width: 18px; text-align: center; margin-top: 1px; }
+      .food-info { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; font-size: 11.5px; }
+      .food-g { font-weight: 800; color: #111; }
+      .food-nm { color: #333; }
+      .food-hint { font-size: 9.5px; color: #999; width: 100%; padding-left: 2px; }
+      .food-note { font-size: 9.5px; color: #a07050; font-style: italic; width: 100%; padding-left: 2px; }
+
+      /* ── Totals ── */
+      .opt-total { display: flex; align-items: center; gap: 8px; font-size: 10px; padding: 5px 10px; flex-wrap: wrap; }
+      .on-total  { background: #FEF9F9; border-top: 1px dashed #f0d0d0; }
+      .off-total { background: #F5F9FE; border-top: 1px dashed #cce0f0; }
+      .day-pill { font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 3px; letter-spacing: .05em; }
+      .on-pill  { background: #8B1A2F; color: #fff; }
+      .off-pill { background: #2471A3; color: #fff; }
+      .mac-p { color: #C0392B; font-weight: 700; }
+      .mac-c { color: #D68910; font-weight: 700; }
+      .mac-f { color: #2980B9; font-weight: 700; }
+
+      /* ── Tags ── */
+      .on-tag  { font-size: 8px; font-weight: 700; color: #8B1A2F; background: #FDF2F2; border-radius: 3px; padding: 1px 5px; }
       .off-tag { font-size: 8px; font-weight: 700; color: #2471A3; background: #EAF2FB; border-radius: 3px; padding: 1px 5px; }
-      .separator { border: none; border-top: 1px solid #f0f0f0; margin: 8px 0; }
+
       footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid #eee; font-size: 8.5px; color: #bbb; text-align: center; }
-      @media print {
-        body { padding: 6mm 8mm; }
-        @page { size: A4 portrait; margin: 6mm; }
-      }
+      @media print { body { padding: 6mm 8mm; } @page { size: A4 portrait; margin: 6mm; } }
     </style>
   </head><body>
 
