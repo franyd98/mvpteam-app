@@ -216,7 +216,7 @@ const MEAL_DEFS: MealDef[] = [
           { id: "hc", label: "Hidratos", macro: "carbs", pct: 20, maxG: 130,
             ingIds: ["pan_molde","fajitas","pan_blanco","pan_centeno","pan_integral_pan"] },
           { id: "prot", label: "Proteína", macro: "protein", pct: 15, minG: 50, maxG: 150,
-            ingIds: ["qso_eatlean","mozza_light","fiambre_pavo","jamon","lomo_curado_pavo","qso_fresco","atun_lata"] },
+            ingIds: ["qso_eatlean","fiambre_pavo","jamon","lomo_curado_pavo","qso_fresco","atun_lata"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 5,
             ingIds: ["aceite_oliva","aguacate","guacamole","aceitunas"] },
         ],
@@ -305,9 +305,11 @@ const MEAL_DEFS: MealDef[] = [
         // ISO/Whey siempre mezclado con leche vegetal — nunca en seco
         id: "c4_b", label: "Opción 2 — ISO / Whey + Leche + Cereal",
         slots: [
-          { id: "prot", label: "Proteína", macro: "protein", pct: 20, minG: 25, maxG: 40,
-            ingIds: ["iso","whey"],
-            noteText: "Mezcla siempre con 200-300ml de leche vegetal o de almendra sin azúcar." },
+          { id: "prot", label: "Proteína ISO", macro: "protein", pct: 20, minG: 25, maxG: 40,
+            ingIds: ["iso","whey"] },
+          { id: "leche", label: "Leche vegetal", macro: "fixed", pct: 0, fixedG: 250,
+            ingIds: ["leche_vegetal_gen"],
+            noteText: "Sin azúcares añadidos (almendra, avena, soja, arroz...)" },
           { id: "hc", label: "Cereales", macro: "carbs", pct: 15, maxG: 110,
             ingIds: ["avena_crunchy","avena_copos","harina_avena","crema_arroz",
                      "corn_flakes","weetabix","cereal_mix","rice_krispies","copos_trigo"] },
@@ -323,7 +325,7 @@ const MEAL_DEFS: MealDef[] = [
           { id: "hc", label: "Pan / Tortas", macro: "carbs", pct: 15, maxG: 110,
             ingIds: ["pan_tostado","pan_fibra","pan_wasa","tortas_arroz","tortas_maiz","pan_centeno","pan_integral_pan"] },
           { id: "prot", label: "Proteína", macro: "protein", pct: 20, minG: 50, maxG: 120,
-            ingIds: ["qso_fresco","qso_batido","fiambre_pavo","lomo_curado_pavo","atun_lata","jamon","lomo_embuchado"] },
+            ingIds: ["fiambre_pavo","lomo_curado_pavo","jamon","lomo_embuchado","atun_lata","qso_fresco"] },
           { id: "fruta", label: "Fruta", macro: "fixed", pct: 0, fixedG: 100,
             ingIds: ["platano","manzana","pera","fresas","melocoton","arandanos","kiwi"] },
         ],
@@ -423,6 +425,7 @@ const STANDARD_PORTIONS: Record<string, number> = {
   qso_fresco:       150,
   mousse_prot:      200,
   leche_prot:       200,
+  leche_vegetal_gen: 250,
   qso_eatlean:      100,
   mozza_light:      100,
   havarti:           50,
@@ -699,6 +702,30 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
           availablePool: pool,
           noteText:      slot.noteText,
         });
+
+        // ── AutoAddIso: añadir ISO como food independiente ──
+        if (slot.autoAddIso) {
+          const isoIng = ingredients.find(i => i.id === "iso");
+          if (isoIng) {
+            const protTgt   = macros.protein_g * slot.pct / 100;
+            const dairyProt = ing.protein * grams / 100;
+            const isoRaw    = Math.max(0, (protTgt - dairyProt) / (isoIng.protein / 100));
+            const isoG      = Math.round(isoRaw / 5) * 5;
+            if (isoG > 0) {
+              foods.push({
+                slotId:        `${slot.id}_iso`,
+                label:         "Proteína ISO",
+                ing:           isoIng,
+                grams:         isoG,
+                macro:         "protein",
+                targetG:       isoG,
+                pct:           0,
+                availablePool: [isoIng],
+                noteText:      undefined,
+              });
+            }
+          }
+        }
       });
 
       return { profileId: profile.id, profileLabel: profile.label, foods };
