@@ -63,6 +63,8 @@ interface ProfileSlotDef {
   macro:        MacroKey | "fixed";
   pct:          number;            // % del macro diario, o gramos si macro="fixed"
   fixedG?:      number;
+  maxG?:        number;   // cap máximo de porción (evita escalados absurdos hacia arriba)
+  minG?:        number;   // mínimo de porción (evita porciones ridículas hacia abajo)
   noteText?:    string;
   autoAddIso?:  boolean;   // en slots proteína-láctea: calcula gramos ISO complementarios para cuadrar macros
 }
@@ -127,7 +129,7 @@ const MEAL_DEFS: MealDef[] = [
             ingIds: ["huevo"],
             noteText: "Puedes usar 125ml claras + 1 huevo entero. Bátelo todo con el hidrato para hacer tortitas o bizcocho de micro." },
           // Solo avena o pan para batir — NO cereales de cuchara
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 25,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 25, maxG: 75,
             ingIds: ["harina_avena","avena_copos","pan_centeno","pan_tostado","pan_integral_pan","pan_fibra"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 10,
             ingIds: ["aceite_coco","chocolate85","aceite_oliva"] },
@@ -146,7 +148,7 @@ const MEAL_DEFS: MealDef[] = [
             // Solo lácteos que funcionan como base para cereales
             ingIds: ["yogur_prot","yogur_sln","mousse_prot","yogur_griego","qso_batido","leche_prot"],
             autoAddIso: true },  // ISO calculado dinámicamente para completar el objetivo proteico
-          { id: "hc", label: "Cereales", macro: "carbs", pct: 25,
+          { id: "hc", label: "Cereales", macro: "carbs", pct: 25, maxG: 70,
             ingIds: ["avena_crunchy","avena_copos","harina_avena",
                      "corn_flakes","weetabix","copos_trigo","rice_krispies","cereal_mix","crema_arroz","choco_zero"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 10,
@@ -163,10 +165,10 @@ const MEAL_DEFS: MealDef[] = [
           { id: "huevo", label: "Huevo base", macro: "fixed", pct: 0, fixedG: 60,
             ingIds: ["huevo"] },
           // Solo pan y tortas — NO cereales de cuchara
-          { id: "hc", label: "Pan / Tortas", macro: "carbs", pct: 25,
+          { id: "hc", label: "Pan / Tortas", macro: "carbs", pct: 25, maxG: 80,
             ingIds: ["pan_centeno","pan_tostado","pan_integral_pan","pan_fibra","pan_wasa","tortas_arroz","tortas_maiz"] },
           // Solo proteínas frías que van encima del pan: fiambre, queso, jamón, atún
-          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20, minG: 50, maxG: 120,
             ingIds: ["lomo_embuchado","lomo_curado_pavo","jamon","fiambre_pavo","qso_fresco","atun_lata"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 10,
             ingIds: ["aceite_coco","chocolate85","aceite_oliva"] },
@@ -185,10 +187,10 @@ const MEAL_DEFS: MealDef[] = [
       {
         id: "c2_a", label: "Pan + Embutido / Jamón",
         slots: [
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 20,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 20, maxG: 80,
             ingIds: ["pan_fibra","pan_centeno","pan_tostado","pan_integral_pan",
                      "pan_wasa","tortas_arroz","tortas_maiz"] },
-          { id: "prot", label: "Proteína", macro: "protein", pct: 15,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 15, minG: 50, maxG: 100,
             ingIds: ["lomo_embuchado","lomo_curado_pavo","jamon","fiambre_pavo","salchi_pavo_3"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 5,
             ingIds: ["aceite_oliva","aguacate","guacamole"],
@@ -198,10 +200,10 @@ const MEAL_DEFS: MealDef[] = [
       {
         id: "c2_b", label: "Pan + Queso fresco / Atún",
         slots: [
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 20,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 20, maxG: 80,
             ingIds: ["pan_fibra","pan_centeno","pan_tostado","pan_integral_pan",
                      "pan_wasa","tortas_arroz","tortas_maiz"] },
-          { id: "prot", label: "Proteína", macro: "protein", pct: 15,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 15, minG: 50, maxG: 150,
             ingIds: ["qso_fresco","atun_lata","fiambre_pavo","lomo_curado_pavo","jamon"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 5,
             ingIds: ["aceite_oliva","aguacate","guacamole","aceitunas"],
@@ -211,9 +213,9 @@ const MEAL_DEFS: MealDef[] = [
       {
         id: "c2_c", label: "Bocadillo / Wrap (pan de molde o fajita)",
         slots: [
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 20,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 20, maxG: 85,
             ingIds: ["pan_molde","fajitas","pan_blanco","pan_centeno","pan_integral_pan"] },
-          { id: "prot", label: "Proteína", macro: "protein", pct: 15,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 15, minG: 50, maxG: 150,
             ingIds: ["qso_eatlean","mozza_light","fiambre_pavo","jamon","lomo_curado_pavo","qso_fresco","atun_lata"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 5,
             ingIds: ["aceite_oliva","aguacate","guacamole","aceitunas"] },
@@ -231,11 +233,11 @@ const MEAL_DEFS: MealDef[] = [
         // Opción 1: Carne / Pescado + HC (pasta, arroz, patata…)
         id: "c3_a", label: "Carne / Pescado + Pasta / Arroz",
         slots: [
-          { id: "prot", label: "Proteína", macro: "protein", pct: 25,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 25, minG: 100, maxG: 200,
             // Exactamente los mismos que en el PDF
             ingIds: ["pollo","pavo","lomo_cerdo","ternera","picada_pollo","hamburguesa",
                      "merluza","lenguado","lubina","tilapia","atun_lata","gambas","sepia"] },
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 30,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 30, maxG: 120,
             ingIds: ["pasta","pasta_integral","arroz","arroz_int","patata","boniato","boniato_rojo",
                      "noquis","cuscus","noodles_arroz","arroz_3del","fajitas"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 35,
@@ -249,9 +251,9 @@ const MEAL_DEFS: MealDef[] = [
         // Opción 2: Carne o Pescado + Arroz ligero + indica legumbre de bote
         id: "c3_b", label: "Pescado + Patata / Boniato",
         slots: [
-          { id: "prot", label: "Proteína", macro: "protein", pct: 25,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 25, minG: 120, maxG: 220,
             ingIds: ["merluza","tilapia","lenguado","lubina","sepia","gambas","calamar","salmon","trucha"] },
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 30,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 30, maxG: 250,
             ingIds: ["patata","patata_bote","boniato","boniato_rojo","noquis","arroz","arroz_int","cuscus"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 35,
             ingIds: ["aceite_oliva","aguacate","guacamole"],
@@ -264,9 +266,9 @@ const MEAL_DEFS: MealDef[] = [
         // Opción 3: Salmón / Ternera + HC libre
         id: "c3_c", label: "Salmón / Ternera + HC libre",
         slots: [
-          { id: "prot", label: "Proteína", macro: "protein", pct: 25,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 25, minG: 100, maxG: 180,
             ingIds: ["salmon","ternera","trucha","lomo_atun","pollo","pavo","lomo_cerdo"] },
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 30,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 30, maxG: 120,
             ingIds: ["arroz","pasta","patata","boniato","noodles_arroz","cuscus","arroz_int","pasta_integral","noquis"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 35,
             ingIds: ["aceite_oliva","aguacate","guacamole"],
@@ -292,7 +294,7 @@ const MEAL_DEFS: MealDef[] = [
           { id: "prot", label: "Proteína láctea", macro: "protein", pct: 20,
             ingIds: ["yogur_prot","yogur_griego","mousse_prot","qso_batido","leche_prot","yogur_sln"],
             autoAddIso: true },  // ISO calculado dinámicamente para completar el objetivo proteico
-          { id: "hc", label: "Cereales", macro: "carbs", pct: 15,
+          { id: "hc", label: "Cereales", macro: "carbs", pct: 15, maxG: 65,
             ingIds: ["avena_crunchy","avena_copos","harina_avena","weetabix","corn_flakes",
                      "cereal_mix","rice_krispies","copos_trigo","crema_arroz","choco_zero"] },
           { id: "fruta", label: "Fruta", macro: "fixed", pct: 0, fixedG: 100,
@@ -303,10 +305,10 @@ const MEAL_DEFS: MealDef[] = [
         // ISO/Whey siempre mezclado con leche vegetal — nunca en seco
         id: "c4_b", label: "Opción 2 — ISO / Whey + Leche + Cereal",
         slots: [
-          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20, minG: 25, maxG: 40,
             ingIds: ["iso","whey"],
             noteText: "Mezcla siempre con 200-300ml de leche vegetal o de almendra sin azúcar." },
-          { id: "hc", label: "Cereales", macro: "carbs", pct: 15,
+          { id: "hc", label: "Cereales", macro: "carbs", pct: 15, maxG: 65,
             ingIds: ["avena_crunchy","avena_copos","harina_avena","crema_arroz",
                      "corn_flakes","weetabix","cereal_mix","rice_krispies","copos_trigo"] },
           { id: "fruta", label: "Fruta", macro: "fixed", pct: 0, fixedG: 100,
@@ -318,9 +320,9 @@ const MEAL_DEFS: MealDef[] = [
         // ⚠️ NO yogur ni mousse aquí (van con cereales)
         id: "c4_c", label: "Opción 3 — Pan / Tortas + Proteína fría",
         slots: [
-          { id: "hc", label: "Pan / Tortas", macro: "carbs", pct: 15,
+          { id: "hc", label: "Pan / Tortas", macro: "carbs", pct: 15, maxG: 75,
             ingIds: ["pan_tostado","pan_fibra","pan_wasa","tortas_arroz","tortas_maiz","pan_centeno","pan_integral_pan"] },
-          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20, minG: 50, maxG: 120,
             ingIds: ["qso_fresco","qso_batido","fiambre_pavo","lomo_curado_pavo","atun_lata","jamon","lomo_embuchado"] },
           { id: "fruta", label: "Fruta", macro: "fixed", pct: 0, fixedG: 100,
             ingIds: ["platano","manzana","pera","fresas","melocoton","arandanos","kiwi"] },
@@ -337,9 +339,9 @@ const MEAL_DEFS: MealDef[] = [
       {
         id: "c5_a", label: "Pescado blanco + Patata / Boniato",
         slots: [
-          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20, minG: 120, maxG: 200,
             ingIds: ["merluza","tilapia","lenguado","lubina","gambas","sepia","calamar"] },
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 10,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 10, maxG: 200,
             ingIds: ["patata","patata_bote","boniato","boniato_rojo","noquis","arroz","arroz_int","cuscus"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 50,
             ingIds: ["aceite_oliva","aguacate","guacamole"],
@@ -351,9 +353,9 @@ const MEAL_DEFS: MealDef[] = [
       {
         id: "c5_b", label: "Carne / Aves + Arroz / Pasta",
         slots: [
-          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20, minG: 100, maxG: 200,
             ingIds: ["pollo","pavo","picada_pollo","lomo_cerdo","ternera","hamburguesa","salchi_pavo_3"] },
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 10,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 10, maxG: 100,
             ingIds: ["arroz","arroz_int","pasta","pasta_integral","cuscus","noodles_arroz","patata","boniato","noquis"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 50,
             ingIds: ["aceite_oliva","aguacate","guacamole"],
@@ -365,9 +367,9 @@ const MEAL_DEFS: MealDef[] = [
       {
         id: "c5_c", label: "Salmón / Ternera + HC libre",
         slots: [
-          { id: "prot", label: "Proteína", macro: "protein", pct: 20,
+          { id: "prot", label: "Proteína", macro: "protein", pct: 20, minG: 100, maxG: 180,
             ingIds: ["salmon","ternera","trucha","lomo_atun","atun_lata","calamar","sepia","gambas"] },
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 10,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 10, maxG: 100,
             ingIds: ["arroz","patata","boniato","noodles_arroz","cuscus","noquis","arroz_int","pasta","pasta_integral"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 50,
             ingIds: ["aceite_oliva","aguacate","guacamole"],
@@ -425,43 +427,43 @@ const STANDARD_PORTIONS: Record<string, number> = {
   mozza_light:      100,
   havarti:           50,
   qso_pizza:         50,
-  // Hidratos — cereales / avena
-  harina_avena:      80,
-  avena_copos:       80,
-  avena_crunchy:     60,
-  corn_flakes:       60,
-  weetabix:          60,
-  copos_trigo:       60,
-  rice_krispies:     60,
-  cereal_mix:        60,
-  crema_arroz:       60,
-  choco_zero:        50,
+  // Hidratos — cereales / avena (porciones reales del plan nutricional)
+  harina_avena:      55,   // tortitas / bizcocho: 55g es una ración generosa
+  avena_copos:       55,
+  avena_crunchy:     50,   // cereal en bol
+  corn_flakes:       45,
+  weetabix:          50,
+  copos_trigo:       50,
+  rice_krispies:     45,
+  cereal_mix:        50,
+  crema_arroz:       50,
+  choco_zero:        40,
   // Hidratos — pasta / arroz / tubérculos
-  pasta:             75,
-  pasta_integral:    75,
-  arroz:             75,
-  arroz_int:         75,
-  noodles_arroz:     75,
-  cuscus:            90,
+  pasta:             70,
+  pasta_integral:    70,
+  arroz:             70,
+  arroz_int:         70,
+  noodles_arroz:     70,
+  cuscus:            75,
   noquis:           150,
   arroz_3del:       100,
   arroz_bolsita:    125,
-  patata:           180,
-  patata_bote:      180,
+  patata:           175,
+  patata_bote:      175,
   boniato:          150,
   boniato_rojo:     150,
   // Hidratos — pan / tortas
-  pan_centeno:       80,
-  pan_integral_pan:  80,
-  pan_tostado:       60,
-  pan_fibra:         80,
-  pan_wasa:          60,
-  pan_molde:         80,
-  pan_blanco:        80,
-  fajitas:          100,
-  tortas_legumbre:   75,
-  tortas_arroz:      75,
-  tortas_maiz:       75,
+  pan_centeno:       60,
+  pan_integral_pan:  60,
+  pan_tostado:       50,
+  pan_fibra:         60,
+  pan_wasa:          50,
+  pan_molde:         65,
+  pan_blanco:        65,
+  fajitas:           80,
+  tortas_legumbre:   60,
+  tortas_arroz:      60,
+  tortas_maiz:       60,
   pizza_int:        200,
   // Grasas
   aceite_oliva:       5,
@@ -581,6 +583,8 @@ function getScaledPortionG(
   ing:    Ingredient,
   macro:  MacroKey | "fixed",
   scales: { sP: number; sC: number; sF: number },
+  maxG?:  number,
+  minG?:  number,
 ): number {
   const baseG = STANDARD_PORTIONS[ing.id] ?? 100;
 
@@ -594,7 +598,10 @@ function getScaledPortionG(
 
   if (s <= 0) return 0;   // slot de grasa innecesario para este cliente
   const scaledG = baseG * s;
-  return Math.max(Math.round(scaledG / 5) * 5, 5);
+  let g = Math.max(Math.round(scaledG / 5) * 5, 5);
+  if (maxG !== undefined) g = Math.min(g, maxG);
+  if (minG !== undefined) g = Math.max(g, minG);
+  return g;
 }
 
 // ── Generación ────────────────────────────────────────────────────────────────
@@ -622,7 +629,7 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
         if (slot.macro === "fixed") {
           grams = slot.fixedG ?? 100;
         } else {
-          grams = getScaledPortionG(ing, slot.macro, scales);
+          grams = getScaledPortionG(ing, slot.macro, scales, slot.maxG, slot.minG);
         }
 
         if (grams <= 0) return;   // slot de grasa omitido (sF=0)
@@ -677,7 +684,8 @@ function selectFood(
 
             let grams = food.grams;
             if (food.macro !== "fixed") {
-              grams = getScaledPortionG(ing, food.macro, scales);
+              const slotDef2 = MEAL_DEFS.flatMap(m => m.profiles).flatMap(p => p.slots).find(s => s.id === slotId);
+              grams = getScaledPortionG(ing, food.macro, scales, slotDef2?.maxG, slotDef2?.minG);
             }
 
             return { ...food, ing, grams, targetG: grams };
@@ -805,7 +813,7 @@ function exportDietPDF(
         f: round1(food.ing.fat     * g / 100),
       };
     }
-    const g = getScaledPortionG(food.ing, food.macro, sc);
+    const g = getScaledPortionG(food.ing, food.macro, sc, slotDef?.maxG, slotDef?.minG);
     return {
       gDisplay: `${g}g`,
       p: round1(food.ing.protein * g / 100),
@@ -922,46 +930,47 @@ function exportDietPDF(
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-        color: #1a1a1a; background: #fff; padding: 24px 20px; font-size: 12px; line-height: 1.5;
+        color: #1a1a1a; background: #fff; padding: 18px 16px; font-size: 11.5px; line-height: 1.4;
       }
-      h1 { font-size: 22px; font-weight: 900; letter-spacing: -.3px; }
-      .subtitle { font-size: 11px; color: #888; margin-top: 2px; }
-      .brand { font-size: 9px; font-weight: 800; letter-spacing: .18em; color: #8B1A2F; margin-bottom: 3px; }
+      h1 { font-size: 20px; font-weight: 900; letter-spacing: -.3px; }
+      .subtitle { font-size: 10.5px; color: #888; margin-top: 2px; }
+      .brand { font-size: 8.5px; font-weight: 800; letter-spacing: .18em; color: #8B1A2F; margin-bottom: 2px; }
 
       /* ── Macro summary boxes ── */
-      .macro-row { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; }
-      .macro-box { flex: 1; min-width: 160px; border-radius: 8px; padding: 10px 14px; border-left: 4px solid; }
-      .macro-box .day-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; margin-bottom: 5px; }
-      .macro-box .kcal { font-size: 18px; font-weight: 900; }
-      .macro-box .macros-line { font-size: 10.5px; margin-top: 3px; }
+      .macro-row { display: flex; gap: 8px; margin: 10px 0 14px; flex-wrap: wrap; }
+      .macro-box { flex: 1; min-width: 140px; border-radius: 7px; padding: 8px 12px; border-left: 3px solid; }
+      .macro-box .day-label { font-size: 9px; font-weight: 800; letter-spacing: .08em; margin-bottom: 3px; }
+      .macro-box .kcal { font-size: 16px; font-weight: 900; }
+      .macro-box .macros-line { font-size: 9.5px; margin-top: 2px; }
 
       /* ── Meals ── */
-      .meal { margin-bottom: 20px; page-break-inside: avoid; border-radius: 10px; overflow: hidden; border: 1px solid #e5e5e5; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-      .meal-head { display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .05em; }
-      .meal-em { font-size: 18px; }
-      .meal-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+      .meal { margin-bottom: 14px; page-break-inside: avoid; border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
+      .meal-head { display: flex; align-items: center; gap: 6px; padding: 7px 12px; color: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: .04em; }
+      .meal-em { font-size: 15px; }
+      .meal-body { padding: 0; }
 
-      /* ── Options (combo cards) ── */
-      .opt { border-radius: 8px; border: 1px solid #eee; overflow: hidden; }
-      .opt-head { display: flex; align-items: center; gap: 8px; padding: 7px 10px; }
-      .opt-badge { font-size: 9.5px; font-weight: 900; letter-spacing: .08em; padding: 3px 8px; border-radius: 4px; }
-      .opt-label { font-size: 10px; color: #666; }
+      /* ── Options ── */
+      .opt { border-bottom: 1px solid #f0f0f0; }
+      .opt:last-child { border-bottom: none; }
+      .opt-head { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-bottom: 1px solid #f5f5f5; }
+      .opt-badge { font-size: 8.5px; font-weight: 900; letter-spacing: .07em; padding: 2px 7px; border-radius: 3px; }
+      .opt-label { font-size: 9.5px; color: #555; }
 
-      /* ── Foods list ── */
-      .opt-foods { padding: 6px 10px 4px; display: flex; flex-direction: column; gap: 5px; }
-      .food-row { display: flex; align-items: flex-start; gap: 7px; }
-      .food-icon { font-size: 13px; flex-shrink: 0; width: 18px; text-align: center; margin-top: 1px; }
-      .food-info { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; font-size: 11.5px; }
-      .food-g { font-weight: 800; color: #111; }
-      .food-nm { color: #333; }
-      .food-hint { font-size: 9.5px; color: #999; width: 100%; padding-left: 2px; }
-      .food-note { font-size: 9.5px; color: #a07050; font-style: italic; width: 100%; padding-left: 2px; }
+      /* ── Foods ── */
+      .opt-foods { padding: 4px 10px 3px; }
+      .food-row { display: grid; grid-template-columns: 18px 1fr; gap: 4px; align-items: start; padding: 2px 0; }
+      .food-icon { font-size: 11px; text-align: center; padding-top: 1px; }
+      .food-info { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 4px; row-gap: 0; }
+      .food-g { font-weight: 800; font-size: 11px; color: #111; white-space: nowrap; }
+      .food-nm { font-size: 10.5px; color: #333; }
+      .food-hint { font-size: 8.5px; color: #aaa; width: 100%; }
+      .food-note { font-size: 8.5px; color: #b07840; font-style: italic; width: 100%; margin-top: 1px; }
 
       /* ── Totals ── */
-      .opt-total { display: flex; align-items: center; gap: 8px; font-size: 10px; padding: 5px 10px; flex-wrap: wrap; }
-      .on-total  { background: #FEF9F9; border-top: 1px dashed #f0d0d0; }
-      .off-total { background: #F5F9FE; border-top: 1px dashed #cce0f0; }
-      .day-pill { font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 3px; letter-spacing: .05em; }
+      .opt-total { display: flex; align-items: center; gap: 6px; font-size: 9px; padding: 3px 10px 4px; flex-wrap: wrap; }
+      .on-total  { background: #FEF9F9; }
+      .off-total { background: #F4F8FE; border-top: 1px dotted #d0e4f7; }
+      .day-pill { font-size: 7.5px; font-weight: 800; padding: 1px 5px; border-radius: 3px; letter-spacing: .05em; }
       .on-pill  { background: #8B1A2F; color: #fff; }
       .off-pill { background: #2471A3; color: #fff; }
       .mac-p { color: #C0392B; font-weight: 700; }
@@ -969,11 +978,10 @@ function exportDietPDF(
       .mac-f { color: #2980B9; font-weight: 700; }
 
       /* ── Tags ── */
-      .on-tag  { font-size: 8px; font-weight: 700; color: #8B1A2F; background: #FDF2F2; border-radius: 3px; padding: 1px 5px; }
-      .off-tag { font-size: 8px; font-weight: 700; color: #2471A3; background: #EAF2FB; border-radius: 3px; padding: 1px 5px; }
+      .off-tag { font-size: 7.5px; font-weight: 700; color: #2471A3; background: #EAF2FB; border-radius: 2px; padding: 1px 4px; white-space: nowrap; }
 
-      footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid #eee; font-size: 8.5px; color: #bbb; text-align: center; }
-      @media print { body { padding: 6mm 8mm; } @page { size: A4 portrait; margin: 6mm; } }
+      footer { margin-top: 12px; padding-top: 6px; border-top: 1px solid #eee; font-size: 8px; color: #ccc; text-align: center; }
+      @media print { body { padding: 5mm 7mm; } @page { size: A4 portrait; margin: 5mm; } }
     </style>
   </head><body>
 
