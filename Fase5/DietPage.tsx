@@ -1,9 +1,10 @@
-// DietPage.tsx v3 — vista cliente simplificada
+// DietPage.tsx v4 — vista cliente
 // ─────────────────────────────────────────────────────────────────────────────
-// 2 pestañas: "🥗 Mi Plan" | "📊 Mis Macros"
-// Mi Plan: tarjetas de comida con flechas ‹ A › para cambiar opción + ✓ Guardar
+// 3 pestañas en orden: "📊 Mis Macros" | "🎲 Generada" | "📋 Mi Plan"
+// Generada: DietGenerator en modo cliente (plan automático por macros)
+// Mi Plan: plan del entrenador con flechas ‹ A › para cambiar opción + ✓ Guardar
 // La selección de opción se persiste en localStorage
-// Lista de la compra en Supabase (igual que antes)
+// Lista de la compra en Supabase
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -12,6 +13,7 @@ import {
   type Ingredient, type IngredientCategory,
 } from "../data/ingredients";
 import MacroCalculator from "../components/MacroCalculator";
+import DietGenerator from "../components/DietGenerator";
 import FoodSearchModal from "../components/FoodSearchModal";
 
 // ── Inyección de ingredientes personalizados ──────────────────────────────────
@@ -29,7 +31,7 @@ const ingName = (id: string) =>
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type Profile  = { id: string; full_name: string; role: string };
 type DayType  = "on" | "off";
-type DietTab  = "plan" | "macros";
+type DietTab  = "macros" | "generate" | "plan";
 
 type FoodItem  = string | { ingId: string; grams: number };
 type FoodGroup = { label: string; isChoice: boolean; items: FoodItem[]; note?: string };
@@ -67,7 +69,7 @@ const OPT_LABELS = ["A", "B", "C", "D"];
 export default function DietPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
   const OPTS_KEY = `mvp_plan_opts_${profile.id}`;
 
-  const [dietTab, setDietTab] = useState<DietTab>("plan");
+  const [dietTab, setDietTab] = useState<DietTab>("macros");
   const [plan,    setPlan]    = useState<DietPlan | null>(null);
   const [meals,   setMeals]   = useState<DietMeal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,22 +262,25 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
           </button>
         </div>
 
-        {/* Pestañas */}
-        <div className="flex gap-1 pb-0">
-          {([
-            { id: "plan"   as DietTab, label: "🥗 Mi Plan" },
-            { id: "macros" as DietTab, label: "📊 Mis Macros" },
-          ] as const).map(({ id, label }) => (
-            <button key={id} onClick={() => setDietTab(id)}
-              className={"flex-1 py-2 text-xs font-semibold rounded-t-lg transition-colors " +
-                (dietTab === id ? "text-white" : "text-neutral-500")}
-              style={dietTab === id
-                ? { background: "#1A1A1A", borderTop: "2px solid #C0394F" }
-                : {}}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* Pestañas — solo visibles si no estamos en la pantalla de generación */}
+        {dietTab !== "generate" && (
+          <div className="flex gap-1 pb-0">
+            {([
+              { id: "macros"   as DietTab, label: "📊 Mis Macros" },
+              { id: "generate" as DietTab, label: "🎲 Generada" },
+              { id: "plan"     as DietTab, label: "📋 Mi Plan" },
+            ] as const).map(({ id, label }) => (
+              <button key={id} onClick={() => setDietTab(id)}
+                className={"flex-1 py-2 text-xs font-semibold rounded-t-lg transition-colors " +
+                  (dietTab === id ? "text-white" : "text-neutral-500")}
+                style={dietTab === id
+                  ? { background: "#1A1A1A", borderTop: "2px solid #C0394F" }
+                  : {}}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       {/* ── Contenido con scroll ── */}
@@ -288,7 +293,17 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
           </div>
         )}
 
-        {/* ─── Mi Plan ─── */}
+        {/* ─── Generada (DietGenerator modo cliente) ─── */}
+        {dietTab === "generate" && (
+          <DietGenerator
+            clientId={profile.id}
+            clientName={profile.full_name}
+            clientMode
+            onBack={() => setDietTab("macros")}
+          />
+        )}
+
+        {/* ─── Mi Plan (plan del entrenador) ─── */}
         {dietTab === "plan" && (
           loading ? (
             <div className="flex items-center justify-center py-24">
