@@ -86,8 +86,23 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     });
   };
 
-  // Sustituciones de ejercicio (sesión actual)
-  const [substitutions, setSubstitutions] = useState<Record<string, { name: string; muscleGroup: string }>>({});
+  // Sustituciones de ejercicio — persisten en localStorage por cliente
+  // Clave localStorage: mvp_subs_v1_{profileId}
+  // Clave de cada entrada: "{dayId}:{mcNum}:{exIdx}" → solo aplica al microciclo concreto
+  const subsStorageKey = `mvp_subs_v1_${profile.id}`;
+  const [substitutions, setSubstitutions] = useState<Record<string, { name: string; muscleGroup: string }>>(() => {
+    try {
+      const s = localStorage.getItem(`mvp_subs_v1_${profile.id}`);
+      return s ? JSON.parse(s) : {};
+    } catch { return {}; }
+  });
+  const updateSubstitutions = (updater: (prev: Record<string, { name: string; muscleGroup: string }>) => Record<string, { name: string; muscleGroup: string }>) => {
+    setSubstitutions(prev => {
+      const next = updater(prev);
+      try { localStorage.setItem(subsStorageKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
   const [swapTarget, setSwapTarget] = useState<{ dayId: string; mcNum: number; exIdx: number; origName: string } | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
   // Lista completa de ejercicios de la BD (para el buscador de sustitución)
@@ -442,7 +457,17 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   // ── Render del modal historial ────────────────────────────────
   const renderExHistoryModal = () => {
     if (!exHistory) return null;
-    const exLogs = logs.filter(l => l.dayId === exHistory.dayId && l.exerciseIndex === exHistory.exerciseIndex);
+    // Nombre original del ejercicio en ese slot (sin sustitución)
+    const origExName = program?.days.find(d => d.id === exHistory.dayId)
+      ?.microcycles[0]?.exercises[exHistory.exerciseIndex]?.name ?? "";
+    // Filtrar solo los logs del ejercicio actual (exHistory.name)
+    // — excluye microciclos donde se usó un ejercicio diferente en ese slot
+    const exLogs = logs.filter(l => {
+      if (l.dayId !== exHistory.dayId || l.exerciseIndex !== exHistory.exerciseIndex) return false;
+      const mcSub = substitutions[subKey(l.dayId, l.microcycleNumber, l.exerciseIndex)];
+      const mcExName = mcSub?.name ?? origExName;
+      return mcExName === exHistory.name;
+    });
     const byMc: Record<number, { mc: number; maxWeight: number; totalVol: number }> = {};
     exLogs.forEach(l => {
       if (!byMc[l.microcycleNumber]) byMc[l.microcycleNumber] = { mc: l.microcycleNumber, maxWeight: 0, totalVol: 0 };
@@ -812,14 +837,23 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     {ex.sets.map((s) => {
                       const log = findLatestLog(logs, dayId, microcycleNumber, idx, s.number);
                       const prevLog = findPreviousMicrocycleLog(logs, dayId, microcycleNumber, idx, s.number);
+
+                      // Verificar que el ejercicio del microciclo anterior es el mismo que el actual
+                      // (si se cambió el ejercicio, los datos previos pertenecen a otro ejercicio)
+                      const prevMcSub = substitutions[subKey(dayId, microcycleNumber - 1, idx)];
+                      const prevExName  = prevMcSub?.name ?? ex.name;
+                      const currExName  = sub?.name ?? ex.name;
+                      const sameExercise = prevExName === currExName;
+                      const validPrevLog = sameExercise ? prevLog : null;
+
                       // Comparar 1RM estimado (Epley): peso × (1 + reps/30)
                       // Mejor que volumen (peso×reps) porque captura subidas de carga con menos reps
                       const est1RM = (w: number, r: number) => w * (1 + r / 30);
                       const prog =
-                        log && prevLog
-                          ? est1RM(log.weight, log.reps) > est1RM(prevLog.weight, prevLog.reps) + 0.5
+                        log && validPrevLog
+                          ? est1RM(log.weight, log.reps) > est1RM(validPrevLog.weight, validPrevLog.reps) + 0.5
                             ? "↑"
-                            : est1RM(log.weight, log.reps) < est1RM(prevLog.weight, prevLog.reps) - 0.5
+                            : est1RM(log.weight, log.reps) < est1RM(validPrevLog.weight, validPrevLog.reps) - 0.5
                             ? "↓"
                             : "="
                           : null;
@@ -869,10 +903,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                               </span>
                             )}
                           </button>
-                          {!log && prevLog && (
+                          {!log && validPrevLog && (
                             <p className="text-[10px] text-blue-400 px-3 pt-0.5 pb-1">
-                              Ant (Mc {prevLog.microcycleNumber}): {prevLog.weight} {prevLog.unit} × {prevLog.reps}
-                              {prevLog.rpe > 0 ? ` · RPE ${prevLog.rpe}` : ""}
+                              Ant (Mc {validPrevLog.microcycleNumber}): {validPrevLog.weight} {validPrevLog.unit} × {validPrevLog.reps}
+                              {validPrevLog.rpe > 0 ? ` · RPE ${validPrevLog.rpe}` : ""}
                             </p>
                           )}
                         </div>
@@ -997,17 +1031,22 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 {cells.map((day, i) => {
                   if (!day) return <div key={`e${i}`} />;
                   const ds = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                  const trained = trainedDates.has(ds);
-                  const isToday = ds === todayStr;
-                  const isPast = ds < todayStr;
-                  const isFuture = ds > todayStr;
+                  const trained    = trainedDates.has(ds);
+                  const isRest     = manualRestDays.has(ds);
+                  const isToday    = ds === todayStr;
+                  const isPast     = ds <= todayStr;
+
+                  // entrenado pero marcado como descanso manual → descanso gana
+                  const showTrained = trained && !isRest;
 
                   return (
                     <div key={day}
                       className="aspect-square flex items-center justify-center rounded-xl text-sm font-semibold relative"
                       style={
-                        trained
+                        showTrained
                           ? { background: "#8B1A2F", color: "#fff" }
+                          : isRest
+                          ? { background: "#0D1B2E", color: "#3A7BD5", border: "1px solid #1E3A5F" }
                           : isToday
                           ? { background: "#1A1A2E", color: "#fff", border: "1px solid #444" }
                           : isPast
@@ -1015,10 +1054,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                           : { background: "transparent", color: "#2A2A2A" }
                       }>
                       {day}
-                      {isToday && !trained && (
+                      {isToday && !showTrained && !isRest && (
                         <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white opacity-60" />
                       )}
-                      {trained && isToday && (
+                      {showTrained && isToday && (
                         <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white opacity-80" />
                       )}
                     </div>
@@ -1027,12 +1066,15 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               </div>
 
               {/* Leyenda */}
-              <div className="flex items-center justify-center gap-5 pb-5 text-xs text-neutral-500">
+              <div className="flex items-center justify-center gap-4 pb-5 text-xs text-neutral-500 flex-wrap px-4">
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded" style={{ background: "#8B1A2F" }} /> Entrenado
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded" style={{ background: "#0D0D0D", border: "1px solid #222" }} /> Descanso
+                  <span className="w-3 h-3 rounded" style={{ background: "#0D1B2E", border: "1px solid #1E3A5F" }} /> Descanso
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded" style={{ background: "#0D0D0D", border: "1px solid #222" }} /> Sin actividad
                 </span>
               </div>
             </div>
@@ -1230,7 +1272,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 {hasSub && (
                   <button
                     onClick={() => {
-                      setSubstitutions(prev => { const n = { ...prev }; delete n[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]; return n; });
+                      updateSubstitutions(prev => { const n = { ...prev }; delete n[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]; return n; });
                       setSwapTarget(null);
                     }}
                     className="w-full flex items-center gap-3 px-4 py-3 border-b text-left active:bg-neutral-800"
@@ -1254,9 +1296,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                           onClick={() => {
                             if (e.name === swapTarget.origName) {
                               // Selecciona el original → quita sustitución
-                              setSubstitutions(prev => { const n = { ...prev }; delete n[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]; return n; });
+                              updateSubstitutions(prev => { const n = { ...prev }; delete n[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]; return n; });
                             } else {
-                              setSubstitutions(prev => ({ ...prev, [subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]: { name: e.name, muscleGroup: e.muscleGroup } }));
+                              updateSubstitutions(prev => ({ ...prev, [subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]: { name: e.name, muscleGroup: e.muscleGroup } }));
                             }
                             setSwapTarget(null);
                           }}
