@@ -29,9 +29,10 @@ const ingName = (id: string) =>
   id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
-type Profile  = { id: string; full_name: string; role: string };
-type DayType  = "on" | "off";
-type DietTab  = "macros" | "generate" | "plan";
+type Profile    = { id: string; full_name: string; role: string };
+type DayType    = "on" | "off";
+type DietTab    = "macros" | "plan" | "generate";   // generate: pantalla completa DietGenerator
+type PlanSource = "auto" | "trainer";
 
 type FoodItem  = string | { ingId: string; grams: number };
 type FoodGroup = { label: string; isChoice: boolean; items: FoodItem[]; note?: string };
@@ -69,8 +70,9 @@ const OPT_LABELS = ["A", "B", "C", "D"];
 export default function DietPage({ profile, onBack }: { profile: Profile; onBack: () => void }) {
   const OPTS_KEY = `mvp_plan_opts_${profile.id}`;
 
-  const [dietTab, setDietTab] = useState<DietTab>("macros");
-  const [plan,    setPlan]    = useState<DietPlan | null>(null);
+  const [dietTab,    setDietTab]    = useState<DietTab>("macros");
+  const [planSource, setPlanSource] = useState<PlanSource>("trainer");
+  const [plan,       setPlan]       = useState<DietPlan | null>(null);
   const [meals,   setMeals]   = useState<DietMeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [dayType, setDayType] = useState<DayType>("on");
@@ -262,13 +264,12 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
           </button>
         </div>
 
-        {/* Pestañas — solo visibles si no estamos en la pantalla de generación */}
+        {/* Pestañas principales — ocultas cuando DietGenerator ocupa pantalla completa */}
         {dietTab !== "generate" && (
           <div className="flex gap-1 pb-0">
             {([
-              { id: "macros"   as DietTab, label: "📊 Mis Macros" },
-              { id: "generate" as DietTab, label: "🎲 Generada" },
-              { id: "plan"     as DietTab, label: "📋 Mi Plan" },
+              { id: "macros" as DietTab, label: "📊 Mis Macros" },
+              { id: "plan"   as DietTab, label: "🥗 Mi Plan" },
             ] as const).map(({ id, label }) => (
               <button key={id} onClick={() => setDietTab(id)}
                 className={"flex-1 py-2 text-xs font-semibold rounded-t-lg transition-colors " +
@@ -293,17 +294,17 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
           </div>
         )}
 
-        {/* ─── Generada (DietGenerator modo cliente) ─── */}
+        {/* ─── Generada — DietGenerator ocupa pantalla completa ─── */}
         {dietTab === "generate" && (
           <DietGenerator
             clientId={profile.id}
             clientName={profile.full_name}
             clientMode
-            onBack={() => setDietTab("macros")}
+            onBack={() => setDietTab("plan")}
           />
         )}
 
-        {/* ─── Mi Plan (plan del entrenador) ─── */}
+        {/* ─── Mi Plan ─── */}
         {dietTab === "plan" && (
           loading ? (
             <div className="flex items-center justify-center py-24">
@@ -319,6 +320,26 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             </div>
           ) : (
             <div className="max-w-2xl mx-auto px-4 pt-4 pb-28 space-y-3">
+
+              {/* ── Selector Generada / Del entrenador ── */}
+              <div className="flex gap-1 p-1 rounded-2xl" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+                {([
+                  { src: "trainer" as PlanSource, label: "📋 Del entrenador" },
+                  { src: "auto"    as PlanSource, label: "🎲 Generada" },
+                ] as const).map(({ src, label }) => (
+                  <button key={src}
+                    onClick={() => {
+                      if (src === "auto") setDietTab("generate");
+                      else setPlanSource("trainer");
+                    }}
+                    className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors"
+                    style={planSource === src && src !== "auto"
+                      ? { background: "#8B1A2F", color: "#fff" }
+                      : { background: "transparent", color: "#666" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
 
               {/* ── Selector ON / OFF ── */}
               <div className="grid grid-cols-2 gap-2">
