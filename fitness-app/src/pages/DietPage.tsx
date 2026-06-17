@@ -49,6 +49,256 @@ type DietPlan    = {
 };
 type HistoryEntry = { planId: string; planName: string; date: string };
 
+// ── Exportar PDF del plan asignado ────────────────────────────────────────────
+function exportAssignedPlanPDF(
+  plan:       DietPlan,
+  meals:      DietMeal[],
+  clientName: string,
+) {
+  const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
+  const COLORS  = ["#8B1A2F","#5B2D8B","#1A5E8F","#1A6B3A","#7A5C1A","#2D5B5B","#833A15"];
+  const OPT_LBL = ["A","B","C","D","E"];
+
+  // ── Helpers ──
+  function esc(s: string) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function renderFoodItem(item: FoodItem): string {
+    if (typeof item === "string") {
+      return `<div class="fi"><span class="bullet">·</span><span class="fi-txt">${esc(item)}</span></div>`;
+    }
+    const name = INGREDIENTS.find(i => i.id === item.ingId)?.name
+               ?? ingName(item.ingId);
+    return `<div class="fi"><span class="bullet">·</span><span class="fi-g">${item.grams}g</span><span class="fi-txt">${esc(name)}</span></div>`;
+  }
+  function renderGroup(g: FoodGroup): string {
+    const lbl = g.label
+      ? `<div class="grp-lbl">${esc(g.label)}${g.isChoice ? '<span class="choice-pill">elige uno</span>' : ""}</div>`
+      : "";
+    const items = g.items.map(renderFoodItem).join("");
+    const note  = g.note ? `<div class="grp-note">※ ${esc(g.note)}</div>` : "";
+    return `<div class="grp">${lbl}${items}${note}</div>`;
+  }
+  function renderOptions(mealList: DietMeal[], color: string): string {
+    if (!mealList.length) return `<div class="empty-col">—</div>`;
+    return mealList.flatMap(m =>
+      m.options.map((opt, i) => {
+        const lbl    = OPT_LBL[i] ?? String(i + 1);
+        const groups = opt.content.map(renderGroup).join("");
+        const optLbl = opt.name ? `<span class="opt-name">${esc(opt.name)}</span>` : "";
+        return `<div class="opt">
+          <div class="opt-hd">
+            <span class="opt-badge" style="background:${color}">OPC. ${lbl}</span>${optLbl}
+          </div>
+          <div class="opt-body">${groups}</div>
+        </div>`;
+      })
+    ).join("");
+  }
+
+  // ── Agrupar comidas ON / OFF por nombre ──
+  type MealGroup = { name: string; emoji: string; on: DietMeal[]; off: DietMeal[]; both: DietMeal[] };
+  const groupMap = new Map<string, MealGroup>();
+  meals.forEach(m => {
+    if (!groupMap.has(m.name)) groupMap.set(m.name, { name: m.name, emoji: m.emoji, on: [], off: [], both: [] });
+    const g = groupMap.get(m.name)!;
+    if (m.day_type === "on")   g.on.push(m);
+    else if (m.day_type === "off") g.off.push(m);
+    else g.both.push(m);
+  });
+
+  // ── HTML de comidas ──
+  const mealsHtml = [...groupMap.values()].map((grp, idx) => {
+    const color   = COLORS[idx % COLORS.length];
+    const onList  = [...grp.on,   ...grp.both];
+    const offList = [...grp.off,  ...grp.both];
+    const hasBoth = onList.length > 0 && offList.length > 0 && (grp.on.length > 0 || grp.off.length > 0);
+
+    let bodyHtml: string;
+    if (hasBoth) {
+      bodyHtml = `<div class="meal-body two-col">
+        <div class="dcol">
+          <div class="dcol-hd on-hd">💪 DÍA ON · ${plan.kcal_on ?? "—"} kcal</div>
+          ${renderOptions(onList, color)}
+        </div>
+        <div class="dcol">
+          <div class="dcol-hd off-hd">😴 DÍA OFF · ${plan.kcal_off ?? "—"} kcal</div>
+          ${renderOptions(offList, color)}
+        </div>
+      </div>`;
+    } else {
+      const list   = onList.length ? onList : offList;
+      const isOn   = onList.length > 0;
+      bodyHtml = `<div class="meal-body one-col">
+        <div class="dcol">
+          <div class="dcol-hd ${isOn ? "on-hd" : "off-hd"}">${isOn ? "💪 DÍA ON" : "😴 DÍA OFF"}</div>
+          ${renderOptions(list, color)}
+        </div>
+      </div>`;
+    }
+    return `<div class="meal">
+      <div class="meal-hd" style="background:${color}">
+        <span class="meal-emoji">${grp.emoji}</span>
+        <span>${esc(grp.name.toUpperCase())}</span>
+      </div>
+      ${bodyHtml}
+    </div>`;
+  }).join("");
+
+  // ── Macro lines ──
+  const macOnLine  = `<span class="mp">${plan.protein_on ?? "—"}g P</span> · <span class="mhc">${plan.carbs_on ?? "—"}g HC</span> · <span class="mg">${plan.fat_on ?? "—"}g G</span>`;
+  const macOffLine = `<span class="mp">${plan.protein_off ?? "—"}g P</span> · <span class="mhc">${plan.carbs_off ?? "—"}g HC</span> · <span class="mg">${plan.fat_off ?? "—"}g G</span>`;
+
+  const notesHtml = plan.notes && plan.notes !== "__CLIENT_GENERATED__"
+    ? `<div class="notes-box">
+        <div class="notes-lbl">📌 INDICACIONES DEL ENTRENADOR</div>
+        <div class="notes-txt">${esc(plan.notes)}</div>
+      </div>` : "";
+
+  const html = `<!DOCTYPE html><html lang="es"><head>
+<meta charset="utf-8">
+<title>${esc(plan.name)}${clientName ? " — " + esc(clientName) : ""}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;
+     background:#fff;font-size:10.5px;line-height:1.5}
+
+/* ── Cabecera ── */
+.hdr{background:linear-gradient(135deg,#0a0a0a 0%,#1c080e 60%,#0a0d1c 100%);
+     color:#fff;padding:18px 22px 16px;display:flex;
+     align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.brand{font-size:7px;font-weight:900;letter-spacing:.32em;color:#C0394F;
+       text-transform:uppercase;margin-bottom:5px}
+.plan-title{font-size:20px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.plan-sub{font-size:11px;color:#aaa;margin-top:3px}
+.hdr-r{text-align:right}
+.hdr-date{font-size:8.5px;color:#777;margin-top:2px}
+.hdr-hint{font-size:7.5px;color:#555;margin-top:5px}
+
+/* ── Macro boxes ── */
+.macro-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;
+           margin-bottom:14px;padding-bottom:14px;border-bottom:2px solid #f0f0f0}
+.mbox{border-radius:8px;padding:10px 13px;border:1px solid #e4e4e4}
+.mbox-on{background:#FEF2F2;border-left:4px solid #C0394F}
+.mbox-off{background:#EEF2FF;border-left:4px solid #3B4F9F}
+.mbox-dlbl{font-size:7.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.mbox-on .mbox-dlbl{color:#C0394F}
+.mbox-off .mbox-dlbl{color:#3B4F9F}
+.mbox-kcal{font-size:22px;font-weight:800;line-height:1.1}
+.mbox-kcal-u{font-size:10px;font-weight:400;color:#888;margin-left:2px}
+.mbox-mac{font-size:9px;margin-top:5px;display:flex;gap:10px}
+.mp{color:#C0394F;font-weight:700}
+.mhc{color:#D97706;font-weight:700}
+.mg{color:#2563EB;font-weight:700}
+
+/* ── Notas ── */
+.notes-box{margin-bottom:14px;padding:10px 14px;background:#FFFBEB;
+           border:1px solid #FDE68A;border-radius:8px;border-left:4px solid #F59E0B}
+.notes-lbl{font-size:7.5px;font-weight:900;letter-spacing:.1em;color:#D97706;
+           text-transform:uppercase;margin-bottom:5px}
+.notes-txt{font-size:9.5px;color:#555;line-height:1.65;white-space:pre-line}
+
+/* ── Comida ── */
+.meal{margin-bottom:14px;border-radius:8px;overflow:hidden;
+      border:1px solid #e0e0e0;break-inside:avoid}
+.meal-hd{display:flex;align-items:center;gap:9px;padding:8px 14px;
+         color:#fff;font-weight:800;font-size:11px;letter-spacing:.04em}
+.meal-emoji{font-size:17px}
+.meal-body{display:grid}
+.two-col{grid-template-columns:1fr 1fr}
+.one-col{grid-template-columns:1fr}
+.dcol{border-right:1px solid #e4e4e4}
+.dcol:last-child{border-right:none}
+.dcol-hd{font-size:7.5px;font-weight:900;letter-spacing:.1em;
+         text-transform:uppercase;padding:4px 10px;border-bottom:1px solid #eee}
+.on-hd{color:#C0394F;background:#FEF2F2}
+.off-hd{color:#3B4F9F;background:#EEF2FF}
+
+/* ── Opción ── */
+.opt{border-bottom:1px solid #f0f0f0}
+.opt:last-child{border-bottom:none}
+.opt-hd{display:flex;align-items:center;gap:6px;padding:4px 10px;
+        background:#fafafa;border-bottom:1px solid #f0f0f0}
+.opt-badge{font-size:7px;font-weight:900;color:#fff;padding:2px 6px;
+           border-radius:3px;letter-spacing:.06em;flex-shrink:0}
+.opt-name{font-size:8.5px;color:#888;font-style:italic}
+.opt-body{padding:5px 10px 7px}
+.empty-col{padding:10px;color:#ccc;font-size:9px;text-align:center}
+
+/* ── Grupo ── */
+.grp{margin-bottom:5px}
+.grp:last-child{margin-bottom:0}
+.grp-lbl{font-size:7.5px;font-weight:800;text-transform:uppercase;
+         letter-spacing:.07em;color:#999;margin-bottom:2px;
+         display:flex;align-items:center;gap:4px}
+.choice-pill{font-size:6.5px;background:#E0E7FF;color:#4338CA;
+             padding:1px 4px;border-radius:2px;font-weight:700}
+.fi{display:flex;align-items:baseline;gap:4px;padding:1.5px 0}
+.bullet{color:#bbb;flex-shrink:0;font-size:9px}
+.fi-g{font-weight:700;color:#111;flex-shrink:0}
+.fi-txt{font-size:10px;color:#222}
+.grp-note{font-size:8px;color:#a06020;font-style:italic;
+          margin-top:2px;padding-left:10px;line-height:1.4}
+
+/* ── Footer ── */
+footer{margin-top:16px;padding-top:8px;border-top:1px solid #e8e8e8;
+       font-size:7.5px;color:#bbb;text-align:center}
+
+@media print{body{padding:0} @page{size:A4 portrait;margin:10mm 9mm}}
+</style>
+</head><body>
+
+<div class="hdr">
+  <div>
+    <div class="brand">MVP Team · Nutrición</div>
+    <div class="plan-title">${esc(plan.name)}</div>
+    ${clientName ? `<div class="plan-sub">${esc(clientName)}</div>` : ""}
+  </div>
+  <div class="hdr-r">
+    <div class="hdr-date">${today}</div>
+    <div class="hdr-hint">Elige 1 opción por comida (A · B · C)</div>
+  </div>
+</div>
+
+<div class="macro-row">
+  <div class="mbox mbox-on">
+    <div class="mbox-dlbl">💪 Día ON</div>
+    <div class="mbox-kcal">${plan.kcal_on ?? "—"}<span class="mbox-kcal-u">kcal</span></div>
+    <div class="mbox-mac">${macOnLine}</div>
+  </div>
+  <div class="mbox mbox-off">
+    <div class="mbox-dlbl">😴 Día OFF</div>
+    <div class="mbox-kcal">${plan.kcal_off ?? "—"}<span class="mbox-kcal-u">kcal</span></div>
+    <div class="mbox-mac">${macOffLine}</div>
+  </div>
+</div>
+
+${notesHtml}
+
+${mealsHtml}
+
+<footer>Plan nutricional generado por MVP Team · ${today} · Pesa siempre los alimentos en crudo y en seco</footer>
+</body></html>`;
+
+  try {
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const safe = clientName
+      ? clientName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+      : "plan";
+    a.href     = url;
+    a.download = `plan-nutricional-${safe}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  } catch {
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    window.open(URL.createObjectURL(blob));
+  }
+}
+
 // ── ShopBtn ───────────────────────────────────────────────────────────────────
 function ShopBtn({ onClick }: { onClick: () => void }) {
   const [added, setAdded] = useState(false);
@@ -419,6 +669,16 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             <h1 className="text-white font-bold text-base">🥗 Dieta</h1>
             <p className="text-neutral-500 text-xs truncate">{profile.full_name}</p>
           </div>
+          {/* Botón descargar PDF — sólo visible cuando hay plan activo y estamos en la pestaña "Tu dieta" */}
+          {dietTab === "plan" && plan && !viewingHistEntry && (
+            <button
+              onClick={() => exportAssignedPlanPDF(plan, meals, profile.full_name)}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-base active:opacity-70 shrink-0"
+              style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+              title="Descargar plan en PDF">
+              📥
+            </button>
+          )}
           <button onClick={() => setShowShopList(true)}
             className="relative w-10 h-10 rounded-xl flex items-center justify-center text-lg active:opacity-70 shrink-0"
             style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }} title="Lista de la compra">
