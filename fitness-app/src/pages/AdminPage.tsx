@@ -1566,16 +1566,24 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                             </div>
                           )}
                           {da && (
-                            <button
-                              onClick={async () => {
-                                await supabase.from("diet_assignments").update({ active: false }).eq("client_id", client.id);
-                                showToast(`Dieta desasignada de ${client.full_name}`);
-                                await loadDietAssignments();
-                              }}
-                              className="w-full py-2 rounded-lg text-xs text-red-500 mt-1"
-                              style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
-                              Quitar dieta asignada
-                            </button>
+                            <div className="flex gap-2 mt-1">
+                              <button
+                                onClick={() => setEditingDietPlanId(da.plan_id)}
+                                className="flex-1 py-2 rounded-lg text-xs font-medium text-neutral-200"
+                                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                                ✏️ Editar dieta
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  await supabase.from("diet_assignments").update({ active: false }).eq("client_id", client.id);
+                                  showToast(`Dieta desasignada de ${client.full_name}`);
+                                  await loadDietAssignments();
+                                }}
+                                className="flex-1 py-2 rounded-lg text-xs text-red-500"
+                                style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
+                                ✕ Quitar dieta
+                              </button>
+                            </div>
                           )}
                         </div>
                       )}
