@@ -28,6 +28,21 @@ type PlanMeta = {
 
 // ── Helpers ───────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+/** Infiere el slot correcto a partir de la categoría del primer ingrediente válido.
+ *  Se usa al cargar planes cuyo contenido no almacena el campo `slot`. */
+function detectSlotFromItems(rawItems: any[]): SlotFilter {
+  for (const it of rawItems) {
+    if (typeof it !== "object" || !it.ingId) continue;
+    const ing = INGREDIENTS.find(i => i.id === it.ingId);
+    if (!ing) continue;
+    if (["lean_protein", "fatty_protein", "veggie_protein"].includes(ing.category)) return "proteina";
+    if (["clean_carb", "fatty_carb", "protein_carb", "fruit"].includes(ing.category)) return "hidrato";
+    if (["fat", "veggie_fat"].includes(ing.category)) return "grasa";
+    if (ing.category === "veggie") return "verdura";
+  }
+  return "extra";
+}
 const EMOJIS = ["🍳","☕","🥗","🍽️","🥩","🥙","🥪","🍜","🥦","🍎","🥤","🍱","🧀","🥚","🍞"];
 
 const newItem   = (): DraftItem  => ({ _id: uid(), ingId: "", grams: 100 });
@@ -68,7 +83,14 @@ function IngSelect({
     extra:    ["lean_protein", "fatty_protein", "veggie_protein", "protein_carb", "clean_carb", "fatty_carb", "fruit", "fat", "veggie_fat", "veggie"],
   };
   const cats = slotCategories[slot];
-  const filtered = allIngredients.filter(i => cats.includes(i.category as import("../data/ingredients").IngredientCategory));
+  let filtered = allIngredients.filter(i => cats.includes(i.category as import("../data/ingredients").IngredientCategory));
+  // Si el valor actual existe en INGREDIENTS pero no en la lista filtrada (slot incorrecto),
+  // expandimos a "extra" para que el ingrediente aparezca seleccionado.
+  if (value && !filtered.find(i => i.id === value) && allIngredients.find(i => i.id === value)) {
+    filtered = allIngredients.filter(i =>
+      slotCategories["extra"].includes(i.category as import("../data/ingredients").IngredientCategory)
+    );
+  }
   const grouped  = filtered.reduce<Record<string, typeof filtered>>((acc, ing) => {
     if (!acc[ing.category]) acc[ing.category] = [];
     acc[ing.category].push(ing);
@@ -141,11 +163,19 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
           _id: m.id, name: m.name, emoji: m.emoji ?? "🍽️", day_type: m.day_type ?? "both", expanded: false,
           options: (opts ?? []).map((o) => ({
             _id: o.id, name: o.name,
-            groups: (o.content ?? []).map((g: any) => ({
-              _id: uid(), label: g.label ?? "", slot: g.slot ?? "proteina",
-              isChoice: g.isChoice ?? true, note: g.note ?? "",
-              items: (g.items ?? []).map((it: any) => ({ _id: uid(), ingId: it.ingId ?? "", grams: it.grams ?? 100 })),
-            })),
+            groups: (o.content ?? []).map((g: any) => {
+              const rawItems = g.items ?? [];
+              const slot: SlotFilter = (g.slot as SlotFilter) ?? detectSlotFromItems(rawItems);
+              return {
+                _id: uid(), label: g.label ?? "", slot,
+                isChoice: g.isChoice ?? true, note: g.note ?? "",
+                items: rawItems.map((it: any) =>
+                  typeof it === "string"
+                    ? { _id: uid(), ingId: "", grams: 100 }
+                    : { _id: uid(), ingId: it.ingId ?? "", grams: it.grams ?? 100 }
+                ),
+              };
+            }),
           })),
         };
       }));
