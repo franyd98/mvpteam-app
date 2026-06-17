@@ -1318,12 +1318,11 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     try {
       const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 
-      // Desactivar plan cliente anterior si existe
+      // Desactivar TODAS las asignaciones anteriores del cliente (pasan al historial)
       await supabase
         .from("diet_assignments")
         .update({ active: false })
-        .eq("client_id", clientId)
-        .eq("source", "client");
+        .eq("client_id", clientId);
 
       const { data: planRow, error: planErr } = await supabase
         .from("diet_plans")
