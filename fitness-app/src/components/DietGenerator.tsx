@@ -127,11 +127,15 @@ const MEAL_DEFS: MealDef[] = [
           // Huevo/claras es la proteína base de esta opción
           { id: "huevo", label: "Base", macro: "fixed", pct: 0, fixedG: 60,
             ingIds: ["huevo"],
-            noteText: "Puedes usar 125ml claras + 1 huevo entero. Bátelo todo con la proteína y el hidrato para hacer tortitas o bizcocho de micro." },
-          // ISO / Whey para completar el objetivo proteico — se mezcla en la masa
+            noteText: "Puedes usar 125ml claras + 1 huevo entero. Bate junto con la proteína, la leche y el hidrato para hacer tortitas o bizcocho de micro." },
+          // ISO / Whey — siempre mezclado con leche en la masa, nunca solo
           { id: "prot", label: "Proteína en polvo", macro: "protein", pct: 20, minG: 20, maxG: 40,
             ingIds: ["iso","whey"],
-            noteText: "Mezcla en la masa junto con el huevo para enriquecer las tortitas o el bizcocho." },
+            noteText: "Disuelve en la leche antes de batir con el huevo y el hidrato para hacer la masa de las tortitas." },
+          // Leche para la masa (base líquida para disolver el ISO y dar textura a las tortitas)
+          { id: "leche", label: "Leche para la masa", macro: "fixed", pct: 0, fixedG: 150,
+            ingIds: ["leche_vegetal_gen","leche_almendra","leche_avena","leche_prot"],
+            noteText: "Elige la que prefieras. Disuelve aquí la proteína en polvo antes de añadir el huevo y el hidrato." },
           // Solo avena o pan para batir — NO cereales de cuchara
           { id: "hc", label: "Hidratos", macro: "carbs", pct: 25, maxG: 130,
             ingIds: ["harina_avena","avena_copos","pan_centeno","pan_tostado","pan_integral_pan","pan_fibra"] },
@@ -151,7 +155,7 @@ const MEAL_DEFS: MealDef[] = [
           { id: "prot", label: "Proteína láctea", macro: "protein", pct: 20,
             // Solo lácteos que funcionan como base para cereales
             ingIds: ["yogur_prot","yogur_sln","mousse_prot","yogur_griego","qso_batido","leche_prot"],
-            autoAddIso: true },  // ISO calculado dinámicamente para completar el objetivo proteico
+            autoAddIso: true },  // ISO calculado dinámicamente — se disuelve en el propio yogur/lácteo
           { id: "hc", label: "Cereales", macro: "carbs", pct: 25, maxG: 130,
             ingIds: ["avena_crunchy","avena_copos","harina_avena",
                      "corn_flakes","weetabix","copos_trigo","rice_krispies","cereal_mix","crema_arroz","choco_zero"] },
@@ -718,14 +722,14 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
             if (isoG > 0) {
               foods.push({
                 slotId:        `${slot.id}_iso`,
-                label:         "Proteína ISO",
+                label:         "Proteína ISO (complemento)",
                 ing:           isoIng,
                 grams:         isoG,
                 macro:         "protein",
                 targetG:       isoG,
                 pct:           0,
                 availablePool: [isoIng],
-                noteText:      undefined,
+                noteText:      "Disuelve directamente en el yogur / lácteo anterior. Completa el objetivo proteico.",
               });
             }
           }
@@ -1176,6 +1180,22 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
+  // ── Guardar macros del cliente y generar (clientMode sin macros previos) ──
+  const handleClientCalcAndGenerate = async () => {
+    if (!clientId) return;
+    const p    = calcResult ? calcResult.protein_g : (parseFloat(tplProtein) || 0);
+    const c    = calcResult ? calcResult.carbs_g   : (parseFloat(tplCarbs)   || 0);
+    const f    = calcResult ? calcResult.fat_g     : (parseFloat(tplFat)     || 0);
+    const tdee = calcResult?.tdee ?? Math.round(p * 4 + c * 4 + f * 9);
+    // Persistir en client_macros para que próximas visitas los carguen
+    await supabase.from("client_macros").upsert(
+      { client_id: clientId, protein_g: Math.round(p*10)/10, carbs_g: Math.round(c*10)/10, fat_g: Math.round(f*10)/10, tdee: Math.round(tdee) },
+      { onConflict: "client_id" },
+    );
+    setMacroError(false);
+    applyTemplateAndGenerate();
+  };
+
   // ── Aplicar macros y generar (modo plantilla) ────────────────────
   const applyTemplateAndGenerate = () => {
     // Usar calculadora si hay datos, si no usar los inputs manuales
@@ -1389,8 +1409,11 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     );
   }
 
-  // Modo plantilla: formulario estilo MacroCalculator
-  if (isTemplateMode && !macrosOn) {
+  // Modo calculadora: formulario para introducir datos y calcular macros.
+  // Se muestra en plantilla sin cliente (isTemplateMode) O cuando el cliente
+  // no tiene macros guardadas todavía (clientMode && !macrosOn).
+  const showCalcForm = (isTemplateMode && !macrosOn) || (clientMode && !loadingMacros && !macrosOn);
+  if (showCalcForm) {
     const canGenerate = !!calcResult || (!!(parseFloat(tplProtein)) && !!(parseFloat(tplCarbs)));
     const previewOn = calcResult
       ? calcResult
@@ -1405,8 +1428,14 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
             className="w-9 h-9 rounded-lg text-neutral-300 flex items-center justify-center shrink-0"
             style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
           <div>
-            <p className="text-white font-bold text-sm">✨ Generar plantilla</p>
-            <p className="text-neutral-500 text-xs">Introduce los datos del cliente para calcular sus macros</p>
+            <p className="text-white font-bold text-sm">
+              {clientMode ? "📊 Calcular mis macros" : "✨ Generar plantilla"}
+            </p>
+            <p className="text-neutral-500 text-xs">
+              {clientMode
+                ? "Introduce tus datos para personalizar tu dieta"
+                : "Introduce los datos del cliente para calcular sus macros"}
+            </p>
           </div>
         </header>
         <div className="max-w-2xl mx-auto px-4 pt-6 space-y-5">
@@ -1527,21 +1556,23 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
             )}
           </div>
 
-          {/* Nombre del plan */}
-          <div className="rounded-2xl p-4 space-y-2" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
-            <label className="text-[10px] uppercase tracking-wider text-neutral-500 block">Nombre de la plantilla</label>
-            <input value={planName} onChange={e => setPlanName(e.target.value)}
-              placeholder="Ej: Definición verano — Base"
-              className="w-full rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none"
-              style={{ background: "#1A1A1A", border: "1px solid #333" }} />
-          </div>
+          {/* Nombre del plan — solo en modo plantilla (admin) */}
+          {isTemplateMode && (
+            <div className="rounded-2xl p-4 space-y-2" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+              <label className="text-[10px] uppercase tracking-wider text-neutral-500 block">Nombre de la plantilla</label>
+              <input value={planName} onChange={e => setPlanName(e.target.value)}
+                placeholder="Ej: Definición verano — Base"
+                className="w-full rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none"
+                style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+            </div>
+          )}
 
           <button
-            onClick={applyTemplateAndGenerate}
+            onClick={clientMode ? handleClientCalcAndGenerate : applyTemplateAndGenerate}
             disabled={!canGenerate}
             className="w-full py-4 rounded-xl text-white font-bold text-sm disabled:opacity-40"
             style={{ background: "linear-gradient(135deg,#8B1A2F,#C0392B)" }}>
-            ✨ Generar plantilla automáticamente
+            {clientMode ? "✨ Calcular y generar mi dieta" : "✨ Generar plantilla automáticamente"}
           </button>
 
           {/* Separador con acceso a macros manuales */}
@@ -1577,28 +1608,8 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     );
   }
 
-  // Cliente sin macros configurados
-  if (macroError || !macrosOn) {
-    return (
-      <div className="min-h-screen" style={{ background: "#0A0A0A" }}>
-        <header className="px-4 py-3 flex items-center gap-3 sticky top-0 z-10"
-          style={{ background: "#0F0F0F", borderBottom: "1px solid #333" }}>
-          <button onClick={onBack}
-            className="w-9 h-9 rounded-lg text-neutral-300 flex items-center justify-center"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
-          <p className="text-white font-bold text-sm">Generar Dieta</p>
-        </header>
-        <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
-          <span className="text-5xl mb-4">⚠️</span>
-          <p className="text-white font-semibold mb-2">Sin requerimientos calóricos</p>
-          <p className="text-neutral-500 text-sm leading-relaxed">
-            Ve a la pestaña <strong className="text-white">Calculadora</strong> del cliente,
-            introduce sus datos y guarda los requerimientos antes de generar la dieta.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // (caso imposible: loadingMacros=false, macrosOn=null, !clientMode, !isTemplateMode)
+  if (!macrosOn) return null;
 
   // ── Render principal ──────────────────────────────────────────────
   return (

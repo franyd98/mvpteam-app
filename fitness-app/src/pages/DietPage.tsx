@@ -261,27 +261,20 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
       .eq("client_id", profile.id)
       .order("assigned_at", { ascending: false });
 
-    console.log("[DietPage] profile.id:", profile.id);
-    console.log("[DietPage] allAsgn:", allAsgn, "error:", asgnErr);
-
     if (!allAsgn?.length) { setLoading(false); return; }
 
     const activeAsgn   = allAsgn.find(a => a.active);
     const inactiveAsgn = allAsgn.filter(a => !a.active);
 
-    console.log("[DietPage] activeAsgn:", activeAsgn);
-
     // Cargar plan activo
     if (activeAsgn) {
-      const { data: planData, error: planErr } = await supabase
+      const { data: planData } = await supabase
         .from("diet_plans").select("*").eq("id", activeAsgn.plan_id).single();
-      console.log("[DietPage] planData:", planData, "error:", planErr);
       if (planData) {
         setPlan(planData);
-        const { data: mealsData, error: mealsErr } = await supabase
+        const { data: mealsData } = await supabase
           .from("diet_meals").select("*, diet_options(*)")
           .eq("plan_id", planData.id).order("sort_order");
-        console.log("[DietPage] mealsData count:", mealsData?.length, "error:", mealsErr);
         if (mealsData) {
           setMeals(mealsData.map((m: any) => ({
             ...m,
