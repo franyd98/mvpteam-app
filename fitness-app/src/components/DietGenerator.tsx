@@ -1137,6 +1137,8 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
   const [expandedMeals, setExpandedMeals] = useState<Set<string>>(
     new Set(MEAL_DEFS.map(m => m.id)),
   );
+  // Modo cliente con macros ya cargados — toggle para recalcular
+  const [showClientRecalc, setShowClientRecalc] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -1179,6 +1181,27 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
+
+  // ── Actualizar macros del cliente (clientMode con macros ya cargados) ──
+  const handleClientRecalcAndApply = async () => {
+    if (!clientId || !calcResult) return;
+    const p    = calcResult.protein_g;
+    const c    = calcResult.carbs_g;
+    const f    = calcResult.fat_g;
+    const tdee = calcResult.tdee;
+    await supabase.from("client_macros").upsert(
+      { client_id: clientId, protein_g: Math.round(p*10)/10, carbs_g: Math.round(c*10)/10, fat_g: Math.round(f*10)/10, tdee: Math.round(tdee) },
+      { onConflict: "client_id" },
+    );
+    const on: DailyMacros = { protein_g: p, carbs_g: c, fat_g: f, kcal: tdee };
+    const offCarbs = round1(c * (1 - offPct / 100));
+    const off: DailyMacros = { protein_g: p, carbs_g: offCarbs, fat_g: f, kcal: Math.round(p*4 + offCarbs*4 + f*9) };
+    setMacrosOn(on);
+    setMacrosOff(off);
+    setShowClientRecalc(false);
+    setGenerated(false);  // reset plan para que regeneren con nuevos macros
+    showToast("✅ Macros actualizados");
+  };
 
   // ── Guardar macros del cliente y generar (clientMode sin macros previos) ──
   const handleClientCalcAndGenerate = async () => {
@@ -1688,6 +1711,114 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
             </div>
           </div>
         </div>
+
+        {/* ── Recalcular macros (solo clientMode con macros ya cargados) ── */}
+        {clientMode && (
+          <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: "1px solid #222" }}>
+            <button
+              onClick={() => setShowClientRecalc(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left">
+              <span className="text-sm font-semibold text-white">⚙️ Actualizar mis datos</span>
+              <span className="text-neutral-500 text-xs">{showClientRecalc ? "▲ Cerrar" : "▼ Cambiar peso / entreno / objetivo"}</span>
+            </button>
+
+            {showClientRecalc && (
+              <div className="border-t px-4 pb-4 space-y-4" style={{ borderColor: "#1E1E1E" }}>
+
+                {/* Sexo */}
+                <div className="grid grid-cols-2 gap-2 pt-3">
+                  {(["male","female"] as const).map(s => (
+                    <button key={s} onClick={() => setCalcSex(s)}
+                      className="py-2.5 rounded-xl text-sm font-bold transition-colors"
+                      style={calcSex === s
+                        ? { background: "#fff", color: "#000" }
+                        : { background: "#1A1A1A", color: "#777", border: "1px solid #2A2A2A" }}>
+                      {s === "male" ? "Hombre" : "Mujer"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Edad / Altura / Peso */}
+                <div className="grid grid-cols-3 gap-3">
+                  {([
+                    { label: "Edad",   val: calcAge,    set: setCalcAge,    unit: "años", placeholder: "28" },
+                    { label: "Altura", val: calcHeight, set: setCalcHeight, unit: "cm",   placeholder: "175" },
+                    { label: "Peso",   val: calcWeight, set: setCalcWeight, unit: "kg",   placeholder: "75" },
+                  ]).map(({ label, val, set, unit, placeholder }) => (
+                    <div key={label} className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</label>
+                      <div className="flex items-center gap-1">
+                        <input type="number" value={val} onChange={e => set(e.target.value)}
+                          placeholder={placeholder}
+                          className="w-full rounded-lg px-2 py-2.5 text-white text-sm font-bold text-center focus:outline-none"
+                          style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+                        <span className="text-neutral-600 text-[10px] shrink-0">{unit}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actividad */}
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1.5">Factor de actividad</label>
+                  <select value={calcActivity} onChange={e => setCalcActivity(Number(e.target.value))}
+                    className="w-full rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none"
+                    style={{ background: "#1A1A1A", border: "1px solid #333" }}>
+                    {ACTIVITY_LEVELS.map(l => (
+                      <option key={l.value} value={l.value}>{l.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Objetivo */}
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-wider text-neutral-500 block">Objetivo</label>
+                  {GOAL_OPTIONS.map(g => (
+                    <button key={g.value} onClick={() => { setCalcGoal(g.value); setCalcProtMult(g.protein); setCalcFatMult(g.fat); }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors"
+                      style={calcGoal === g.value
+                        ? { background: "#fff", border: "1px solid #fff" }
+                        : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                      <div>
+                        <p className={"text-sm font-semibold " + (calcGoal === g.value ? "text-black" : "text-white")}>{g.label}</p>
+                        <p className={"text-xs " + (calcGoal === g.value ? "text-neutral-600" : "text-neutral-500")}>{g.sublabel}</p>
+                      </div>
+                      {calcGoal === g.value && <span className="text-emerald-600 font-bold">✓</span>}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Preview macros */}
+                {calcResult && (
+                  <div className="rounded-xl p-3 space-y-2" style={{ background: "#0A1A0A", border: "1px solid #1A3A1A" }}>
+                    <p className="text-[10px] uppercase tracking-wider text-emerald-600">Nuevos macros calculados</p>
+                    <div className="flex gap-2">
+                      {[
+                        { label: "Proteína", val: calcResult.protein_g, color: "#F87171" },
+                        { label: "Hidratos", val: calcResult.carbs_g,   color: "#FBBF24" },
+                        { label: "Grasa",    val: calcResult.fat_g,     color: "#60A5FA" },
+                      ].map(({ label, val, color }) => (
+                        <div key={label} className="flex-1 rounded-lg px-2 py-2 text-center" style={{ background: "#111" }}>
+                          <p className="text-[9px] text-neutral-500 uppercase">{label}</p>
+                          <p className="text-sm font-bold" style={{ color }}>{val.toFixed(0)}<span className="text-[10px] font-normal text-neutral-500">g</span></p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-center text-white font-bold text-base">{calcResult.tdee} <span className="text-neutral-500 text-xs">kcal ON</span></p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleClientRecalcAndApply}
+                  disabled={!calcResult}
+                  className="w-full py-3.5 rounded-xl text-white font-bold text-sm disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg,#8B1A2F,#C0392B)" }}>
+                  ✅ Actualizar macros y regenerar
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Nombre y notas (solo admin) ── */}
         {!clientMode && (
