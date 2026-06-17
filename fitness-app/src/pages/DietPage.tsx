@@ -328,6 +328,10 @@ function MealCards({
   onSaveOption:    (id: string, opts: Record<string, number>) => void;
   onAddToShop:     (ingId: string, grams: number) => void;
 }) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleCollapse = (id: string) =>
+    setCollapsed(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
   const filtered = meals.filter(m => m.day_type === "both" || m.day_type === dayType);
   if (filtered.length === 0)
     return <p className="text-center text-neutral-500 text-sm py-10">No hay comidas configuradas.</p>;
@@ -335,37 +339,46 @@ function MealCards({
   return (
     <div className="space-y-3">
       {filtered.map(meal => {
-        const totalOpts = meal.options.length;
-        const safeIdx   = Math.min(selectedOptions[meal.id] ?? 0, totalOpts - 1);
-        const activeOpt = meal.options[safeIdx];
+        const totalOpts  = meal.options.length;
+        const safeIdx    = Math.min(selectedOptions[meal.id] ?? 0, totalOpts - 1);
+        const activeOpt  = meal.options[safeIdx];
         const hasPending = pendingSave.has(meal.id);
+        const isCollapsed = collapsed.has(meal.id);
 
         return (
           <div key={meal.id} className="rounded-2xl overflow-hidden"
             style={{ background: "#111", border: "1px solid #1E1E1E" }}>
 
-            {/* Cabecera */}
+            {/* Cabecera — clic en emoji/nombre colapsa; controles de opción a la derecha */}
             <div className="flex items-center gap-3 px-4 py-3.5">
-              <span className="text-2xl shrink-0">{meal.emoji}</span>
-              <span className="text-white font-semibold text-sm flex-1 min-w-0 truncate">{meal.name}</span>
+              <button
+                onClick={() => toggleCollapse(meal.id)}
+                className="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-70">
+                <span className="text-2xl shrink-0">{meal.emoji}</span>
+                <span className="text-white font-semibold text-sm flex-1 min-w-0 truncate">{meal.name}</span>
+                <span className="text-neutral-600 text-xs shrink-0 mr-1">
+                  {isCollapsed ? "▼" : "▲"}
+                </span>
+              </button>
+
               {totalOpts > 1 && (
                 <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => onChangeOption(meal.id, -1, totalOpts)}
+                  <button onClick={() => { onChangeOption(meal.id, -1, totalOpts); if (isCollapsed) toggleCollapse(meal.id); }}
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-300 active:opacity-70 text-lg font-bold"
                     style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>‹</button>
                   <div className="min-w-[44px] text-center">
                     <span className="text-white text-sm font-bold">{OPT_LABELS[safeIdx] ?? String(safeIdx + 1)}</span>
                     <span className="block text-[9px] text-neutral-600">/{totalOpts}</span>
                   </div>
-                  <button onClick={() => onChangeOption(meal.id, 1, totalOpts)}
+                  <button onClick={() => { onChangeOption(meal.id, 1, totalOpts); if (isCollapsed) toggleCollapse(meal.id); }}
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-300 active:opacity-70 text-lg font-bold"
                     style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>›</button>
                 </div>
               )}
             </div>
 
-            {/* Contenido de la opción */}
-            {activeOpt && (
+            {/* Contenido — oculto si está colapsado */}
+            {!isCollapsed && activeOpt && (
               <div className="border-t" style={{ borderColor: "#1A1A1A" }}>
                 {activeOpt.name && (
                   <p className="px-4 pt-2.5 pb-1 text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">
@@ -788,6 +801,16 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                   );
                 })}
               </div>
+
+              {/* Botón descargar PDF */}
+              {!viewingHistEntry && (
+                <button
+                  onClick={() => exportAssignedPlanPDF(plan!, meals, profile.full_name)}
+                  className="w-full py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:opacity-70"
+                  style={{ background: "#111", border: "1px solid #2A2A2A", color: "#aaa" }}>
+                  📥 Descargar mi plan completo (PDF)
+                </button>
+              )}
 
               {/* Indicaciones */}
               {displayPlan.notes && displayPlan.notes !== "__CLIENT_GENERATED__" && (
