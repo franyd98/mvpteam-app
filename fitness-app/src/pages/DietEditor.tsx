@@ -12,7 +12,7 @@ import {
 // ── Tipos internos ────────────────────────────────────────────
 type SlotFilter = "proteina" | "hidrato" | "grasa" | "verdura" | "extra";
 
-type DraftItem = { _id: string; ingId: string; grams: number };
+type DraftItem = { _id: string; ingId: string; grams: number; text?: string };
 type DraftGroup = { _id: string; label: string; slot: SlotFilter; isChoice: boolean; items: DraftItem[]; note: string };
 type DraftOption = { _id: string; name: string; groups: DraftGroup[] };
 type DraftMeal   = { _id: string; name: string; emoji: string; day_type: "on"|"off"|"both"; options: DraftOption[]; expanded: boolean };
@@ -171,7 +171,7 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
                 isChoice: g.isChoice ?? true, note: g.note ?? "",
                 items: rawItems.map((it: any) =>
                   typeof it === "string"
-                    ? { _id: uid(), ingId: "", grams: 100 }
+                    ? { _id: uid(), ingId: "", grams: 0, text: it }
                     : { _id: uid(), ingId: it.ingId ?? "", grams: it.grams ?? 100 }
                 ),
               };
@@ -219,7 +219,12 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
           const o = m.options[j];
           const content = o.groups.map(g => ({
             label: g.label, slot: g.slot, isChoice: g.isChoice, note: g.note,
-            items: g.items.filter(it => it.ingId).map(it => ({ ingId: it.ingId, grams: it.grams })),
+            items: g.items
+              .filter(it => it.ingId || (it.text !== undefined && it.text.trim()))
+              .map(it => it.text !== undefined
+                ? it.text                                       // string libre → se guarda como string
+                : { ingId: it.ingId, grams: it.grams }         // ingrediente → {ingId, grams}
+              ),
           }));
           await supabase.from("diet_options").insert({ meal_id: mRow.id, name: o.name, content, sort_order: j });
         }
@@ -416,14 +421,29 @@ export default function DietEditor({ planId, onBack }: { planId: string | null; 
                         </div>
                         {grp.items.map(item => (
                           <div key={item._id} className="flex items-center gap-2">
-                            <IngSelect value={item.ingId} slot={grp.slot} allIngredients={allIngredients}
-                              onChange={v => updItem(meal._id, opt._id, grp._id, item._id, { ingId: v })} />
-                            <input type="number" value={item.grams}
-                              onFocus={e => e.target.select()}
-                              onChange={e => updItem(meal._id, opt._id, grp._id, item._id, { grams: e.target.value === "" ? 0 : Number(e.target.value) })}
-                              className="w-16 text-xs text-center rounded-lg px-2 py-1.5 text-white focus:outline-none"
-                              style={{ background: "#1A1A1A", border: "1px solid #333" }} />
-                            <span className="text-neutral-600 text-xs shrink-0">g</span>
+                            {item.text !== undefined ? (
+                              /* Item de texto libre (string en el SQL original) */
+                              <input
+                                type="text"
+                                value={item.text}
+                                onChange={e => updItem(meal._id, opt._id, grp._id, item._id, { text: e.target.value })}
+                                placeholder="Descripción libre…"
+                                className="flex-1 text-sm rounded-lg px-2 py-1.5 text-neutral-300 italic focus:outline-none"
+                                style={{ background: "#1A1A1A", border: "1px solid #444" }}
+                              />
+                            ) : (
+                              /* Item con ingrediente seleccionable */
+                              <>
+                                <IngSelect value={item.ingId} slot={grp.slot} allIngredients={allIngredients}
+                                  onChange={v => updItem(meal._id, opt._id, grp._id, item._id, { ingId: v })} />
+                                <input type="number" value={item.grams}
+                                  onFocus={e => e.target.select()}
+                                  onChange={e => updItem(meal._id, opt._id, grp._id, item._id, { grams: e.target.value === "" ? 0 : Number(e.target.value) })}
+                                  className="w-16 text-xs text-center rounded-lg px-2 py-1.5 text-white focus:outline-none"
+                                  style={{ background: "#1A1A1A", border: "1px solid #333" }} />
+                                <span className="text-neutral-600 text-xs shrink-0">g</span>
+                              </>
+                            )}
                             {grp.items.length > 1 && (
                               <button onClick={() => updGroup(meal._id, opt._id, grp._id, { items: grp.items.filter(i => i._id !== item._id) })}
                                 className="text-neutral-700 hover:text-red-400 text-xs">✕</button>
