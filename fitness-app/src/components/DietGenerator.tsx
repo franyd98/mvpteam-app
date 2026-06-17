@@ -127,7 +127,11 @@ const MEAL_DEFS: MealDef[] = [
           // Huevo/claras es la proteína base de esta opción
           { id: "huevo", label: "Base", macro: "fixed", pct: 0, fixedG: 60,
             ingIds: ["huevo"],
-            noteText: "Puedes usar 125ml claras + 1 huevo entero. Bátelo todo con el hidrato para hacer tortitas o bizcocho de micro." },
+            noteText: "Puedes usar 125ml claras + 1 huevo entero. Bátelo todo con la proteína y el hidrato para hacer tortitas o bizcocho de micro." },
+          // ISO / Whey para completar el objetivo proteico — se mezcla en la masa
+          { id: "prot", label: "Proteína en polvo", macro: "protein", pct: 20, minG: 20, maxG: 40,
+            ingIds: ["iso","whey"],
+            noteText: "Mezcla en la masa junto con el huevo para enriquecer las tortitas o el bizcocho." },
           // Solo avena o pan para batir — NO cereales de cuchara
           { id: "hc", label: "Hidratos", macro: "carbs", pct: 25, maxG: 130,
             ingIds: ["harina_avena","avena_copos","pan_centeno","pan_tostado","pan_integral_pan","pan_fibra"] },
@@ -187,7 +191,7 @@ const MEAL_DEFS: MealDef[] = [
       {
         id: "c2_a", label: "Pan + Embutido / Jamón",
         slots: [
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 20, maxG: 130,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 25, maxG: 130,
             ingIds: ["pan_fibra","pan_centeno","pan_tostado","pan_integral_pan",
                      "pan_wasa","tortas_arroz","tortas_maiz"] },
           { id: "prot", label: "Proteína", macro: "protein", pct: 15, minG: 50, maxG: 100,
@@ -200,7 +204,7 @@ const MEAL_DEFS: MealDef[] = [
       {
         id: "c2_b", label: "Pan + Queso fresco / Atún",
         slots: [
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 20, maxG: 130,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 25, maxG: 130,
             ingIds: ["pan_fibra","pan_centeno","pan_tostado","pan_integral_pan",
                      "pan_wasa","tortas_arroz","tortas_maiz"] },
           { id: "prot", label: "Proteína", macro: "protein", pct: 15, minG: 50, maxG: 150,
@@ -213,7 +217,7 @@ const MEAL_DEFS: MealDef[] = [
       {
         id: "c2_c", label: "Bocadillo / Wrap (pan de molde o fajita)",
         slots: [
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 20, maxG: 130,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 25, maxG: 130,
             ingIds: ["pan_molde","fajitas","pan_blanco","pan_centeno","pan_integral_pan"] },
           { id: "prot", label: "Proteína", macro: "protein", pct: 15, minG: 50, maxG: 150,
             ingIds: ["qso_eatlean","fiambre_pavo","jamon","lomo_curado_pavo","qso_fresco","atun_lata"] },
@@ -237,7 +241,7 @@ const MEAL_DEFS: MealDef[] = [
             // Exactamente los mismos que en el PDF
             ingIds: ["pollo","pavo","lomo_cerdo","ternera","picada_pollo","hamburguesa",
                      "merluza","lenguado","lubina","tilapia","atun_lata","gambas","sepia"] },
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 30, maxG: 220,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 25, maxG: 220,
             ingIds: ["pasta","pasta_integral","arroz","arroz_int","patata","boniato","boniato_rojo",
                      "noquis","cuscus","noodles_arroz","arroz_3del","fajitas"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 35,
@@ -253,7 +257,7 @@ const MEAL_DEFS: MealDef[] = [
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 25, minG: 120, maxG: 220,
             ingIds: ["merluza","tilapia","lenguado","lubina","sepia","gambas","calamar","salmon","trucha"] },
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 30, maxG: 250,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 25, maxG: 250,
             ingIds: ["patata","patata_bote","boniato","boniato_rojo","noquis","arroz","arroz_int","cuscus"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 35,
             ingIds: ["aceite_oliva","aguacate","guacamole"],
@@ -268,7 +272,7 @@ const MEAL_DEFS: MealDef[] = [
         slots: [
           { id: "prot", label: "Proteína", macro: "protein", pct: 25, minG: 100, maxG: 180,
             ingIds: ["salmon","ternera","trucha","lomo_atun","pollo","pavo","lomo_cerdo"] },
-          { id: "hc", label: "Hidratos", macro: "carbs", pct: 30, maxG: 220,
+          { id: "hc", label: "Hidratos", macro: "carbs", pct: 25, maxG: 220,
             ingIds: ["arroz","pasta","patata","boniato","noodles_arroz","cuscus","arroz_int","pasta_integral","noquis"] },
           { id: "fat", label: "Grasa", macro: "fat", pct: 35,
             ingIds: ["aceite_oliva","aguacate","guacamole"],
