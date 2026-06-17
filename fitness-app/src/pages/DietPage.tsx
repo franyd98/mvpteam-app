@@ -257,9 +257,9 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
     // Todas las asignaciones del cliente, más recientes primero
     const { data: allAsgn, error: asgnErr } = await supabase
       .from("diet_assignments")
-      .select("id, plan_id, source, active, created_at")
+      .select("id, plan_id, source, active, assigned_at")
       .eq("client_id", profile.id)
-      .order("created_at", { ascending: false });
+      .order("assigned_at", { ascending: false });
 
     console.log("[DietPage] profile.id:", profile.id);
     console.log("[DietPage] allAsgn:", allAsgn, "error:", asgnErr);
