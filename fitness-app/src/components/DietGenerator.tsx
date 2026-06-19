@@ -980,7 +980,7 @@ function exportDietPDF(
       : `<div class="mcol-single">${onHtml}</div>`;
 
     return `<div class="meal">
-      <div class="mhd" style="background:${col}">${mOn.emoji}  ${mOn.name.toUpperCase()}</div>
+      <div class="mhd" style="background:${col}"><span style="font-size:22px;line-height:1">${mOn.emoji}</span><span>${mOn.name.toUpperCase()}</span></div>
       ${layout}
     </div>`;
   }
@@ -998,91 +998,125 @@ function exportDietPDF(
   <title>${planName || "Plan Nutricional"}${clientName ? " — " + clientName : ""}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Georgia,'Times New Roman',serif;color:#111;background:#fff;
-         padding:20px 22px;font-size:11px;line-height:1.55}
-    /* Cabecera */
-    .hdr{display:flex;align-items:flex-start;justify-content:space-between;
-         padding-bottom:10px;border-bottom:2px solid #111;margin-bottom:12px}
-    .brand{font-family:-apple-system,Arial,sans-serif;font-size:7.5px;font-weight:900;
-           letter-spacing:.22em;color:#8B1A2F;margin-bottom:3px;text-transform:uppercase}
-    h1{font-size:17px;font-weight:700;font-family:-apple-system,Arial,sans-serif}
-    .sub{font-size:10px;color:#555;margin-top:2px;font-family:-apple-system,Arial,sans-serif}
-    .dt{font-size:9px;color:#888;text-align:right;font-family:-apple-system,Arial,sans-serif}
-    /* Macro boxes */
-    .mboxes{display:flex;gap:10px;margin-bottom:14px}
-    .mbox{flex:1;padding:7px 11px;border-radius:4px;border:1px solid #ddd}
-    .mbox .dlbl2{font-family:-apple-system,Arial,sans-serif;font-size:8px;
-                 font-weight:900;letter-spacing:.1em;margin-bottom:3px}
-    .mbox .kc{font-size:16px;font-weight:700;font-family:-apple-system,Arial,sans-serif}
-    .mbox .ml{font-size:9.5px;margin-top:2px;font-family:-apple-system,Arial,sans-serif}
-    /* Comida */
-    .meal{margin-bottom:16px;break-inside:avoid;border:1px solid #bbb}
-    .mhd{font-family:-apple-system,Arial,sans-serif;color:#fff;font-weight:800;
-         font-size:11.5px;letter-spacing:.05em;padding:7px 11px}
-    /* 2 columnas */
+    body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;
+         background:#f5f5f5;font-size:13px;line-height:1.55}
+
+    /* ── Cabecera ── */
+    .hdr{background:linear-gradient(135deg,#0d0d0d 0%,#1e0a10 55%,#090d1e 100%);
+         color:#fff;padding:30px 32px 26px;display:flex;
+         align-items:flex-start;justify-content:space-between;
+         margin-bottom:24px;border-radius:0 0 16px 16px}
+    .brand{font-size:9px;font-weight:900;letter-spacing:.35em;color:#C0394F;
+           text-transform:uppercase;margin-bottom:8px}
+    .plan-title{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;color:#fff}
+    .plan-sub{font-size:14px;color:#bbb;margin-top:6px;font-weight:500}
+    .hdr-r{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+    .hdr-date{font-size:10px;color:#888;background:rgba(255,255,255,.07);
+              padding:4px 10px;border-radius:20px}
+    .hdr-hint{font-size:9.5px;color:#666;margin-top:2px}
+
+    /* ── Macro boxes ── */
+    .mboxes{display:grid;grid-template-columns:1fr 1fr;gap:14px;
+            margin:0 0 22px;padding-bottom:22px;border-bottom:2px solid #e8e8e8}
+    .mbox{border-radius:12px;padding:16px 20px;border:1px solid #e4e4e4;background:#fff;
+          box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    .mbox-on{border-left:5px solid #C0394F}
+    .mbox-off{border-left:5px solid #3B4F9F}
+    .dlbl2{font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+    .mbox-on .dlbl2{color:#C0394F}
+    .mbox-off .dlbl2{color:#3B4F9F}
+    .kc{font-size:30px;font-weight:800;line-height:1.1;color:#111}
+    .kc-u{font-size:13px;font-weight:400;color:#888;margin-left:4px}
+    .ml{font-size:11px;margin-top:8px;display:flex;gap:14px}
+
+    /* ── Comida ── */
+    .meal{margin-bottom:20px;border-radius:14px;overflow:hidden;
+          border:1px solid #e0e0e0;break-inside:avoid;
+          background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.07)}
+    .mhd{display:flex;align-items:center;gap:12px;padding:13px 20px;
+         color:#fff;font-weight:800;font-size:14px;letter-spacing:.04em}
+
+    /* ── 2 columnas ON/OFF ── */
     .mcols{display:grid;grid-template-columns:1fr 1fr}
-    .mcol-single{}
-    .dcol{border-right:1px solid #ccc}
+    .dcol{border-right:1px solid #ebebeb}
     .dcol:last-child{border-right:none}
-    .dlbl{font-family:-apple-system,Arial,sans-serif;font-size:8px;font-weight:900;
-          letter-spacing:.1em;padding:4px 9px;border-bottom:1px solid #ddd}
-    .on-lbl{color:#8B1A2F;background:#FDF4F4}
-    .off-lbl{color:#1A4F8F;background:#EAF2FB}
-    /* Opción */
-    .opt{border-bottom:1px solid #e8e8e8}
+    .dlbl{font-size:9px;font-weight:900;letter-spacing:.12em;
+          text-transform:uppercase;padding:8px 16px;border-bottom:1px solid #eee}
+    .on-lbl{color:#B02030;background:#FEF2F2}
+    .off-lbl{color:#2B3E8A;background:#EEF2FF}
+
+    /* ── Opción ── */
+    .opt{border-bottom:1px solid #f2f2f2}
     .opt:last-child{border-bottom:none}
-    .ohd{display:flex;align-items:center;gap:6px;padding:5px 9px;
-         background:#f8f8f8;border-bottom:1px solid #ececec}
-    .obadge{font-family:-apple-system,Arial,sans-serif;font-size:7.5px;font-weight:900;
-            color:#fff;padding:2px 6px;border-radius:2px;letter-spacing:.06em}
-    .olbl{font-family:-apple-system,Arial,sans-serif;font-size:9px;color:#666;font-style:italic}
-    .obody{padding:5px 9px 6px}
-    /* Slot fijo */
-    .sf{font-size:10.5px;padding:2px 0;color:#222}
-    .sf strong{font-weight:700}
-    .fnote{font-size:8.5px;color:#aaa;font-style:italic}
-    /* Slot variable */
-    .sv{margin:5px 0 3px}
-    .slbl{font-family:-apple-system,Arial,sans-serif;font-size:9.5px;
-          font-weight:700;color:#333;margin-bottom:2px}
-    .sv ol{padding-left:16px;margin:0}
-    .sv li{font-size:10.5px;color:#222;padding:1px 0}
-    .sv li strong{font-weight:700}
-    /* Nota */
-    .snote{font-family:-apple-system,Arial,sans-serif;font-size:8.5px;
-           color:#a06020;font-style:italic;margin-top:3px;padding-left:2px}
-    footer{margin-top:12px;padding-top:6px;border-top:1px solid #ddd;
-           font-size:7.5px;color:#bbb;text-align:center;
-           font-family:-apple-system,Arial,sans-serif}
-    @media print{body{padding:5mm 6mm} @page{size:A4 portrait;margin:8mm}}
+    .ohd{display:flex;align-items:center;gap:8px;padding:8px 16px;
+         background:#fafafa;border-bottom:1px solid #f0f0f0}
+    .obadge{font-size:9px;font-weight:900;color:#fff;padding:3px 9px;
+            border-radius:5px;letter-spacing:.06em;flex-shrink:0}
+    .olbl{font-size:10.5px;color:#999;font-style:italic}
+    .obody{padding:10px 16px 13px}
+
+    /* ── Slot fijo ── */
+    .sf{display:flex;align-items:baseline;gap:6px;padding:3.5px 0;font-size:12px;color:#2a2a2a}
+    .sf strong{font-weight:800;font-size:12.5px;background:#f3f3f3;
+               padding:1px 5px;border-radius:4px;color:#111}
+    .fnote{font-size:9px;color:#bbb;font-style:italic;margin-left:2px}
+
+    /* ── Slot variable (lista de alternativas) ── */
+    .sv{margin:8px 0 5px}
+    .slbl{font-size:10px;font-weight:800;color:#888;text-transform:uppercase;
+          letter-spacing:.07em;margin-bottom:5px}
+    .sv ol{padding-left:0;margin:0;list-style:none}
+    .sv li{font-size:12px;color:#222;padding:3px 0;display:flex;
+           align-items:baseline;gap:6px;border-bottom:1px solid #f5f5f5}
+    .sv li:last-child{border-bottom:none}
+    .sv li strong{font-weight:800;font-size:12.5px;background:#f3f3f3;
+                  padding:1px 5px;border-radius:4px;color:#111;flex-shrink:0}
+    .sv li::before{content:"·";color:#ddd;font-size:14px;flex-shrink:0}
+
+    /* ── Nota de slot ── */
+    .snote{font-size:9.5px;color:#a06020;font-style:italic;margin-top:5px;
+           padding-left:10px;line-height:1.5;border-left:2px solid #FDE68A}
+
+    footer{margin-top:24px;padding:12px 0;border-top:1px solid #e8e8e8;
+           font-size:9px;color:#ccc;text-align:center;letter-spacing:.04em}
+
+    @media print{
+      body{background:#fff;padding:0}
+      .meal{box-shadow:none}
+      .mbox{box-shadow:none}
+      @page{size:A4 portrait;margin:10mm 10mm}
+    }
   </style>
   </head><body>
 
   <div class="hdr">
     <div>
-      <div class="brand">MVP TEAM</div>
-      <h1>${planName || "Plan Nutricional"}</h1>
-      ${clientName ? `<div class="sub">${clientName}</div>` : ""}
+      <div class="brand">MVP Team · Nutrición</div>
+      <div class="plan-title">${planName || "Plan Nutricional"}</div>
+      ${clientName ? `<div class="plan-sub">Plan de ${clientName}</div>` : ""}
     </div>
-    <div class="dt">${today}<br><span style="font-size:8px;color:#bbb">Elige 1 opción por comida (A · B · C)</span></div>
+    <div class="hdr-r">
+      <div class="hdr-date">${today}</div>
+      <div class="hdr-hint">Elige 1 opción por comida · A · B · C</div>
+    </div>
   </div>
 
   <div class="mboxes">
-    <div class="mbox" style="border-left:3px solid #8B1A2F;background:#FDF4F4">
-      <div class="dlbl2" style="color:#8B1A2F">💪 DÍA ON</div>
-      <div class="kc">${macrosOn.kcal} kcal</div>
+    <div class="mbox mbox-on">
+      <div class="dlbl2">💪 Día ON</div>
+      <div class="kc">${macrosOn.kcal}<span class="kc-u">kcal</span></div>
       <div class="ml">${onKcalLine}</div>
     </div>
-    ${macrosOff ? `<div class="mbox" style="border-left:3px solid #1A4F8F;background:#EAF2FB">
-      <div class="dlbl2" style="color:#1A4F8F">😴 DÍA OFF</div>
-      <div class="kc">${macrosOff.kcal} kcal</div>
+    ${macrosOff ? `<div class="mbox mbox-off">
+      <div class="dlbl2">😴 Día OFF</div>
+      <div class="kc">${macrosOff.kcal}<span class="kc-u">kcal</span></div>
       <div class="ml">${offKcalLine}</div>
     </div>` : ""}
   </div>
 
   ${mealsHtml}
 
-  <footer>Plan generado por MVP Team · ${today} · Las cantidades están personalizadas según tus macros objetivo · Pesa siempre los alimentos en crudo y en seco</footer>
+  <footer>Plan generado por MVP Team · ${today} · Cantidades personalizadas según macros objetivo · Pesa los alimentos en crudo y en seco</footer>
   </body></html>`;
 
   // ── Descargar como HTML ───────────────────────────────────────────────────
