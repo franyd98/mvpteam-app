@@ -342,6 +342,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       rpe: data.rpe,
       unit: settings.weightUnit,
       loggedAt: new Date().toISOString(),
+      rp_reps:     data.rp_reps     ?? null,
+      drop_weight: data.drop_weight ?? null,
+      drop_reps:   data.drop_reps   ?? null,
     };
     setLogs((prev) => [
       ...prev.filter(
@@ -911,6 +914,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                             <p className="text-[10px] text-blue-400 px-3 pt-0.5 pb-1">
                               Ant (Mc {validPrevLog.microcycleNumber}): {validPrevLog.weight} {validPrevLog.unit} × {validPrevLog.reps}
                               {validPrevLog.rpe > 0 ? ` · RPE ${validPrevLog.rpe}` : ""}
+                              {validPrevLog.rp_reps != null ? ` · 🔁 +${validPrevLog.rp_reps}r` : ""}
+                              {validPrevLog.drop_weight != null ? ` · 📉 ${validPrevLog.drop_weight}×${validPrevLog.drop_reps ?? "?"}` : ""}
                             </p>
                           )}
                         </div>

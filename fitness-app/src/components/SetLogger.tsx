@@ -172,6 +172,8 @@ export default function SetLogger({
                   <p className="text-xs font-semibold text-blue-200">
                     {previousLog.weight} {previousLog.unit} × {previousLog.reps} reps
                     {previousLog.rpe > 0 && <span className="ml-2 text-blue-400 font-normal">· RPE {previousLog.rpe}</span>}
+                    {(previousLog as any).rp_reps != null && <span className="ml-2 text-amber-300 font-normal">· 🔁 +{(previousLog as any).rp_reps}r</span>}
+                    {(previousLog as any).drop_weight != null && <span className="ml-2 text-purple-300 font-normal">· 📉 {(previousLog as any).drop_weight}×{(previousLog as any).drop_reps ?? "?"}</span>}
                   </p>
                 </div>
                 {existingLog && (
