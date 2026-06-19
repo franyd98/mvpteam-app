@@ -418,6 +418,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       ?.exercises[editing.exerciseIndex];
     return ed ?? null;
   })();
+  // Nombre efectivo del ejercicio en edición (sustitución activa o nombre original)
+  const editingSub = editing
+    ? substitutions[subKey(editing.dayId, editing.microcycleNumber, editing.exerciseIndex)]
+    : null;
   const editingTargetSet = editingExercise?.sets.find((s) => s.number === editing?.setNumber);
   const editingExistingLog = editing
     ? findLatestLog(logs, editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
@@ -1085,7 +1089,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       {/* ── Modales (siempre por encima de todo) ── */}
       {editing && editingExercise && editingTargetSet && (
         <SetLogger
-          exerciseName={editingExercise.name}
+          exerciseName={editingSub?.name ?? editingExercise.name}
           coachNote={editingExercise.coachNote}
           exerciseNote={editingExercise.note}
           targetSet={editingTargetSet}
@@ -1285,34 +1289,50 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   </button>
                 )}
 
-                {Object.entries(byGroup).map(([group, exs]) => (
-                  <div key={group}>
-                    <p className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-neutral-600 font-semibold sticky top-0"
-                      style={{ background: "#0F0F0F" }}>{group}</p>
-                    {exs.map((e, i) => {
-                      const isCurrent = e.name === (substitutions[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]?.name ?? swapTarget.origName);
-                      return (
-                        <button key={i}
-                          onClick={() => {
-                            if (e.name === swapTarget.origName) {
-                              // Selecciona el original → quita sustitución
-                              updateSubstitutions(prev => { const n = { ...prev }; delete n[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]; return n; });
-                            } else {
-                              updateSubstitutions(prev => ({ ...prev, [subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]: { name: e.name, muscleGroup: e.muscleGroup } }));
-                            }
-                            setSwapTarget(null);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 border-b text-left active:bg-neutral-800 transition-colors"
-                          style={{ borderColor: "#1a1a1a", background: isCurrent ? "#1A2A1A" : "transparent" }}>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white font-medium truncate">{e.name}</p>
-                          </div>
-                          {isCurrent && <span className="text-emerald-400 text-xs font-bold shrink-0">✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
+                {(() => {
+                  // Nombres ya asignados a OTRAS posiciones en el mismo día/microciclo
+                  const usedElsewhere = new Set(
+                    Object.entries(substitutions)
+                      .filter(([k]) => {
+                        const [kDay, kMc, kEx] = k.split(":");
+                        return kDay === swapTarget.dayId &&
+                               kMc === String(swapTarget.mcNum) &&
+                               kEx !== String(swapTarget.exIdx);
+                      })
+                      .map(([, v]) => v.name)
+                  );
+                  return Object.entries(byGroup).map(([group, exs]) => (
+                    <div key={group}>
+                      <p className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-neutral-600 font-semibold sticky top-0"
+                        style={{ background: "#0F0F0F" }}>{group}</p>
+                      {exs.map((e, i) => {
+                        const isCurrent = e.name === (substitutions[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]?.name ?? swapTarget.origName);
+                        const isUsedElsewhere = !isCurrent && usedElsewhere.has(e.name);
+                        return (
+                          <button key={i}
+                            onClick={() => {
+                              if (e.name === swapTarget.origName) {
+                                updateSubstitutions(prev => { const n = { ...prev }; delete n[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]; return n; });
+                              } else {
+                                updateSubstitutions(prev => ({ ...prev, [subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]: { name: e.name, muscleGroup: e.muscleGroup } }));
+                              }
+                              setSwapTarget(null);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 border-b text-left active:bg-neutral-800 transition-colors"
+                            style={{ borderColor: "#1a1a1a", background: isCurrent ? "#1A2A1A" : "transparent" }}>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate" style={{ color: isUsedElsewhere ? "#888" : "#fff" }}>{e.name}</p>
+                              {isUsedElsewhere && (
+                                <p className="text-[10px] mt-0.5" style={{ color: "#F59E0B" }}>⚠ ya asignado a otro ejercicio</p>
+                              )}
+                            </div>
+                            {isCurrent && <span className="text-emerald-400 text-xs font-bold shrink-0">✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()}
                 {filtered.length === 0 && (
                   <div className="py-10 text-center">
                     <p className="text-neutral-500 text-sm">Sin resultados para "{swapSearch}"</p>
