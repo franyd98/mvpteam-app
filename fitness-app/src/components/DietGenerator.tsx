@@ -22,12 +22,12 @@ const ACTIVITY_LEVELS = [
 ];
 
 const GOAL_OPTIONS = [
-  { label: "Pérdida de grasa intensa",  sublabel: "−20% · máx. déficit",    value: -0.20, protein: 2.0, fat: 0.5, color: "text-red-400" },
-  { label: "Pérdida de grasa",          sublabel: "−15% · déficit moderado", value: -0.15, protein: 1.8, fat: 0.5, color: "text-orange-400" },
-  { label: "Pérdida de grasa suave",    sublabel: "−10% · déficit leve",     value: -0.10, protein: 1.8, fat: 0.6, color: "text-yellow-400" },
-  { label: "Mantenimiento",             sublabel: "0% · sostener peso",      value:  0.00, protein: 1.7, fat: 0.7, color: "text-neutral-300" },
-  { label: "Ganancia muscular",         sublabel: "+5% · ligero superávit",  value:  0.05, protein: 1.8, fat: 0.7, color: "text-emerald-400" },
-  { label: "Volumen / masa",            sublabel: "+10% · superávit amplio", value:  0.10, protein: 1.9, fat: 0.8, color: "text-blue-400" },
+  { label: "Pérdida de grasa intensa",  sublabel: "−20% · máx. déficit",    value: -0.20, protein: 2.2, fat: 0.8, color: "text-red-400" },
+  { label: "Pérdida de grasa",          sublabel: "−15% · déficit moderado", value: -0.15, protein: 2.1, fat: 0.8, color: "text-orange-400" },
+  { label: "Pérdida de grasa suave",    sublabel: "−10% · déficit leve",     value: -0.10, protein: 2.0, fat: 0.9, color: "text-yellow-400" },
+  { label: "Mantenimiento",             sublabel: "0% · sostener peso",      value:  0.00, protein: 1.9, fat: 0.9, color: "text-neutral-300" },
+  { label: "Ganancia muscular",         sublabel: "+5% · ligero superávit",  value:  0.05, protein: 2.0, fat: 1.0, color: "text-emerald-400" },
+  { label: "Volumen / masa",            sublabel: "+10% · superávit amplio", value:  0.10, protein: 2.1, fat: 1.0, color: "text-blue-400" },
 ];
 
 function computeMacros(
@@ -1170,8 +1170,8 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
   const [calcWeight,   setCalcWeight]   = useState("");
   const [calcActivity, setCalcActivity] = useState(1.5);
   const [calcGoal,     setCalcGoal]     = useState(-0.15);
-  const [calcProtMult, setCalcProtMult] = useState(1.8);
-  const [calcFatMult,  setCalcFatMult]  = useState(0.5);
+  const [calcProtMult, setCalcProtMult] = useState(2.1);
+  const [calcFatMult,  setCalcFatMult]  = useState(0.8);
 
   const calcResult = useMemo(() => {
     const a = Number(calcAge); const h = Number(calcHeight); const w = Number(calcWeight);
