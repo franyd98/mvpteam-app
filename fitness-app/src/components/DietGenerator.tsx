@@ -76,10 +76,12 @@ interface MealProfileDef {
 }
 
 interface MealDef {
-  id:       string;
-  name:     string;
-  emoji:    string;
-  profiles: MealProfileDef[];  // siempre 3 opciones
+  id:        string;
+  name:      string;
+  emoji:     string;
+  profiles:  MealProfileDef[];  // siempre 3 opciones
+  carbScale?: number;  // factor multiplicador de los hidratos en esta comida (default 1.0)
+                       // Permite redistribuir HC entre tomas sin romper el total del cliente
 }
 
 interface GeneratedFood {
@@ -120,6 +122,7 @@ const MEAL_DEFS: MealDef[] = [
   //   · Opción 2:  Huevo + Pan/Tortas + Proteína fría (jamón/atún/queso fresco)
   {
     id: "c1", name: "Comida 1 — Desayuno", emoji: "🌅",
+    carbScale: 0.70,  // Menos HC en desayuno — las calorías van más a proteína y grasa aquí
     profiles: [
       {
         id: "c1_a", label: "Elaborada — Tortitas / Bizcocho",
@@ -191,6 +194,7 @@ const MEAL_DEFS: MealDef[] = [
   // Todas las opciones son pan/tortas + proteína fría (igual que desayuno Opción 2)
   {
     id: "c2", name: "Comida 2 — Almuerzo", emoji: "☕",
+    carbScale: 0.65,  // Toma menor — sólo pan/tortas, poca cantidad
     profiles: [
       {
         id: "c2_a", label: "Pan + Embutido / Jamón",
@@ -236,6 +240,7 @@ const MEAL_DEFS: MealDef[] = [
   // Sigue la Opción 1 y 2 del PDF: carne/pescado + HC variado, con verdura libre
   {
     id: "c3", name: "Comida 3 — Comida principal", emoji: "🍽️",
+    carbScale: 1.45,  // Comida principal — más HC para saciedad (arroz, pasta, patata)
     profiles: [
       {
         // Opción 1: Carne / Pescado + HC (pasta, arroz, patata…)
@@ -294,6 +299,7 @@ const MEAL_DEFS: MealDef[] = [
   // Opción 3: Queso fresco / Fiambre + Pan/Tortas (equivalente a desayuno Opción 2)
   {
     id: "c4", name: "Comida 4 — Merienda", emoji: "🫐",
+    carbScale: 0.85,  // Merienda — moderada en HC
     profiles: [
       {
         // ⚠️ Solo lácteos con cereales — NO queso fresco tipo burgos aquí
@@ -345,6 +351,7 @@ const MEAL_DEFS: MealDef[] = [
   // Igual que comida 3: carne/pescado + HC, con verdura libre
   {
     id: "c5", name: "Comida 5 — Cena", emoji: "🌙",
+    carbScale: 1.35,  // Cena — HC notables para saciedad nocturna y recuperación
     profiles: [
       {
         id: "c5_a", label: "Pescado blanco + Patata / Boniato",
@@ -521,6 +528,7 @@ const MC = (() => {
 
   for (const meal of MEAL_DEFS) {
     const nProf = meal.profiles.length;
+    const mealCarbScale = meal.carbScale ?? 1;  // redistribución de HC por toma
     for (const profile of meal.profiles) {
       const w = 1 / nProf;
       for (const slot of profile.slots) {
@@ -553,16 +561,19 @@ const MC = (() => {
           continue;
         }
 
-        // Slots escalables
+        // Slots escalables — los HC usan mealCarbScale para redistribuir entre tomas
         const g = avgPortG;
         if (slot.macro === "protein") {
           pP += w * avgProt  * g / 100;
           pC += w * avgCarbs * g / 100;
           pF += w * avgFat   * g / 100;
         } else if (slot.macro === "carbs") {
-          cP += w * avgProt  * g / 100;
-          cC += w * avgCarbs * g / 100;
-          cF += w * avgFat   * g / 100;
+          // Multiplicar por mealCarbScale: tomas con más scale aportan más a la matriz,
+          // lo que provoca que sC se ajuste para que el total de HC del cliente cuadre
+          // distribuyéndolos según el peso relativo de cada toma.
+          cP += w * avgProt  * g * mealCarbScale / 100;
+          cC += w * avgCarbs * g * mealCarbScale / 100;
+          cF += w * avgFat   * g * mealCarbScale / 100;
         } else if (slot.macro === "fat") {
           fP += w * avgProt  * g / 100;
           fC += w * avgCarbs * g / 100;
@@ -680,6 +691,7 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
   const scales = computeClientScales(macros);
 
   return MEAL_DEFS.map(meal => {
+    const mealCarbScale = meal.carbScale ?? 1;
     const options: GeneratedOption[] = meal.profiles.map(profile => {
       const foods: GeneratedFood[] = [];
 
@@ -693,6 +705,10 @@ function generatePlan(macros: DailyMacros): GeneratedMeal[] {
         let grams: number;
         if (slot.macro === "fixed") {
           grams = slot.fixedG ?? 100;
+        } else if (slot.macro === "carbs") {
+          // Aplicar mealCarbScale al factor de escala de HC para redistribuir entre tomas
+          const scaledForMeal = { ...scales, sC: scales.sC * mealCarbScale };
+          grams = getScaledPortionG(ing, slot.macro, scaledForMeal, slot.maxG, slot.minG);
         } else {
           grams = getScaledPortionG(ing, slot.macro, scales, slot.maxG, slot.minG);
         }
@@ -758,6 +774,9 @@ function selectFood(
   return plan.map(meal => {
     if (meal.mealId !== mealId) return meal;
 
+    const mealDef = MEAL_DEFS.find(m => m.id === meal.mealId);
+    const mealCarbScale = mealDef?.carbScale ?? 1;
+
     return {
       ...meal,
       options: meal.options.map((opt, oIdx) => {
@@ -774,7 +793,12 @@ function selectFood(
             let grams = food.grams;
             if (food.macro !== "fixed") {
               const slotDef2 = MEAL_DEFS.flatMap(m => m.profiles).flatMap(p => p.slots).find(s => s.id === slotId);
-              grams = getScaledPortionG(ing, food.macro, scales, slotDef2?.maxG, slotDef2?.minG);
+              if (food.macro === "carbs") {
+                const scaledForMeal = { ...scales, sC: scales.sC * mealCarbScale };
+                grams = getScaledPortionG(ing, food.macro, scaledForMeal, slotDef2?.maxG, slotDef2?.minG);
+              } else {
+                grams = getScaledPortionG(ing, food.macro, scales, slotDef2?.maxG, slotDef2?.minG);
+              }
             }
 
             return { ...food, ing, grams, targetG: grams };
