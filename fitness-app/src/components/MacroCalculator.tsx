@@ -37,13 +37,14 @@ const ACTIVITY_LEVELS = [
 
 // Objetivo calórico — incluye los multiplicadores recomendados para cada objetivo.
 // El cliente solo elige su objetivo; proteína y grasa se asignan automáticamente.
-// Multiplicadores: proteína ALTA primero (preservar músculo), grasa mínimo 0.8g/kg (salud hormonal),
-// hidratos llenan el resto de calorías. Para 70 kg → 147–154g P en todos los objetivos.
+// Multiplicadores: proteína ALTA primero (preservar músculo), grasa baja en déficit para
+// maximizar hidratos de entreno, sube en volumen para salud hormonal.
+// Para 70 kg en déficit −15%: 147g P / 42g G / ~413g HC ON
 const GOAL_OPTIONS = [
-  { label: "Pérdida de grasa intensa",  sublabel: "−20% · máx. déficit",    value: -0.20, color: "text-red-400",     protein: 2.2, fat: 0.8 },
-  { label: "Pérdida de grasa",          sublabel: "−15% · déficit moderado", value: -0.15, color: "text-orange-400",  protein: 2.1, fat: 0.8 },
-  { label: "Pérdida de grasa suave",    sublabel: "−10% · déficit leve",     value: -0.10, color: "text-yellow-400",  protein: 2.0, fat: 0.9 },
-  { label: "Mantenimiento",             sublabel: "0% · sostener peso",      value:  0.00, color: "text-neutral-300", protein: 1.9, fat: 0.9 },
+  { label: "Pérdida de grasa intensa",  sublabel: "−20% · máx. déficit",    value: -0.20, color: "text-red-400",     protein: 2.2, fat: 0.6 },
+  { label: "Pérdida de grasa",          sublabel: "−15% · déficit moderado", value: -0.15, color: "text-orange-400",  protein: 2.1, fat: 0.6 },
+  { label: "Pérdida de grasa suave",    sublabel: "−10% · déficit leve",     value: -0.10, color: "text-yellow-400",  protein: 2.0, fat: 0.7 },
+  { label: "Mantenimiento",             sublabel: "0% · sostener peso",      value:  0.00, color: "text-neutral-300", protein: 1.9, fat: 0.8 },
   { label: "Ganancia muscular",         sublabel: "+5% · ligero superávit",  value:  0.05, color: "text-emerald-400", protein: 2.0, fat: 1.0 },
   { label: "Volumen / masa",            sublabel: "+10% · superávit amplio", value:  0.10, color: "text-blue-400",    protein: 2.1, fat: 1.0 },
 ];
@@ -119,9 +120,9 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
   const [weight,         setWeight]         = useState("");
   const [activityFactor, setActivityFactor] = useState(1.4);
   const [goal,           setGoal]           = useState(-0.15);
-  // Multiplicadores inicializados según el objetivo por defecto (−15%): 2.1g/kg P, 0.8g/kg G
+  // Multiplicadores inicializados según el objetivo por defecto (−15%): 2.1g/kg P, 0.6g/kg G
   const [proteinMult,    setProteinMult]    = useState(2.1);
-  const [fatMult,        setFatMult]        = useState(0.8);
+  const [fatMult,        setFatMult]        = useState(0.6);
 
   // Al cambiar el objetivo, auto-asigna los multiplicadores recomendados
   // (el admin puede sobrescribir manualmente en Configuración avanzada)
