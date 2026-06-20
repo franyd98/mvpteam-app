@@ -170,3 +170,29 @@ input[type="range"]::-moz-range-thumb {
   position: fixed;
   width: 100%;
 }
+
+/* ── Gradiente texto rojo ─────────────────────────────────── */
+.text-gradient-red {
+  background: linear-gradient(135deg, #dc2626 0%, #f87171 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Glow sutil en rojo ───────────────────────────────────── */
+.glow-red {
+  box-shadow: 0 0 24px rgba(220, 38, 38, 0.25);
+}
+
+/* ── Card glass (fondo semi-opaco + blur) ─────────────────── */
+.card-glass {
+  background: rgba(17, 17, 17, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Separador con degradado ─────────────────────────────── */
+.divider-fade {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #222 20%, #222 80%, transparent);
+}

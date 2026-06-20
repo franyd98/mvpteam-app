@@ -1034,7 +1034,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 active:bg-neutral-800 text-lg">‹</button>
                 <div className="text-center">
                   <p className="text-white font-bold text-base">{MONTH_NAMES[calMonth]} {calYear}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#C0394F" }}>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--mvp-red)" }}>
                     {trainedThisMonth} {trainedThisMonth === 1 ? "día entrenado" : "días entrenados"}
                     {isCurrentMonth && daysPassed > 0 && (
                       <span className="text-neutral-500"> · {Math.round(trainedThisMonth / daysPassed * 100)}% del mes</span>
@@ -1071,14 +1071,14 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                       className="aspect-square flex items-center justify-center rounded-xl text-sm font-semibold relative"
                       style={
                         showTrained
-                          ? { background: "#8B1A2F", color: "#fff" }
+                          ? { background: "var(--mvp-green-soft)", border: "1px solid var(--mvp-green-border)", color: "var(--mvp-green)" }
                           : isRest
                           ? { background: "#0D1B2E", color: "#3A7BD5", border: "1px solid #1E3A5F" }
                           : isToday
-                          ? { background: "#1A1A2E", color: "#fff", border: "1px solid #444" }
+                          ? { background: "var(--mvp-red)", color: "#fff", boxShadow: "0 0 0 3px rgba(220,38,38,0.2)" }
                           : isPast
-                          ? { background: "#0D0D0D", color: "#444" }
-                          : { background: "transparent", color: "#2A2A2A" }
+                          ? { background: "#0D0D0D", color: "#333" }
+                          : { background: "transparent", color: "#1E1E1E" }
                       }>
                       {day}
                       {isToday && !showTrained && !isRest && (
@@ -1093,15 +1093,15 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               </div>
 
               {/* Leyenda */}
-              <div className="flex items-center justify-center gap-4 pb-5 text-xs text-neutral-500 flex-wrap px-4">
+              <div className="flex items-center justify-center gap-4 pb-5 text-xs text-neutral-600 flex-wrap px-4">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded" style={{ background: "#8B1A2F" }} /> Entrenado
+                  <span className="w-3 h-3 rounded" style={{ background: "var(--mvp-green-soft)", border: "1px solid var(--mvp-green-border)" }} /> Entrenado
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded" style={{ background: "#0D1B2E", border: "1px solid #1E3A5F" }} /> Descanso
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded" style={{ background: "#0D0D0D", border: "1px solid #222" }} /> Sin actividad
+                  <span className="w-3 h-3 rounded" style={{ background: "#0D0D0D", border: "1px solid #1a1a1a" }} /> Sin actividad
                 </span>
               </div>
             </div>

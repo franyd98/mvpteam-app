@@ -26,7 +26,8 @@ function Field({ label, value, onChange, unit = "", placeholder = "", step = "0.
         <input
           type="number" step={step} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder || "—"}
-          className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500 placeholder-neutral-700"
+          className="w-full rounded-xl px-3 py-2 text-white text-sm focus:outline-none placeholder-neutral-700"
+          style={{ background: "#111", border: "1px solid #1c1c1c" }}
         />
         {unit && <span className="text-neutral-500 text-xs shrink-0">{unit}</span>}
       </div>
@@ -38,7 +39,7 @@ function FatigueSlider({ label, value, onChange }: {
   label: string; value: string; onChange: (v: string) => void;
 }) {
   const n = Number(value) || 0;
-  const color = n >= 8 ? "bg-red-500" : n >= 5 ? "bg-amber-400" : n > 0 ? "bg-emerald-500" : "bg-neutral-700";
+  const color = n >= 8 ? "bg-red-600" : n >= 5 ? "bg-amber-400" : n > 0 ? "bg-emerald-600" : "bg-neutral-800";
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs text-neutral-300 w-28 shrink-0">{label}</span>
@@ -707,13 +708,15 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     <div className="flex flex-col gap-1">
       <label className="text-[10px] uppercase tracking-wider text-neutral-500">Fecha</label>
       <input type="date" value={val} onChange={e => set(e.target.value)}
-        className="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500" />
+        className="rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none"
+        style={{ background: "#111", border: "1px solid #1c1c1c" }} />
     </div>
   );
 
   const saveBtn = (saving: boolean, label = "Guardar registro") => (
     <button type="submit" disabled={saving}
-      className="w-full py-3 rounded-xl bg-white text-black text-sm font-bold hover:bg-neutral-200 disabled:opacity-40 transition-colors">
+      className="w-full py-3 rounded-xl text-white text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
+      style={{ background: "var(--mvp-red)" }}>
       {saving ? "Guardando..." : label}
     </button>
   );
@@ -751,26 +754,29 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     <div className="flex flex-col h-full bg-neutral-950">
 
       {/* ── Cabecera (fuera del scroll) ── */}
-      <header className="header-safe shrink-0 bg-neutral-900 border-b border-neutral-800 px-4 pb-3 flex items-center gap-3">
+      <header className="header-safe shrink-0 border-b px-4 pb-3 flex items-center gap-3"
+        style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}>
         <button onClick={onBack}
-          className="w-10 h-10 rounded-xl bg-neutral-800 text-neutral-300 active:bg-neutral-700 flex items-center justify-center text-xl shrink-0">←</button>
+          className="w-10 h-10 rounded-xl flex items-center justify-center active:opacity-70 shrink-0"
+          style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#666" }}>
+          <i className="ti ti-arrow-left" style={{ fontSize: 18 }} />
+        </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-white font-bold text-base">Punto de Control</h1>
-          <p className="text-neutral-500 text-xs truncate">{profile.full_name}</p>
+          <h1 className="text-white font-bold text-base">Check-in</h1>
+          <p className="text-neutral-600 text-xs truncate">{profile.full_name}</p>
         </div>
       </header>
 
       {/* ── Tabs (fuera del scroll) ── */}
       <div className="tabs-fade-right shrink-0 max-w-2xl mx-auto w-full"
-        style={{ background: "#030712" }}>
+        style={{ background: "#0a0a0a", borderBottom: "1px solid #141414" }}>
         <div className="flex gap-1.5 px-3 py-2.5 overflow-x-auto scrollbar-hide">
           {TABS.map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
-              className={"shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all select-none " +
-                (tab === t
-                  ? "bg-white text-black shadow-sm"
-                  : "text-neutral-400 active:bg-neutral-700")}
-              style={tab !== t ? { background: "#1a1a1a", border: "1px solid #2a2a2a" } : {}}>
+              className="shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all select-none"
+              style={tab === t
+                ? { background: "var(--mvp-red)", color: "#fff", border: "1px solid rgba(220,38,38,0.5)" }
+                : { background: "#111", border: "1px solid #1c1c1c", color: "#555" }}>
               {label}
             </button>
           ))}
@@ -781,11 +787,10 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
           <div className="flex gap-1.5 px-3 pb-2.5 overflow-x-auto scrollbar-hide">
             {REG_TABS.map(([t, label]) => (
               <button key={t} onClick={() => setRegTab(t)}
-                className={"shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all select-none " +
-                  (regTab === t
-                    ? "bg-neutral-700 text-white"
-                    : "text-neutral-500 active:bg-neutral-800")}
-                style={regTab !== t ? { background: "#111", border: "1px solid #222" } : {}}>
+                className="shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all select-none"
+                style={regTab === t
+                  ? { background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)", color: "var(--mvp-red)" }
+                  : { background: "#0d0d0d", border: "1px solid #161616", color: "#444" }}>
                 {label}
               </button>
             ))}
@@ -832,7 +837,8 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] uppercase tracking-wider text-neutral-500">Fecha</label>
                 <input type="date" value={quickDate} onChange={e => setQuickDate(e.target.value)}
-                  className="bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-neutral-500" />
+                  className="rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none w-full"
+                  style={{ background: "#111", border: "1px solid #1c1c1c" }} />
               </div>
 
               {/* Peso */}
@@ -841,7 +847,8 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                 <input type="number" step="0.1" value={quickWeight}
                   onChange={e => setQuickWeight(e.target.value)}
                   placeholder="ej. 74.5"
-                  className="bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-neutral-500 placeholder-neutral-700" />
+                  className="rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none placeholder-neutral-700 w-full"
+                  style={{ background: "#111", border: "1px solid #1c1c1c" }} />
               </div>
 
               {/* Energía */}

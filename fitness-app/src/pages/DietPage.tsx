@@ -326,7 +326,8 @@ function ShopBtn({ onClick }: { onClick: () => void }) {
 }
 
 // ── MealCards ─────────────────────────────────────────────────────────────────
-const OPT_LABELS = ["A", "B", "C", "D"];
+const OPT_LABELS  = ["A", "B", "C", "D"];
+const MEAL_ACCENT = ["#f59e0b", "#22c55e", "#dc2626", "#818cf8", "#06b6d4", "#f97316"];
 
 function MealCards({
   meals, dayType, selectedOptions, pendingSave,
@@ -350,74 +351,82 @@ function MealCards({
 
   return (
     <div className="space-y-3">
-      {filtered.map(meal => {
-        const totalOpts  = meal.options.length;
-        const safeIdx    = Math.min(selectedOptions[meal.id] ?? 0, totalOpts - 1);
-        const activeOpt  = meal.options[safeIdx];
-        const hasPending = pendingSave.has(meal.id);
+      {filtered.map((meal, mealIndex) => {
+        const totalOpts   = meal.options.length;
+        const safeIdx     = Math.min(selectedOptions[meal.id] ?? 0, totalOpts - 1);
+        const activeOpt   = meal.options[safeIdx];
+        const hasPending  = pendingSave.has(meal.id);
         const isCollapsed = collapsed.has(meal.id);
+        const accent      = MEAL_ACCENT[mealIndex % MEAL_ACCENT.length];
 
         return (
           <div key={meal.id} className="rounded-2xl overflow-hidden"
-            style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+            style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+            <div className="flex">
+              {/* Borde izquierdo de color por comida */}
+              <div className="w-[3px] shrink-0" style={{ background: accent }} />
+              <div className="flex-1 min-w-0">
 
-            {/* Cabecera — clic en emoji/nombre colapsa; controles de opción a la derecha */}
+            {/* Cabecera */}
             <div className="flex items-center gap-3 px-4 py-3.5">
               <button
                 onClick={() => toggleCollapse(meal.id)}
                 className="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-70">
-                <span className="text-2xl shrink-0">{meal.emoji}</span>
-                <span className="text-white font-semibold text-sm flex-1 min-w-0 truncate">{meal.name}</span>
-                <span className="text-neutral-600 text-xs shrink-0 mr-1">
-                  {isCollapsed ? "▼" : "▲"}
-                </span>
+                <span className="text-xl shrink-0">{meal.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-bold uppercase tracking-widest mb-0.5" style={{ color: accent }}>
+                    {`Comida ${mealIndex + 1}`}
+                  </p>
+                  <span className="text-white font-semibold text-sm block truncate">{meal.name}</span>
+                </div>
+                <i className={`ti ${isCollapsed ? "ti-chevron-down" : "ti-chevron-up"} text-neutral-700`} style={{ fontSize: 14 }} />
               </button>
 
               {totalOpts > 1 && (
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => { onChangeOption(meal.id, -1, totalOpts); if (isCollapsed) toggleCollapse(meal.id); }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-300 active:opacity-70 text-lg font-bold"
-                    style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>‹</button>
-                  <div className="min-w-[44px] text-center">
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 active:opacity-70 text-base font-bold"
+                    style={{ background: "#161616", border: "1px solid #222" }}>‹</button>
+                  <div className="min-w-[40px] text-center">
                     <span className="text-white text-sm font-bold">{OPT_LABELS[safeIdx] ?? String(safeIdx + 1)}</span>
-                    <span className="block text-[9px] text-neutral-600">/{totalOpts}</span>
+                    <span className="block text-[9px] text-neutral-700">/{totalOpts}</span>
                   </div>
                   <button onClick={() => { onChangeOption(meal.id, 1, totalOpts); if (isCollapsed) toggleCollapse(meal.id); }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-300 active:opacity-70 text-lg font-bold"
-                    style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>›</button>
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 active:opacity-70 text-base font-bold"
+                    style={{ background: "#161616", border: "1px solid #222" }}>›</button>
                 </div>
               )}
             </div>
 
-            {/* Contenido — oculto si está colapsado */}
+            {/* Contenido */}
             {!isCollapsed && activeOpt && (
-              <div className="border-t" style={{ borderColor: "#1A1A1A" }}>
+              <div style={{ borderTop: "1px solid #181818" }}>
                 {activeOpt.name && (
-                  <p className="px-4 pt-2.5 pb-1 text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">
+                  <p className="px-4 pt-3 pb-1 text-[9px] uppercase tracking-widest font-bold" style={{ color: accent }}>
                     {activeOpt.name}
                   </p>
                 )}
-                <div className="px-4 pb-3 space-y-2.5">
+                <div className="px-4 pb-3 space-y-3 pt-2">
                   {activeOpt.content.map((group, gi) => (
                     <div key={gi}>
                       {group.label && (
                         <div className="flex items-center gap-2 mb-1.5">
                           <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{group.label}</p>
                           {group.isChoice && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded"
-                              style={{ background: "#1A2A4A", color: "#7986CB" }}>elige uno</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold"
+                              style={{ background: "rgba(129,140,248,0.1)", color: "#818cf8", border: "1px solid rgba(129,140,248,0.2)" }}>elige uno</span>
                           )}
                         </div>
                       )}
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         {group.items.map((item, ii) => {
                           const isObj = typeof item === "object" && item !== null && "ingId" in item;
                           const t     = item as { ingId: string; grams: number };
                           const display = isObj ? `${t.grams}g · ${ingName(t.ingId)}` : String(item);
                           return (
                             <div key={ii} className="flex items-center gap-2">
-                              <span className="text-neutral-600 text-xs shrink-0">·</span>
-                              <span className="flex-1 text-sm text-neutral-200 leading-snug">{display}</span>
+                              <span className="w-1 h-1 rounded-full shrink-0 mt-0.5" style={{ background: accent }} />
+                              <span className="flex-1 text-sm text-neutral-300 leading-snug">{display}</span>
                               {isObj && t.ingId && (
                                 <ShopBtn onClick={() => onAddToShop(t.ingId, t.grams ?? 100)} />
                               )}
@@ -426,7 +435,7 @@ function MealCards({
                         })}
                       </div>
                       {group.note && (
-                        <p className="text-[10px] text-neutral-500 italic mt-1 pl-3">※ {group.note}</p>
+                        <p className="text-[10px] text-neutral-600 italic mt-1.5 pl-3">※ {group.note}</p>
                       )}
                     </div>
                   ))}
@@ -434,14 +443,18 @@ function MealCards({
                 {hasPending && (
                   <div className="px-4 pb-3">
                     <button onClick={() => onSaveOption(meal.id, selectedOptions)}
-                      className="w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:opacity-70"
-                      style={{ background: "#0A2A0A", border: "1px solid #1A4A1A", color: "#4ADE80" }}>
-                      ✓ Guardar opción {OPT_LABELS[safeIdx] ?? String(safeIdx + 1)}
+                      className="w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:opacity-70 transition-all"
+                      style={{ background: "var(--mvp-green-soft)", border: "1px solid var(--mvp-green-border)", color: "var(--mvp-green)" }}>
+                      <i className="ti ti-check" style={{ fontSize: 14 }} />
+                      Guardar opción {OPT_LABELS[safeIdx] ?? String(safeIdx + 1)}
                     </button>
                   </div>
                 )}
               </div>
             )}
+
+              </div>{/* flex-1 */}
+            </div>{/* flex */}
           </div>
         );
       })}
@@ -684,52 +697,56 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
       )}
 
       {/* ── Header ── */}
-      <header className="header-safe shrink-0 px-4 pb-0"
-        style={{ background: "#0F0F0F", borderBottom: "1px solid #1E1E1E" }}>
-        <div className="flex items-center gap-3 pb-3">
+      <header className="header-safe shrink-0 px-4 pb-3"
+        style={{ background: "#0a0a0a", borderBottom: "1px solid #1a1a1a" }}>
+        <div className="flex items-center gap-3 pb-0">
           <button onClick={onBack}
-            className="w-10 h-10 rounded-xl text-neutral-300 active:opacity-70 flex items-center justify-center text-lg shrink-0"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
+            className="w-10 h-10 rounded-xl flex items-center justify-center active:opacity-70 shrink-0"
+            style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#666" }}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 18 }} />
+          </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-bold text-base">🥗 Dieta</h1>
-            <p className="text-neutral-500 text-xs truncate">{profile.full_name}</p>
+            <h1 className="text-white font-bold text-base">Dieta</h1>
+            <p className="text-neutral-600 text-xs truncate">{profile.full_name}</p>
           </div>
-          {/* Botón descargar PDF — sólo visible cuando hay plan activo y estamos en la pestaña "Tu dieta" */}
+          {/* Botón descargar PDF */}
           {dietTab === "plan" && plan && !viewingHistEntry && (
             <button
               onClick={() => exportAssignedPlanPDF(plan, meals, profile.full_name)}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-base active:opacity-70 shrink-0"
-              style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center active:opacity-70 shrink-0"
+              style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#666" }}
               title="Descargar plan en PDF">
-              📥
+              <i className="ti ti-download" style={{ fontSize: 18 }} />
             </button>
           )}
           <button onClick={() => setShowShopList(true)}
-            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-lg active:opacity-70 shrink-0"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }} title="Lista de la compra">
-            🛒
+            className="relative w-10 h-10 rounded-xl flex items-center justify-center active:opacity-70 shrink-0"
+            style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#666" }}
+            title="Lista de la compra">
+            <i className="ti ti-shopping-cart" style={{ fontSize: 18 }} />
             {shopCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[9px] font-bold flex items-center justify-center px-1"
-                style={{ background: "#8B1A2F", color: "#fff" }}>
+                style={{ background: "var(--mvp-red)", color: "#fff" }}>
                 {shopCount}
               </span>
             )}
           </button>
         </div>
 
-        {/* Tabs — ocultas en modo Generar nueva (pantalla completa) */}
+        {/* Tabs — ocultas en modo Generar nueva */}
         {dietTab !== "generate" && (
-          <div className="flex gap-1 pb-0">
+          <div className="flex gap-2 mt-3">
             {([
-              { id: "plan"     as DietTab, label: "📋 Tu dieta"    },
-              { id: "generate" as DietTab, label: "✨ Generar nueva" },
-            ] as const).map(({ id, label }) => (
+              { id: "plan"     as DietTab, label: "Tu dieta",     icon: "ti-clipboard-list" },
+              { id: "generate" as DietTab, label: "Generar nueva", icon: "ti-sparkles" },
+            ] as const).map(({ id, label, icon }) => (
               <button key={id} onClick={() => { setDietTab(id); setViewingHistEntry(null); }}
-                className={"flex-1 py-2 text-xs font-semibold rounded-t-lg transition-colors " +
-                  (dietTab === id ? "text-white" : "text-neutral-500")}
+                className={"flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-xl transition-all " +
+                  (dietTab === id ? "text-white" : "text-neutral-600")}
                 style={dietTab === id
-                  ? { background: "#1A1A1A", borderTop: "2px solid #C0394F" }
-                  : {}}>
+                  ? { background: "var(--mvp-red)", border: "1px solid rgba(220,38,38,0.5)" }
+                  : { background: "#111", border: "1px solid #1c1c1c" }}>
+                <i className={`ti ${icon}`} style={{ fontSize: 13 }} />
                 {label}
               </button>
             ))}
@@ -764,9 +781,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                 Genera tu primera dieta personalizada con tus macros.
               </p>
               <button onClick={() => setDietTab("generate")}
-                className="px-6 py-3 rounded-xl text-sm font-bold active:opacity-70"
-                style={{ background: "#8B1A2F", color: "#fff" }}>
-                ✨ Generar mi dieta
+                className="px-6 py-3 rounded-xl text-sm font-bold active:opacity-70 active:scale-[0.98] transition-all flex items-center gap-2"
+                style={{ background: "var(--mvp-red)", color: "#fff" }}>
+                <i className="ti ti-sparkles" style={{ fontSize: 16 }} />
+                Generar mi dieta
               </button>
             </div>
           ) : (
@@ -793,21 +811,35 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                   const prot  = d === "on" ? displayPlan.protein_on : displayPlan.protein_off;
                   const carbs = d === "on" ? displayPlan.carbs_on   : displayPlan.carbs_off;
                   const fat   = d === "on" ? displayPlan.fat_on     : displayPlan.fat_off;
-                  const accent = d === "on" ? "#8B1A2F" : "#1A3A8B";
+                  const isOn  = d === "on";
                   return (
                     <button key={d} onClick={() => setDayType(d)}
-                      className={"rounded-2xl p-3 text-center transition-all active:scale-[0.98] " + (isActive ? "" : "opacity-50")}
-                      style={{ background: isActive ? `${accent}22` : "#0F0F0F", border: `1px solid ${isActive ? accent : "#1A1A1A"}` }}>
-                      <p className="text-xs font-bold mb-1" style={{ color: d === "on" ? "#E57373" : "#7986CB" }}>
-                        {d === "on" ? "💪 DÍA ON" : "😴 DÍA OFF"}
+                      className={"rounded-2xl p-4 text-left transition-all active:scale-[0.98] " + (isActive ? "" : "opacity-40")}
+                      style={isActive
+                        ? isOn
+                          ? { background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.28)" }
+                          : { background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.28)" }
+                        : { background: "#0f0f0f", border: "1px solid #1a1a1a" }}>
+                      <p className="text-[9px] font-bold uppercase tracking-widest mb-2.5"
+                        style={{ color: isOn ? "var(--mvp-red)" : "#818cf8" }}>
+                        {isOn ? "💪 Entreno" : "😴 Descanso"}
                       </p>
-                      <p className="text-white text-lg font-bold">
-                        {kcal ?? "—"} <span className="text-neutral-500 text-xs font-normal">kcal</span>
+                      <p className="tabular-nums font-bold leading-none mb-3" style={{ fontSize: 26, color: isActive ? "#fff" : "#555" }}>
+                        {kcal ?? "—"}
+                        <span className="text-neutral-600 font-normal text-[11px] ml-1">kcal</span>
                       </p>
-                      <div className="flex justify-center gap-2 mt-1 text-[10px]">
-                        <span className="text-red-400">{prot ?? "—"}g P</span>
-                        <span className="text-amber-400">{carbs ?? "—"}g HC</span>
-                        <span className="text-blue-400">{fat ?? "—"}g G</span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {[
+                          { label: "P", val: prot,  color: "#f87171" },
+                          { label: "HC", val: carbs, color: "#fbbf24" },
+                          { label: "G",  val: fat,   color: "#60a5fa" },
+                        ].map(({ label, val, color }) => (
+                          <div key={label} className="rounded-lg py-1.5 text-center"
+                            style={{ background: isActive ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <p className="text-[8px] font-bold tracking-wide" style={{ color }}>{label}</p>
+                            <p className="text-[11px] font-bold text-white tabular-nums mt-0.5">{val ?? "—"}g</p>
+                          </div>
+                        ))}
                       </div>
                     </button>
                   );
@@ -818,9 +850,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
               {!viewingHistEntry && (
                 <button
                   onClick={() => exportAssignedPlanPDF(plan!, meals, profile.full_name)}
-                  className="w-full py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 active:opacity-70"
-                  style={{ background: "#111", border: "1px solid #2A2A2A", color: "#aaa" }}>
-                  📥 Descargar mi plan completo (PDF)
+                  className="w-full py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 active:opacity-70 active:scale-[0.98] transition-all"
+                  style={{ background: "#111", border: "1px solid #1c1c1c", color: "#555" }}>
+                  <i className="ti ti-download" style={{ fontSize: 16 }} />
+                  Descargar plan completo
                 </button>
               )}
 
