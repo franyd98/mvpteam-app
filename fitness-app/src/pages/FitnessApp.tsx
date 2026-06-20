@@ -585,24 +585,28 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const overTrained = consecWithoutRest >= 4 && !todayIsManualRest;
 
     return (
-      <div className="mb-4 rounded-2xl p-3 space-y-2" style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
-        <div className="flex items-center justify-between px-1">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-600">Esta semana</p>
+      <div className="mb-4 rounded-2xl p-3 space-y-2.5" style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+        <div className="flex items-center justify-between px-0.5">
+          <p className="text-[10px] uppercase tracking-widest font-medium text-neutral-600">Esta semana</p>
           {overTrained ? (
-            <span className="text-xs font-bold" style={{ color: "#EF4444" }}>
-              ⚠️ Necesitas descansar hoy
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+              style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "#ef4444" }}>
+              ⚠️ Descansa hoy
             </span>
           ) : needsRest ? (
-            <span className="text-xs font-bold" style={{ color: "#94A3B8" }}>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+              style={{ background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#94a3b8" }}>
               💤 Descansa mañana
             </span>
           ) : todayIsManualRest ? (
-            <span className="text-xs font-bold" style={{ color: "#60A5FA" }}>
-              🌙 Día de descanso
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+              style={{ background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.2)", color: "#60a5fa" }}>
+              🌙 Descanso
             </span>
           ) : streak > 0 ? (
-            <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>
-              🔥 {streak} {streak === 1 ? "día seguido" : "días seguidos"}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+              style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)", color: "var(--mvp-red)" }}>
+              🔥 {streak} {streak === 1 ? "día" : "días"}
             </span>
           ) : null}
         </div>
@@ -612,44 +616,47 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             const isToday    = ds === todayStr;
             const isPast     = ds <= todayStr;
             const isManualRest = manualRestDays.has(ds);
-            // Clicable para marcar/desmarcar descanso manual (cualquier día pasado o hoy, incluidos entrenados)
             const canToggle  = isPast;
 
-            const bgColor = trained && !isManualRest
-              ? "#8B1A2F"
-              : isManualRest
-                ? "#0D1B2E"
-                : isToday ? "#1E1E1E" : "#131313";
-            const borderColor = isManualRest
-              ? "#1E3A5F"
-              : isToday ? "#333" : "transparent";
+            let bg = "#0d0d0d", border = "#161616", textColor = "#333", content = DAY_LABELS[i];
+            if (isManualRest) {
+              bg = "rgba(30,58,95,0.4)"; border = "rgba(96,165,250,0.2)"; textColor = "#4a8fd4"; content = "🌙";
+            } else if (trained) {
+              bg = "var(--mvp-green-soft)"; border = "var(--mvp-green-border)"; textColor = "var(--mvp-green)"; content = "✓";
+            } else if (isToday) {
+              bg = "var(--mvp-red)"; border = "transparent"; textColor = "#fff"; content = DAY_LABELS[i];
+            } else if (isPast) {
+              bg = "#111"; border = "#1a1a1a"; textColor = "#444";
+            }
 
             return (
               <div key={ds} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[9px] font-semibold" style={{ color: isToday ? "#fff" : "#555" }}>
+                <span className="text-[9px] font-semibold tracking-wider" style={{ color: isToday ? "var(--mvp-red)" : "#444" }}>
                   {DAY_LABELS[i]}
                 </span>
                 <button
                   onClick={() => canToggle && toggleManualRest(ds)}
-                  className="w-full rounded-lg flex items-center justify-center transition-opacity active:opacity-60"
+                  className="w-full rounded-xl flex items-center justify-center transition-all active:opacity-60"
                   style={{
-                    height: 28,
-                    background: bgColor,
-                    border: `1px solid ${borderColor}`,
+                    height: 30,
+                    background: bg,
+                    border: `1px solid ${border}`,
                     cursor: canToggle ? "pointer" : "default",
+                    color: textColor,
+                    fontSize: isManualRest ? 14 : 11,
+                    fontWeight: 700,
+                    boxShadow: isToday ? "0 0 0 3px rgba(220,38,38,0.2)" : "none",
                   }}
-                  title={canToggle ? (isManualRest ? "Quitar descanso manual" : trained ? "Marcar como descanso (ignorar entreno)" : "Marcar como descanso") : undefined}
+                  title={canToggle ? (isManualRest ? "Quitar descanso manual" : trained ? "Marcar como descanso" : "Marcar como descanso") : undefined}
                 >
-                  {trained && !isManualRest && <span className="text-white text-xs">✓</span>}
-                  {isManualRest && <span style={{ fontSize: 13 }}>🌙</span>}
+                  {content}
                 </button>
               </div>
             );
           })}
         </div>
-        {/* Hint discreto la primera vez */}
-        <p className="text-[9px] text-neutral-700 text-center">
-          Toca un día sin entrenar para marcarlo como descanso
+        <p className="text-[9px] text-neutral-800 text-center tracking-wide">
+          Toca un día pasado para marcar descanso
         </p>
       </div>
     );
@@ -681,31 +688,22 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             </div>
 
             {/* Acciones del header */}
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => { setCalYear(new Date().getFullYear()); setCalMonth(new Date().getMonth()); setShowCalendar(true); }}
-                className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
-                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-                title="Calendario"
-              >📅</button>
-              <button
-                onClick={() => setShowStats(true)}
-                className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
-                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-                title="Estadísticas"
-              >📊</button>
-              <button
-                onClick={startRestTimer}
-                className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
-                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-                title="Cronómetro"
-              >⏱</button>
-              <button
-                onClick={() => setShowSettings(true)}
-                className="w-10 h-10 rounded-xl text-neutral-300 flex items-center justify-center text-lg active:scale-95 transition-transform"
-                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-                title="Ajustes"
-              >⚙</button>
+            <div className="flex gap-1.5 shrink-0">
+              {[
+                { onClick: () => { setCalYear(new Date().getFullYear()); setCalMonth(new Date().getMonth()); setShowCalendar(true); }, icon: "calendar", title: "Calendario" },
+                { onClick: () => setShowStats(true),    icon: "chart-line", title: "Estadísticas" },
+                { onClick: startRestTimer,              icon: "timer",      title: "Cronómetro" },
+                { onClick: () => setShowSettings(true), icon: "settings",   title: "Ajustes" },
+              ].map(({ onClick, icon, title }) => (
+                <button key={icon}
+                  onClick={onClick}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center active:scale-95 transition-all"
+                  style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#555" }}
+                  title={title}
+                >
+                  <i className={`ti ti-${icon}`} style={{ fontSize: 18 }} />
+                </button>
+              ))}
             </div>
           </header>
 
@@ -725,13 +723,13 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 <button
                   key={d.id}
                   onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
-                  className={"px-3 py-2 rounded-xl text-sm font-medium transition-colors active:scale-95 " +
-                    (d.id === dayId ? "text-white" : "text-neutral-300")}
+                  className={"px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 " +
+                    (d.id === dayId ? "text-white" : "text-neutral-500")}
                   style={d.id === dayId
-                    ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-                    : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                    ? { background: "var(--mvp-red)", border: "1px solid rgba(220,38,38,0.5)" }
+                    : { background: "#111", border: "1px solid #1c1c1c" }}
                 >
-                  {d.name}{d.optional && <span className="ml-1 text-[10px] opacity-60">(opc.)</span>}
+                  {d.name}{d.optional && <span className="ml-1 text-[10px] opacity-50">(opc.)</span>}
                 </button>
               ))}
             </div>
@@ -748,15 +746,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     <button
                       key={m.number}
                       onClick={() => setMicrocycleNumber(m.number)}
-                      className={"relative w-10 h-10 rounded-xl text-sm font-medium transition-colors active:scale-95 " +
-                        (m.number === microcycleNumber ? "text-white" : "text-neutral-300")}
+                      className={"relative w-10 h-10 rounded-xl text-sm font-bold transition-all active:scale-95 " +
+                        (m.number === microcycleNumber ? "text-white" : "text-neutral-600")}
                       style={m.number === microcycleNumber
-                        ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-                        : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                        ? { background: "var(--mvp-red)", border: "1px solid rgba(220,38,38,0.5)" }
+                        : { background: "#111", border: "1px solid #1c1c1c" }}
                     >
                       {m.number}
                       {locked && (
-                        <span className="absolute -top-1 -right-1 text-[9px] leading-none">🔒</span>
+                        <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]"
+                          style={{ background: "#1a1208", border: "1px solid #5a4010", color: "#fbbf24" }}>🔒</span>
                       )}
                     </button>
                   );
@@ -767,10 +766,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   <button
                     onClick={() => toggleLock(dayId, microcycleNumber)}
                     disabled={lockingSaving}
-                    className={"ml-1 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors active:scale-95 disabled:opacity-40 " +
-                      (isLocked(dayId, microcycleNumber)
-                        ? "bg-amber-950/60 text-amber-300 border border-amber-800/50"
-                        : "bg-neutral-800 text-neutral-400 border border-neutral-700")}
+                    className="ml-1 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 disabled:opacity-40"
+                    style={isLocked(dayId, microcycleNumber)
+                      ? { background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24" }
+                      : { background: "#111", border: "1px solid #1c1c1c", color: "#555" }}
                     title={isLocked(dayId, microcycleNumber) ? "Desbloquear semana" : "Bloquear semana completada"}
                   >
                     {isLocked(dayId, microcycleNumber) ? "🔒 Bloqueada" : "🔓 Bloquear"}
@@ -798,14 +797,17 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 const displayName = sub?.name ?? ex.name;
                 const displayGroup = sub?.muscleGroup ?? ex.muscleGroup;
                 return (
-                <article key={idx} className="rounded-2xl p-4"
-                  style={sub
-                    ? { background: "#0F1A10", border: "1px solid #1A3A1A" }
-                    : { background: "#171717", border: "1px solid #1F1F1F" }}>
+                <article key={idx} className="rounded-2xl overflow-hidden"
+                  style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+                  <div className="flex">
+                    {/* Borde de acento izquierdo */}
+                    <div className="w-[3px] shrink-0"
+                      style={{ background: sub ? "var(--mvp-green)" : "var(--mvp-red)" }} />
+                    <div className="flex-1 p-4">
                   <div className="flex justify-between items-start gap-2 mb-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] uppercase tracking-wider mb-0.5"
-                        style={{ color: sub ? "#4ADE80" : "#6B6B6B" }}>{displayGroup}</p>
+                      <p className="text-[9px] uppercase tracking-widest mb-0.5 font-semibold"
+                        style={{ color: sub ? "var(--mvp-green)" : "var(--mvp-red)" }}>{displayGroup}</p>
                       <h2 className="text-sm font-semibold text-white leading-snug" title={displayName}>{displayName}</h2>
                       {sub && (
                         <p className="text-[10px] text-neutral-600 mt-0.5 truncate">
@@ -818,9 +820,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                       <button
                         onClick={() => { setSwapTarget({ dayId, mcNum: microcycleNumber, exIdx: idx, origName: ex.name }); setSwapSearch(""); }}
                         className="w-9 h-9 rounded-xl flex items-center justify-center text-base transition-colors"
-                        style={sub
-                          ? { background: "#1A3A1A", border: "1px solid #2A5A2A", color: "#4ADE80" }
-                          : { background: "#1E1E1E", border: "1px solid #2A2A2A", color: "#666" }}
+                        style={{ background: "#161616", border: "1px solid #222", color: "#555" }}
                         title="Cambiar ejercicio">
                         🔄
                       </button>
@@ -828,12 +828,15 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                         ex.videoRef.startsWith("http") ? (
                           <button
                             onClick={() => openVideo(ex.videoRef!)}
-                            className="w-9 h-9 rounded-xl bg-neutral-800 active:bg-blue-900 flex items-center justify-center transition-colors"
+                            className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+                            style={{ background: "#161616", border: "1px solid #222", color: "#555" }}
                             title="Ver vídeo">
                             📹
                           </button>
                         ) : (
-                          <span className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center opacity-40" title={ex.videoRef}>
+                          <span className="w-9 h-9 rounded-xl flex items-center justify-center opacity-30"
+                            style={{ background: "#161616" }}
+                            title={ex.videoRef}>
                             📹
                           </span>
                         )
@@ -869,26 +872,36 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                         <div key={setKey(dayId, microcycleNumber, idx, s.number)}>
                           <button
                             onClick={() => !mcLocked && setEditing({ dayId, microcycleNumber, exerciseIndex: idx, setNumber: s.number })}
-                            className={"w-full flex items-center gap-3 text-sm rounded-xl px-3 py-3 text-left transition-colors " +
-                              (mcLocked
-                                ? "cursor-default opacity-75 "
-                                : "active:scale-[0.98] ") +
-                              (log
-                                ? "bg-emerald-950 border border-emerald-800 " + (mcLocked ? "" : "active:bg-emerald-900")
-                                : "bg-neutral-950 border border-neutral-800 " + (mcLocked ? "" : "active:bg-neutral-900"))}
+                            className={"w-full flex items-center gap-3 text-sm rounded-xl px-3 py-2.5 text-left transition-all " +
+                              (mcLocked ? "cursor-default " : "active:scale-[0.98] ")}
+                            style={log
+                              ? { background: "var(--mvp-green-soft)", border: "1px solid var(--mvp-green-border)" }
+                              : mcLocked
+                                ? { background: "#0a0a0a", border: "1px solid #141414" }
+                                : { background: "#0f0f0f", border: "1px solid #1a1a1a" }}
                           >
-                            <span className="text-neutral-500 w-14 shrink-0 text-xs">Serie {s.number}</span>
-                            <span className="text-neutral-400 text-xs flex-1 truncate">
-                              Obj: {s.targetReps ?? "-"}
+                            {/* Círculo numerado */}
+                            <span className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold"
+                              style={log
+                                ? { background: "rgba(34,197,94,0.2)", color: "var(--mvp-green)" }
+                                : mcLocked
+                                  ? { background: "#141414", color: "#2a2a2a" }
+                                  : { background: "#181818", color: "#444" }}>
+                              {log ? "✓" : s.number}
+                            </span>
+                            <span className="text-neutral-700 text-xs flex-1 truncate">
+                              {s.targetReps ?? "—"}
                               {s.targetRpe && !(s.targetReps ?? "").includes("(")
-                                ? ` (${s.targetRpe})`
+                                ? ` · ${s.targetRpe}`
                                 : ""}
                             </span>
                             {log ? (
-                              <span className="font-bold text-emerald-200 tabular-nums flex flex-wrap items-center gap-1.5 text-sm">
+                              <span className="font-semibold tabular-nums flex flex-wrap items-center gap-1.5 text-sm"
+                                style={{ color: "#86efac" }}>
                                 {log.weight} {log.unit} × {log.reps}
                                 {log.rpe > 0 && (
-                                  <span className="text-emerald-400 font-normal text-xs">RPE {log.rpe}</span>
+                                  <span className="font-normal text-xs px-1.5 py-0.5 rounded-md"
+                                    style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}>RPE {log.rpe}</span>
                                 )}
                                 {log.rp_reps != null && (
                                   <span className="text-amber-300 font-normal text-xs bg-amber-950/40 px-1.5 py-0.5 rounded">🔁 +{log.rp_reps}r</span>
@@ -905,8 +918,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                                 {mcLocked && <span className="text-amber-400 text-xs ml-1">🔒</span>}
                               </span>
                             ) : (
-                              <span className="text-neutral-500 text-xs">
-                                {mcLocked ? "🔒 Bloqueado" : "Registrar →"}
+                              <span className="text-xs" style={{ color: mcLocked ? "#2a2a2a" : "#444" }}>
+                                {mcLocked ? "🔒" : "→"}
                               </span>
                             )}
                           </button>
@@ -923,6 +936,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     })}
                   </div>
                   {ex.note && <p className="mt-3 text-xs text-amber-400">{ex.note}</p>}
+                  </div>{/* flex-1 p-4 */}
+                  </div>{/* flex */}
                 </article>
                 );
               })}
@@ -949,28 +964,31 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         style={{ background: "#0F0F0F", borderTop: "1px solid #1E1E1E" }}
       >
         <div className="flex items-stretch max-w-2xl mx-auto">
-          {([
-            { tab: "workout" as const, icon: "🏋️", label: "Entreno" },
-            { tab: "diet"    as const, icon: "🥗",  label: "Dieta" },
-            { tab: "checkin" as const, icon: "📋",  label: "Check-in" },
-          ] as const).map(({ tab, icon, label }) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={"flex-1 flex flex-col items-center justify-center py-3 gap-0.5 transition-colors active:scale-95 " +
-                (activeTab === tab ? "" : "opacity-40 active:opacity-60")}
-              style={{ color: activeTab === tab ? "#C0394F" : "#888" }}
-            >
-              <span className="text-xl leading-none">{icon}</span>
-              <span className={"text-[10px] font-semibold tracking-wide mt-0.5 " +
-                (activeTab === tab ? "" : "text-neutral-500")}>
-                {label}
-              </span>
-              {activeTab === tab && (
-                <span className="w-4 h-0.5 rounded-full mt-0.5" style={{ background: "#C0394F" }} />
-              )}
-            </button>
-          ))}
+          {[
+            { tab: "workout" as const, tiIcon: "barbell",   label: "Entreno" },
+            { tab: "diet"    as const, tiIcon: "apple",      label: "Dieta" },
+            { tab: "checkin" as const, tiIcon: "chart-bar",  label: "Check-in" },
+          ].map(({ tab, tiIcon, label }) => {
+            const active = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className="flex-1 flex flex-col items-center justify-center py-3 gap-0.5 transition-all active:scale-95 relative"
+                style={{ color: active ? "var(--mvp-red)" : "#444" }}
+              >
+                {active && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+                    style={{ background: "var(--mvp-red)" }} />
+                )}
+                <i className={`ti ti-${tiIcon}`} style={{ fontSize: 22, lineHeight: 1 }} />
+                <span className="text-[10px] font-semibold tracking-wide mt-0.5"
+                  style={{ color: active ? "var(--mvp-red)" : "#444" }}>
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 

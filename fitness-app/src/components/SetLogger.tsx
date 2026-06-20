@@ -227,12 +227,16 @@ export default function SetLogger({
           </div>
 
           {/* Botones — siempre visibles en la parte inferior, fuera del scroll */}
-          <div className="shrink-0 flex gap-2 p-3 border-t border-neutral-800 bg-neutral-950">
+          <div className="shrink-0 flex gap-2 p-3 border-t border-neutral-900 bg-neutral-950">
             {existingLog && onDelete && (
-              <button onClick={onDelete} className="px-3 py-3 rounded-xl text-sm font-medium bg-red-950 text-red-300 hover:bg-red-900">Borrar</button>
+              <button onClick={onDelete} className="px-3 py-3 rounded-xl text-sm font-medium active:scale-95 transition-all"
+                style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171" }}>Borrar</button>
             )}
-            <button onClick={onCancel} className="flex-1 py-3 rounded-xl text-sm font-medium bg-neutral-800 text-neutral-300 hover:bg-neutral-700">Cancelar</button>
-            <button onClick={handleSave} disabled={!isValid} className="flex-1 py-3 rounded-xl text-sm font-bold bg-white text-black disabled:opacity-30 disabled:cursor-not-allowed">Guardar</button>
+            <button onClick={onCancel} className="flex-1 py-3 rounded-xl text-sm font-medium active:scale-95 transition-all"
+              style={{ background: "#141414", border: "1px solid #222", color: "#777" }}>Cancelar</button>
+            <button onClick={handleSave} disabled={!isValid}
+              className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{ background: "var(--mvp-red)", color: "#fff" }}>Guardar</button>
           </div>
       </div>
     </div>
@@ -253,12 +257,10 @@ function FieldTab({
   return (
     <button
       onClick={onClick}
-      className={
-        "rounded-xl px-2 py-3.5 text-center transition-colors active:scale-95 " +
-        (active
-          ? "bg-white text-black"
-          : "bg-neutral-800 text-neutral-300 active:bg-neutral-700")
-      }
+      className="rounded-xl px-2 py-3.5 text-center transition-all active:scale-95"
+      style={active
+        ? { background: "var(--mvp-red)", color: "#fff" }
+        : { background: "#141414", border: "1px solid #1e1e1e", color: "#888" }}
     >
       <p className="text-[10px] uppercase tracking-wider opacity-70">{label}</p>
       <p className="text-2xl font-bold mt-0.5 tabular-nums min-h-[2rem]">
@@ -275,10 +277,10 @@ function FieldTabSmall({
   return (
     <button
       onClick={onClick}
-      className={
-        "rounded-xl px-2 py-2 text-center transition-colors active:scale-95 " +
-        (active ? "bg-white text-black" : "bg-neutral-800 text-neutral-300 active:bg-neutral-700")
-      }
+      className="rounded-xl px-2 py-2 text-center transition-all active:scale-95"
+      style={active
+        ? { background: "var(--mvp-red)", color: "#fff" }
+        : { background: "#141414", border: "1px solid #1e1e1e", color: "#888" }}
     >
       <p className="text-[9px] uppercase tracking-wider opacity-70">{label}</p>
       <p className="text-lg font-bold mt-0.5 tabular-nums min-h-[1.4rem]">
@@ -301,7 +303,8 @@ function Key({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="py-5 rounded-xl text-2xl font-medium bg-neutral-800 text-white active:bg-neutral-600 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-transform"
+      className="py-5 rounded-xl text-2xl font-medium text-white active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+      style={{ background: "#141414", border: "1px solid #1e1e1e" }}
     >
       {label}
     </button>
