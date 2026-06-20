@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { CATEGORY_LABELS, type IngredientCategory } from "../data/ingredients";
+import { CATEGORY_LABELS, ingredients as LOCAL_INGREDIENTS, type IngredientCategory } from "../data/ingredients";
 
 // ── Tipos ────────────────────────────────────────────────────────────
 interface OFFProduct {
@@ -25,6 +25,7 @@ interface FoodResult {
   protein100: number;
   carbs100: number;
   fat100: number;
+  source: "local" | "off"; // local = ingredientes de la app, off = Open Food Facts
 }
 
 interface Props {
@@ -65,21 +66,41 @@ export default function FoodSearchModal({ onClose, onAddToShop, onSaved }: Props
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ── Búsqueda con debounce ─────────────────────────────────────────
+  // ── Búsqueda local inmediata + OFF con debounce ───────────────────
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) { setResults([]); return; }
+    const q = query.trim().toLowerCase();
 
+    if (q.length < 2) { setResults([]); setError(null); return; }
+
+    // Resultados locales (ingredientes de la app) — instantáneos
+    const localMatches: FoodResult[] = LOCAL_INGREDIENTS
+      .filter(ing => ing.name.toLowerCase().includes(q))
+      .map(ing => ({
+        name:       ing.name,
+        brand:      CATEGORY_LABELS[ing.category],
+        kcal100:    ing.kcal,
+        protein100: ing.protein,
+        carbs100:   ing.carbs,
+        fat100:     ing.fat,
+        source:     "local" as const,
+      }))
+      .slice(0, 10);
+
+    // Mostrar locales inmediatamente
+    setResults(localMatches);
+    setError(null);
+
+    // Luego buscar en Open Food Facts (debounced)
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
-      setError(null);
       try {
-        const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=25&fields=product_name,brands,nutriments&lc=es`;
+        const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=25&fields=product_name,brands,nutriments&lc=es`;
         const res = await fetch(url);
         if (!res.ok) throw new Error("Error de red");
         const data = await res.json();
         const products: OFFProduct[] = data.products ?? [];
-        const filtered: FoodResult[] = products
+        const offResults: FoodResult[] = products
           .filter(p =>
             p.product_name?.trim() &&
             p.nutriments?.["proteins_100g"] != null &&
@@ -97,14 +118,24 @@ export default function FoodSearchModal({ onClose, onAddToShop, onSaved }: Props
             protein100: Math.round((p.nutriments["proteins_100g"] ?? 0) * 10) / 10,
             carbs100:   Math.round((p.nutriments["carbohydrates_100g"] ?? 0) * 10) / 10,
             fat100:     Math.round((p.nutriments["fat_100g"] ?? 0) * 10) / 10,
+            source:     "off" as const,
           }))
-          // quitar duplicados por nombre
-          .filter((v, i, arr) => arr.findIndex(x => x.name.toLowerCase() === v.name.toLowerCase()) === i)
-          .slice(0, 20);
-        setResults(filtered);
-        if (filtered.length === 0) setError("Sin resultados. Prueba con otro término.");
+          // quitar duplicados por nombre (también respecto a locales)
+          .filter((v, i, arr) =>
+            arr.findIndex(x => x.name.toLowerCase() === v.name.toLowerCase()) === i &&
+            !localMatches.some(l => l.name.toLowerCase() === v.name.toLowerCase())
+          )
+          .slice(0, 15);
+
+        // Locales primero, luego OFF
+        const combined = [...localMatches, ...offResults];
+        setResults(combined);
+        if (combined.length === 0) setError("Sin resultados. Prueba con otro término.");
       } catch {
-        setError("No se pudo conectar con Open Food Facts. Comprueba tu conexión.");
+        // Si falla OFF, mantenemos los resultados locales sin error
+        if (localMatches.length === 0) {
+          setError("Sin resultados locales. No se pudo conectar con Open Food Facts.");
+        }
       } finally {
         setLoading(false);
       }
@@ -153,7 +184,7 @@ export default function FoodSearchModal({ onClose, onAddToShop, onSaved }: Props
         {/* Cabecera */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-neutral-800 shrink-0">
           <div className="flex-1">
-            <p className="text-[10px] uppercase tracking-wider text-neutral-500">Base de datos global</p>
+            <p className="text-[10px] uppercase tracking-wider text-neutral-500">App · Open Food Facts</p>
             <p className="text-white font-bold text-sm">🔍 Buscar alimento</p>
           </div>
           <button onClick={onClose}
@@ -174,6 +205,12 @@ export default function FoodSearchModal({ onClose, onAddToShop, onSaved }: Props
           />
           {loading && (
             <p className="text-[10px] text-neutral-500 mt-1.5 text-center">Buscando en Open Food Facts…</p>
+          )}
+          {!loading && results.length > 0 && (
+            <p className="text-[10px] text-neutral-600 mt-1.5">
+              <span className="text-emerald-600">●</span> App{'  '}
+              <span className="text-blue-600">●</span> Open Food Facts
+            </p>
           )}
         </div>
 
@@ -262,32 +299,38 @@ export default function FoodSearchModal({ onClose, onAddToShop, onSaved }: Props
 
               {results.length === 0 && !loading && !error && query.trim().length < 2 && (
                 <div className="py-12 text-center space-y-2">
-                  <p className="text-4xl">🌍</p>
-                  <p className="text-neutral-400 text-sm">Millones de alimentos disponibles</p>
-                  <p className="text-neutral-600 text-xs">Datos de Open Food Facts</p>
+                  <p className="text-4xl">🔍</p>
+                  <p className="text-neutral-400 text-sm">Busca en la app y en Open Food Facts</p>
+                  <p className="text-neutral-600 text-xs">Los ingredientes de la app aparecen al instante</p>
                 </div>
               )}
 
-              {results.map((food, i) => (
-                <button key={i}
-                  onClick={() => { setSelected(food); setGrams(100); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 border-b text-left active:bg-neutral-800 transition-colors"
-                  style={{ borderColor: "#1A1A1A" }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{food.name}</p>
-                    {food.brand && <p className="text-neutral-600 text-xs truncate">{food.brand}</p>}
-                  </div>
-                  <div className="text-right shrink-0 space-y-0.5">
-                    <p className="text-xs font-bold text-neutral-300 tabular-nums">{food.kcal100} kcal</p>
-                    <div className="flex gap-1.5 text-[10px] tabular-nums justify-end">
-                      <span className="text-red-400">{food.protein100}P</span>
-                      <span className="text-amber-400">{food.carbs100}H</span>
-                      <span className="text-blue-400">{food.fat100}G</span>
+              {results.map((food, i) => {
+                const isLocal = food.source === "local";
+                return (
+                  <button key={i}
+                    onClick={() => { setSelected(food); setGrams(100); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 border-b text-left active:bg-neutral-800 transition-colors"
+                    style={{ borderColor: "#1A1A1A" }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className={`text-[8px] shrink-0 ${isLocal ? "text-emerald-500" : "text-blue-500"}`}>●</span>
+                        <p className="text-white text-sm font-medium truncate">{food.name}</p>
+                      </div>
+                      {food.brand && <p className="text-neutral-600 text-xs truncate ml-3">{food.brand}</p>}
                     </div>
-                  </div>
-                  <span className="text-neutral-600 text-xs">›</span>
-                </button>
-              ))}
+                    <div className="text-right shrink-0 space-y-0.5">
+                      <p className="text-xs font-bold text-neutral-300 tabular-nums">{food.kcal100} kcal</p>
+                      <div className="flex gap-1.5 text-[10px] tabular-nums justify-end">
+                        <span className="text-red-400">{food.protein100}P</span>
+                        <span className="text-amber-400">{food.carbs100}H</span>
+                        <span className="text-blue-400">{food.fat100}G</span>
+                      </div>
+                    </div>
+                    <span className="text-neutral-600 text-xs">›</span>
+                  </button>
+                );
+              })}
             </>
           )}
         </div>
