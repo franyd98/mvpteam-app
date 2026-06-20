@@ -875,7 +875,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                             className={"w-full flex items-center gap-3 text-sm rounded-xl px-3 py-2.5 text-left transition-all " +
                               (mcLocked ? "cursor-default " : "active:scale-[0.98] ")}
                             style={log
-                              ? { background: "var(--mvp-green-soft)", border: "1px solid var(--mvp-green-border)" }
+                              ? { background: "var(--done-bg)", border: "1px solid var(--done-border)" }
                               : mcLocked
                                 ? { background: "#0a0a0a", border: "1px solid #141414" }
                                 : { background: "#0f0f0f", border: "1px solid #1a1a1a" }}
@@ -883,7 +883,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                             {/* Círculo numerado */}
                             <span className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold"
                               style={log
-                                ? { background: "rgba(34,197,94,0.2)", color: "var(--mvp-green)" }
+                                ? { background: "rgba(255,255,255,0.12)", color: "#ddd" }
                                 : mcLocked
                                   ? { background: "#141414", color: "#2a2a2a" }
                                   : { background: "#181818", color: "#444" }}>
@@ -896,26 +896,27 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                                 : ""}
                             </span>
                             {log ? (
-                              <span className="font-semibold tabular-nums flex flex-wrap items-center gap-1.5 text-sm"
-                                style={{ color: "#86efac" }}>
+                              <span className="font-semibold tabular-nums flex flex-wrap items-center gap-1.5 text-sm text-white">
                                 {log.weight} {log.unit} × {log.reps}
                                 {log.rpe > 0 && (
-                                  <span className="font-normal text-xs px-1.5 py-0.5 rounded-md"
-                                    style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}>RPE {log.rpe}</span>
+                                  <span className="font-normal text-[11px] px-1.5 py-0.5 rounded-md"
+                                    style={{ background: "rgba(255,255,255,0.07)", color: "#888" }}>RPE {log.rpe}</span>
                                 )}
                                 {log.rp_reps != null && (
-                                  <span className="text-amber-300 font-normal text-xs bg-amber-950/40 px-1.5 py-0.5 rounded">🔁 +{log.rp_reps}r</span>
+                                  <span className="font-normal text-[11px] px-1.5 py-0.5 rounded-md"
+                                    style={{ background: "rgba(255,255,255,0.07)", color: "#888" }}>+{log.rp_reps}r</span>
                                 )}
                                 {log.drop_weight != null && (
-                                  <span className="text-purple-300 font-normal text-xs bg-purple-950/40 px-1.5 py-0.5 rounded">📉 {log.drop_weight}×{log.drop_reps ?? "?"}</span>
+                                  <span className="font-normal text-[11px] px-1.5 py-0.5 rounded-md"
+                                    style={{ background: "rgba(255,255,255,0.07)", color: "#888" }}>↓ {log.drop_weight}×{log.drop_reps ?? "?"}</span>
                                 )}
                                 {prog && (
                                   <span className={"text-sm font-bold " +
-                                    (prog === "↑" ? "text-emerald-300" : prog === "=" ? "text-yellow-400" : "text-red-400")}>
+                                    (prog === "↑" ? "text-white" : prog === "=" ? "text-neutral-600" : "text-neutral-500")}>
                                     {prog}
                                   </span>
                                 )}
-                                {mcLocked && <span className="text-amber-400 text-xs ml-1">🔒</span>}
+                                {mcLocked && <span className="text-neutral-600 text-xs ml-1">🔒</span>}
                               </span>
                             ) : (
                               <span className="text-xs" style={{ color: mcLocked ? "#2a2a2a" : "#444" }}>
@@ -924,11 +925,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                             )}
                           </button>
                           {!log && validPrevLog && (
-                            <p className="text-[10px] text-blue-400 px-3 pt-0.5 pb-1">
-                              Ant (Mc {validPrevLog.microcycleNumber}): {validPrevLog.weight} {validPrevLog.unit} × {validPrevLog.reps}
+                            <p className="text-[10px] text-neutral-600 px-3 pt-0.5 pb-1">
+                              Mc{validPrevLog.microcycleNumber}: {validPrevLog.weight} {validPrevLog.unit} × {validPrevLog.reps}
                               {validPrevLog.rpe > 0 ? ` · RPE ${validPrevLog.rpe}` : ""}
-                              {validPrevLog.rp_reps != null ? ` · 🔁 +${validPrevLog.rp_reps}r` : ""}
-                              {validPrevLog.drop_weight != null ? ` · 📉 ${validPrevLog.drop_weight}×${validPrevLog.drop_reps ?? "?"}` : ""}
+                              {validPrevLog.rp_reps != null ? ` · +${validPrevLog.rp_reps}r` : ""}
+                              {validPrevLog.drop_weight != null ? ` · ↓ ${validPrevLog.drop_weight}×${validPrevLog.drop_reps ?? "?"}` : ""}
                             </p>
                           )}
                         </div>

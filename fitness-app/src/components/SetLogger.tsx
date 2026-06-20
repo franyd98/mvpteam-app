@@ -163,24 +163,25 @@ export default function SetLogger({
 
             {/* Banner historial */}
             {previousLog && (
-              <div className="px-4 py-2 bg-blue-950/40 border-b border-blue-900/30 flex items-center gap-2">
-                <span className="text-blue-400">📊</span>
+              <div className="px-4 py-2 border-b flex items-center gap-2"
+                style={{ background: "#0d0d0d", borderColor: "#1a1a1a" }}>
+                <span className="text-neutral-600 text-sm">↑</span>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-blue-500">
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-600">
                     Mc {previousLog.microcycleNumber} — referencia
                   </p>
-                  <p className="text-xs font-semibold text-blue-200">
+                  <p className="text-xs font-semibold text-neutral-400">
                     {previousLog.weight} {previousLog.unit} × {previousLog.reps} reps
-                    {previousLog.rpe > 0 && <span className="ml-2 text-blue-400 font-normal">· RPE {previousLog.rpe}</span>}
-                    {(previousLog as any).rp_reps != null && <span className="ml-2 text-amber-300 font-normal">· 🔁 +{(previousLog as any).rp_reps}r</span>}
-                    {(previousLog as any).drop_weight != null && <span className="ml-2 text-purple-300 font-normal">· 📉 {(previousLog as any).drop_weight}×{(previousLog as any).drop_reps ?? "?"}</span>}
+                    {previousLog.rpe > 0 && <span className="ml-2 text-neutral-600 font-normal">· RPE {previousLog.rpe}</span>}
+                    {(previousLog as any).rp_reps != null && <span className="ml-2 text-neutral-600 font-normal">· +{(previousLog as any).rp_reps}r</span>}
+                    {(previousLog as any).drop_weight != null && <span className="ml-2 text-neutral-600 font-normal">· ↓ {(previousLog as any).drop_weight}×{(previousLog as any).drop_reps ?? "?"}</span>}
                   </p>
                 </div>
                 {existingLog && (
-                  <span className="ml-auto text-base font-bold">
-                    {volume(existingLog) > volume(previousLog) ? <span className="text-emerald-400">↑</span>
-                      : volume(existingLog) === volume(previousLog) ? <span className="text-yellow-400">=</span>
-                      : <span className="text-red-400">↓</span>}
+                  <span className="ml-auto text-sm font-bold text-neutral-600">
+                    {volume(existingLog) > volume(previousLog) ? "↑"
+                      : volume(existingLog) === volume(previousLog) ? "="
+                      : "↓"}
                   </span>
                 )}
               </div>
@@ -259,8 +260,8 @@ function FieldTab({
       onClick={onClick}
       className="rounded-xl px-2 py-3.5 text-center transition-all active:scale-95"
       style={active
-        ? { background: "var(--mvp-red)", color: "#fff" }
-        : { background: "#141414", border: "1px solid #1e1e1e", color: "#888" }}
+        ? { background: "#232323", border: "1px solid #333", color: "#fff" }
+        : { background: "#111", border: "1px solid #1a1a1a", color: "#555" }}
     >
       <p className="text-[10px] uppercase tracking-wider opacity-70">{label}</p>
       <p className="text-2xl font-bold mt-0.5 tabular-nums min-h-[2rem]">
@@ -279,8 +280,8 @@ function FieldTabSmall({
       onClick={onClick}
       className="rounded-xl px-2 py-2 text-center transition-all active:scale-95"
       style={active
-        ? { background: "var(--mvp-red)", color: "#fff" }
-        : { background: "#141414", border: "1px solid #1e1e1e", color: "#888" }}
+        ? { background: "#232323", border: "1px solid #333", color: "#fff" }
+        : { background: "#111", border: "1px solid #1a1a1a", color: "#555" }}
     >
       <p className="text-[9px] uppercase tracking-wider opacity-70">{label}</p>
       <p className="text-lg font-bold mt-0.5 tabular-nums min-h-[1.4rem]">

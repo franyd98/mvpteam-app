@@ -18,15 +18,21 @@ html {
 }
 
 :root {
-  --mvp-red:        #dc2626;
-  --mvp-red-soft:   rgba(220, 38, 38, 0.10);
-  --mvp-red-border: rgba(220, 38, 38, 0.22);
-  --mvp-green:      #22c55e;
-  --mvp-green-soft: rgba(34, 197, 94, 0.08);
-  --mvp-green-border: rgba(34, 197, 94, 0.18);
+  /* Acento único — rojo profundo, sin flúor */
+  --mvp-red:        #c0292b;
+  --mvp-red-soft:   rgba(192, 41, 43, 0.09);
+  --mvp-red-border: rgba(192, 41, 43, 0.22);
+  /* Verde semántico: solo para ✓ completado */
+  --mvp-green:      #4ade80;
+  --mvp-green-soft: rgba(74, 222, 128, 0.06);
+  --mvp-green-border: rgba(74, 222, 128, 0.14);
+  /* Neutros */
   --card-bg:        #111111;
   --card-border:    #1c1c1c;
   --card-bg-hover:  #161616;
+  /* Done state — blanco muy tenue */
+  --done-bg:        rgba(255,255,255,0.04);
+  --done-border:    rgba(255,255,255,0.09);
 }
 
 body {

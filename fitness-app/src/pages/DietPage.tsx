@@ -327,7 +327,8 @@ function ShopBtn({ onClick }: { onClick: () => void }) {
 
 // ── MealCards ─────────────────────────────────────────────────────────────────
 const OPT_LABELS  = ["A", "B", "C", "D"];
-const MEAL_ACCENT = ["#f59e0b", "#22c55e", "#dc2626", "#818cf8", "#06b6d4", "#f97316"];
+// Un único acento por comida para no contaminar con colores
+const MEAL_ACCENT_COLORS = ["#c0292b", "#a0292b", "#932526", "#7a2020", "#6b1d1d", "#5f1b1b"];
 
 function MealCards({
   meals, dayType, selectedOptions, pendingSave,
@@ -357,7 +358,7 @@ function MealCards({
         const activeOpt   = meal.options[safeIdx];
         const hasPending  = pendingSave.has(meal.id);
         const isCollapsed = collapsed.has(meal.id);
-        const accent      = MEAL_ACCENT[mealIndex % MEAL_ACCENT.length];
+        const accent      = MEAL_ACCENT_COLORS[mealIndex % MEAL_ACCENT_COLORS.length];
 
         return (
           <div key={meal.id} className="rounded-2xl overflow-hidden"
@@ -816,12 +817,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                     <button key={d} onClick={() => setDayType(d)}
                       className={"rounded-2xl p-4 text-left transition-all active:scale-[0.98] " + (isActive ? "" : "opacity-40")}
                       style={isActive
-                        ? isOn
-                          ? { background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.28)" }
-                          : { background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.28)" }
+                        ? { background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }
                         : { background: "#0f0f0f", border: "1px solid #1a1a1a" }}>
                       <p className="text-[9px] font-bold uppercase tracking-widest mb-2.5"
-                        style={{ color: isOn ? "var(--mvp-red)" : "#818cf8" }}>
+                        style={{ color: isActive ? "var(--mvp-red)" : "#444" }}>
                         {isOn ? "💪 Entreno" : "😴 Descanso"}
                       </p>
                       <p className="tabular-nums font-bold leading-none mb-3" style={{ fontSize: 26, color: isActive ? "#fff" : "#555" }}>
@@ -830,14 +829,14 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                       </p>
                       <div className="grid grid-cols-3 gap-1">
                         {[
-                          { label: "P", val: prot,  color: "#f87171" },
-                          { label: "HC", val: carbs, color: "#fbbf24" },
-                          { label: "G",  val: fat,   color: "#60a5fa" },
-                        ].map(({ label, val, color }) => (
+                          { label: "P",  val: prot  },
+                          { label: "HC", val: carbs },
+                          { label: "G",  val: fat   },
+                        ].map(({ label, val }) => (
                           <div key={label} className="rounded-lg py-1.5 text-center"
-                            style={{ background: isActive ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                            <p className="text-[8px] font-bold tracking-wide" style={{ color }}>{label}</p>
-                            <p className="text-[11px] font-bold text-white tabular-nums mt-0.5">{val ?? "—"}g</p>
+                            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <p className="text-[8px] font-semibold tracking-wide text-neutral-600">{label}</p>
+                            <p className="text-[11px] font-bold tabular-nums mt-0.5" style={{ color: isActive ? "#e5e5e5" : "#555" }}>{val ?? "—"}g</p>
                           </div>
                         ))}
                       </div>
