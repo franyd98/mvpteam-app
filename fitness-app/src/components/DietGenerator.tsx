@@ -110,6 +110,9 @@ interface GeneratedMeal {
 }
 
 // ── Definición de perfiles por comida ─────────────────────────────────────────
+const GEN_OPT_LABELS = ["A", "B", "C"];
+const GEN_MEAL_ICONS  = ["ti-sun", "ti-coffee", "ti-bowl", "ti-apple", "ti-moon-2", "ti-salad"];
+
 // Cada comida tiene 3 perfiles con combinaciones culinariamente coherentes.
 // Los ingIds son los IDs exactos de ingredients.ts.
 
@@ -2001,132 +2004,157 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
             </button>
 
             {/* Comidas */}
-            <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-1">
-              Comidas — 3 opciones por comida, personaliza con los desplegables
-            </p>
-
-            {activePlan.map(meal => {
+            {activePlan.map((meal, mealIndex) => {
               const activeOptIdx = activeOptions[meal.mealId] ?? 0;
-              const activeOpt    = meal.options[activeOptIdx];
+              const totalOpts    = meal.options.length;
+              const safeIdx      = Math.min(activeOptIdx, totalOpts - 1);
+              const activeOpt    = meal.options[safeIdx];
               const mt           = activeOpt ? optionMacros(activeOpt) : null;
               const isOpen       = expandedMeals.has(meal.mealId);
 
+              const goOpt = (delta: number) => {
+                const next = ((safeIdx + delta) + totalOpts) % totalOpts;
+                setActiveOptions(prev => ({ ...prev, [meal.mealId]: next }));
+                if (!isOpen) toggleMeal(meal.mealId);
+              };
+
               return (
-                <div key={meal.mealId} className="rounded-xl overflow-hidden"
-                  style={{ background: "#111", border: "1px solid #222" }}>
+                <div key={meal.mealId} className="rounded-2xl overflow-hidden"
+                  style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+                  <div className="flex">
+                    {/* Tira roja izquierda */}
+                    <div className="w-[3px] shrink-0" style={{ background: "var(--mvp-red)" }} />
+                    <div className="flex-1 min-w-0">
 
-                  {/* Cabecera comida */}
-                  <button onClick={() => toggleMeal(meal.mealId)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left">
-                    <span className="text-xl shrink-0">{meal.emoji}</span>
-                    <span className="flex-1 text-white font-semibold text-sm">{meal.name}</span>
-                    {mt && <span className="text-neutral-500 text-xs tabular-nums">{mt.kcal} kcal</span>}
-                    <span className="text-neutral-500 text-sm">{isOpen ? "▲" : "▼"}</span>
-                  </button>
+                      {/* Cabecera */}
+                      <div className="flex items-center gap-3 px-4 py-3.5">
+                        <button onClick={() => toggleMeal(meal.mealId)}
+                          className="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-70">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }}>
+                            <i className={`ti ${GEN_MEAL_ICONS[mealIndex % GEN_MEAL_ICONS.length]}`}
+                              style={{ fontSize: 16, color: "var(--mvp-red)" }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: "#333" }}>
+                              Comida {mealIndex + 1}
+                            </p>
+                            <span className="text-white font-semibold text-sm block truncate">{meal.name}</span>
+                          </div>
+                          <i className={`ti ${isOpen ? "ti-chevron-up" : "ti-chevron-down"}`}
+                            style={{ fontSize: 14, color: "#333" }} />
+                        </button>
 
-                  {isOpen && (
-                    <div className="border-t" style={{ borderColor: "#1A1A1A" }}>
-
-                      {/* Pestañas de opción */}
-                      <div className="flex gap-1 p-2">
-                        {meal.options.map((opt, oIdx) => (
-                          <button key={opt.profileId}
-                            onClick={() => setActiveOptions(prev => ({ ...prev, [meal.mealId]: oIdx }))}
-                            className={"flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors " +
-                              (activeOptIdx === oIdx ? "text-white" : "text-neutral-500")}
-                            style={activeOptIdx === oIdx
-                              ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-                              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-                            {oIdx + 1}
-                          </button>
-                        ))}
+                        {/* Navegación A / B / C */}
+                        {totalOpts > 1 && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => goOpt(-1)}
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 active:opacity-70 text-base font-bold"
+                              style={{ background: "#161616", border: "1px solid #222" }}>‹</button>
+                            <div className="min-w-[40px] text-center">
+                              <span className="text-white text-sm font-bold">
+                                {GEN_OPT_LABELS[safeIdx] ?? String(safeIdx + 1)}
+                              </span>
+                              <span className="block text-[9px]" style={{ color: "#333" }}>/{totalOpts}</span>
+                            </div>
+                            <button onClick={() => goOpt(1)}
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 active:opacity-70 text-base font-bold"
+                              style={{ background: "#161616", border: "1px solid #222" }}>›</button>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Label de la opción activa */}
-                      {activeOpt && (
-                        <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-3 pb-2">
-                          {activeOpt.profileLabel}
-                        </p>
-                      )}
+                      {/* Contenido expandido */}
+                      {isOpen && activeOpt && (
+                        <div style={{ borderTop: "1px solid #181818" }}>
+                          {/* Label de perfil */}
+                          {activeOpt.profileLabel && (
+                            <p className="px-4 pt-3 pb-1 text-[9px] uppercase tracking-widest font-bold"
+                              style={{ color: "var(--mvp-red)" }}>
+                              {activeOpt.profileLabel}
+                            </p>
+                          )}
 
-                      {/* Slots de la opción activa */}
-                      {activeOpt && (
-                        <div className="px-3 pb-3 space-y-2">
-                          {activeOpt.foods.map(food => {
-                            const fm       = foodMacros(food);
-                            const isFixed  = food.macro === "fixed";
-                            const slotColor =
-                              food.macro === "protein" ? "#aaa" :
-                              food.macro === "carbs"   ? "#aaa" :
-                              food.macro === "fat"     ? "#aaa" : "#aaa";
+                          {/* Slots */}
+                          <div className="px-4 pb-3 space-y-3 pt-2">
+                            {activeOpt.foods.map(food => {
+                              const fm      = foodMacros(food);
+                              const isFixed = food.macro === "fixed";
+                              const isChoice = food.availablePool.length > 1;
 
-                            return (
-                              <div key={food.slotId} className="rounded-lg p-3 space-y-2"
-                                style={{ background: "#0A0A0A", border: "1px solid #1E1E1E" }}>
+                              return (
+                                <div key={food.slotId}>
+                                  {/* Etiqueta de grupo */}
+                                  {food.label && (
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                      <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                                        {food.label}
+                                      </p>
+                                      {isChoice && (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold"
+                                          style={{ background: "var(--mvp-red-soft)", color: "var(--mvp-red)", border: "1px solid var(--mvp-red-border)" }}>
+                                          elige uno
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
 
-                                {/* Etiqueta + gramos */}
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider"
-                                    style={{ color: slotColor }}>
-                                    {food.label}
-                                  </span>
-                                  <span className={`text-xs font-mono ${food.grams > 350 ? "text-neutral-300" : "text-neutral-500"}`}>
-                                    {food.grams} g{food.grams > 350 ? " ⚠" : ""}
-                                  </span>
+                                  {/* Selector o bullet */}
+                                  {isChoice ? (
+                                    <select
+                                      value={food.ing.id}
+                                      onChange={e => doSelect(meal.mealId, safeIdx, food.slotId, e.target.value)}
+                                      className="w-full rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none"
+                                      style={{ background: "#161616", border: "1px solid #222" }}>
+                                      {food.availablePool.map(ing => (
+                                        <option key={ing.id} value={ing.id}>{food.grams}g · {ing.name}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-1.5 h-1.5 rounded-full shrink-0"
+                                        style={{ background: "var(--mvp-red)" }} />
+                                      <span className="flex-1 text-sm text-neutral-300 leading-snug">
+                                        {food.grams}g · {food.ing.name}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Nota */}
+                                  {food.noteText && (
+                                    <p className="text-[10px] italic mt-1 pl-3" style={{ color: "#555" }}>
+                                      ※ {food.noteText}
+                                    </p>
+                                  )}
+                                  {/* Aviso porción grande */}
+                                  {food.grams > 350 && !isFixed && (
+                                    <p className="text-[10px] pl-3 mt-0.5" style={{ color: "#444" }}>
+                                      Porción grande — normal en alimentos de baja densidad
+                                    </p>
+                                  )}
+                                  {/* Macros del alimento */}
+                                  {!isFixed && (
+                                    <p className="text-[10px] pl-3 mt-0.5" style={{ color: "#444" }}>
+                                      {fm.kcal} kcal · {fm.protein}g P · {fm.carbs}g HC · {fm.fat}g G
+                                    </p>
+                                  )}
                                 </div>
-                                {food.grams > 350 && food.macro !== "fixed" && (
-                                  <p className="text-[10px]" style={{ color: "#555" }}>
-                                    Porción grande — normal en alimentos de baja densidad (patata, boniato…)
-                                  </p>
-                                )}
+                              );
+                            })}
+                          </div>
 
-                                {/* Select */}
-                                {food.availablePool.length > 1 ? (
-                                  <select
-                                    value={food.ing.id}
-                                    onChange={e => doSelect(meal.mealId, activeOptIdx, food.slotId, e.target.value)}
-                                    className="w-full rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none"
-                                    style={{ background: "#1A1A1A", border: `1px solid ${slotColor}35` }}>
-                                    {food.availablePool.map(ing => (
-                                      <option key={ing.id} value={ing.id}>{ing.name}</option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <p className="text-white text-sm">{food.ing.name}</p>
-                                )}
-
-                                {/* Macros del alimento */}
-                                {!isFixed && (
-                                  <div className="flex gap-3 text-[10px]">
-                                    <span className="text-neutral-500">{fm.kcal} kcal</span>
-                                    <span className="text-red-400">{fm.protein}g P</span>
-                                    <span className="text-amber-400">{fm.carbs}g HC</span>
-                                    <span className="text-blue-400">{fm.fat}g G</span>
-                                  </div>
-                                )}
-
-                                {/* Nota libre */}
-                                {food.noteText && (
-                                  <p className="text-neutral-600 text-[10px]">{food.noteText}</p>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {/* Macros totales opción */}
+                          {/* Total comida */}
                           {mt && (
-                            <div className="flex gap-3 px-1 pt-1 text-[10px]">
-                              <span className="text-neutral-500 font-medium">Total opción:</span>
-                              <span className="text-red-400">{mt.protein}g P</span>
-                              <span className="text-amber-400">{mt.carbs}g HC</span>
-                              <span className="text-blue-400">{mt.fat}g G</span>
-                              <span className="text-neutral-500">{mt.kcal} kcal</span>
+                            <div className="px-4 pb-3 flex gap-3 text-[10px]">
+                              <span className="text-white font-semibold tabular-nums">{mt.kcal} kcal</span>
+                              <span style={{ color: "#444" }}>{mt.protein}g P · {mt.carbs}g HC · {mt.fat}g G</span>
                             </div>
                           )}
                         </div>
                       )}
+
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -2137,7 +2165,7 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
                 <button onClick={handleSave} disabled={saving}
                   className="w-full py-4 rounded-xl text-white font-bold text-sm disabled:opacity-40"
                   style={{ background: "#8B1A2F" }}>
-                  {saving ? "Guardando…" : "💾 Guardar y asignar al cliente"}
+                  {saving ? "Guardando…" : <><i className="ti ti-device-floppy" style={{ fontSize: 15 }} /> Guardar y asignar al cliente</>}
                 </button>
                 <p className="text-[10px] text-neutral-600 text-center mt-2">
                   Se guardan las 3 opciones por comida. El cliente ve todas y elige la que prefiera.
