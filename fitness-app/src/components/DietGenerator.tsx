@@ -1509,8 +1509,9 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
             className="w-9 h-9 rounded-lg text-neutral-300 flex items-center justify-center shrink-0"
             style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
           <div>
-            <p className="text-white font-bold text-sm">
-              {clientMode ? "📊 Calcular mis macros" : "✨ Generar plantilla"}
+            <p className="text-white font-bold text-sm flex items-center gap-1.5">
+              <i className={`ti ti-${clientMode ? "calculator" : "sparkles"}`} style={{ fontSize: 14, color: "var(--mvp-red)" }} />
+              {clientMode ? "Calcular mis macros" : "Generar plantilla"}
             </p>
             <p className="text-neutral-500 text-xs">
               {clientMode
@@ -1523,7 +1524,9 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
 
           {/* ── Datos personales ── */}
           <div className="rounded-2xl p-5 space-y-4" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
-            <p className="text-white font-semibold text-sm">👤 Datos personales</p>
+            <p className="text-white font-semibold text-sm flex items-center gap-1.5">
+              <i className="ti ti-user" style={{ fontSize: 13, color: "#666" }} />Datos personales
+            </p>
 
             {/* Sexo */}
             <div className="grid grid-cols-2 gap-2">
@@ -1573,7 +1576,9 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
 
           {/* ── Objetivo ── */}
           <div className="rounded-2xl p-5 space-y-3" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
-            <p className="text-white font-semibold text-sm">🎯 Objetivo</p>
+            <p className="text-white font-semibold text-sm flex items-center gap-1.5">
+              <i className="ti ti-target" style={{ fontSize: 13, color: "#666" }} />Objetivo
+            </p>
             {GOAL_OPTIONS.map(g => (
               <button key={g.value} onClick={() => {
                 setCalcGoal(g.value);
@@ -1588,24 +1593,26 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
                   <p className={"text-sm font-semibold " + (calcGoal === g.value ? "text-black" : "text-white")}>{g.label}</p>
                   <p className={"text-xs " + (calcGoal === g.value ? "text-neutral-600" : "text-neutral-500")}>{g.sublabel}</p>
                 </div>
-                {calcGoal === g.value && <span className="text-emerald-600 font-bold text-lg">✓</span>}
+                {calcGoal === g.value && <i className="ti ti-check" style={{ fontSize: 16, color: "var(--mvp-red)" }} />}
               </button>
             ))}
           </div>
 
           {/* ── Preview macros calculados ── */}
           {calcResult && (
-            <div className="rounded-2xl p-4 space-y-3" style={{ background: "#0A1A0A", border: "1px solid #1A3A1A" }}>
-              <p className="text-[10px] uppercase tracking-wider text-emerald-600">📊 Macros calculados — Día ON</p>
+            <div className="rounded-2xl p-4 space-y-3" style={{ background: "#111", border: "1px solid #1e1e1e" }}>
+              <p className="text-[10px] uppercase tracking-wider flex items-center gap-1.5" style={{ color: "#666" }}>
+                <i className="ti ti-chart-bar" style={{ fontSize: 10 }} />Macros calculados — Día ON
+              </p>
               <div className="flex gap-3">
                 {[
-                  { label: "Proteína", val: calcResult.protein_g, color: "#F87171" },
-                  { label: "Hidratos", val: calcResult.carbs_g,   color: "#FBBF24" },
-                  { label: "Grasa",    val: calcResult.fat_g,     color: "#60A5FA" },
-                ].map(({ label, val, color }) => (
-                  <div key={label} className="flex-1 rounded-xl px-3 py-2.5 text-center" style={{ background: "#111" }}>
-                    <p className="text-[10px] text-neutral-500 uppercase">{label}</p>
-                    <p className="text-base font-bold tabular-nums" style={{ color }}>{val.toFixed(0)}<span className="text-xs font-normal text-neutral-500">g</span></p>
+                  { label: "Proteína", val: calcResult.protein_g },
+                  { label: "Hidratos", val: calcResult.carbs_g },
+                  { label: "Grasa",    val: calcResult.fat_g },
+                ].map(({ label, val }) => (
+                  <div key={label} className="flex-1 rounded-xl px-3 py-2.5 text-center" style={{ background: "#161616" }}>
+                    <p className="text-[10px] uppercase" style={{ color: "#444" }}>{label}</p>
+                    <p className="text-base font-bold tabular-nums text-white">{val.toFixed(0)}<span className="text-xs font-normal" style={{ color: "#555" }}>g</span></p>
                   </div>
                 ))}
               </div>
@@ -1653,7 +1660,10 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
             disabled={!canGenerate}
             className="w-full py-4 rounded-xl text-white font-bold text-sm disabled:opacity-40"
             style={{ background: "linear-gradient(135deg,#8B1A2F,#C0392B)" }}>
-            {clientMode ? "✨ Calcular y generar mi dieta" : "✨ Generar plantilla automáticamente"}
+            <span className="flex items-center justify-center gap-2">
+              <i className="ti ti-bolt" style={{ fontSize: 15 }} />
+              {clientMode ? "Calcular y generar mi dieta" : "Generar plantilla automáticamente"}
+            </span>
           </button>
 
           {/* Separador con acceso a macros manuales */}
@@ -1664,12 +1674,12 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
             <div className="px-4 pb-4 space-y-3">
               <div className="grid grid-cols-3 gap-3 pt-2">
                 {([
-                  { label: "💪 Proteína", val: tplProtein, set: setTplProtein, color: "text-red-400" },
-                  { label: "🌾 Hidratos", val: tplCarbs,   set: setTplCarbs,   color: "text-amber-400" },
-                  { label: "🥑 Grasa",    val: tplFat,     set: setTplFat,     color: "text-blue-400" },
-                ] as const).map(({ label, val, set, color }) => (
+                  { label: "Proteína", val: tplProtein, set: setTplProtein },
+                  { label: "Hidratos", val: tplCarbs, set: setTplCarbs },
+                  { label: "Grasa", val: tplFat, set: setTplFat },
+                ] as const).map(({ label, val, set }) => (
                   <div key={label} className="flex flex-col gap-1.5">
-                    <label className={`text-[10px] font-semibold uppercase tracking-wider ${color}`}>{label}</label>
+                    <label className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#666" }}>{label}</label>
                     <div className="flex items-center gap-1">
                       <input type="number" step="1" value={val} onChange={e => { set(e.target.value); }}
                         className="w-full rounded-lg px-2 py-2.5 text-white text-sm font-bold text-center focus:outline-none"
@@ -1710,9 +1720,10 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
           className="w-9 h-9 rounded-lg text-neutral-300 flex items-center justify-center shrink-0"
           style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
         <div className="flex-1 min-w-0">
-          <p className="text-white font-bold text-sm truncate">
+          <p className="text-white font-bold text-sm truncate flex items-center gap-1.5">
+            {clientMode && <i className="ti ti-salad shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />}
             {clientMode
-              ? "🎲 Genera tu menú del día"
+              ? "Genera tu menú del día"
               : generated ? (planName || "Plan generado") : "Generar Dieta"}
           </p>
           {!clientMode && (clientName
@@ -1724,7 +1735,10 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
           <button onClick={handleSave} disabled={saving}
             className="px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-40"
             style={{ background: "#8B1A2F" }}>
-            {saving ? "Guardando…" : "💾 Guardar"}
+            <span className="flex items-center gap-1.5">
+              <i className="ti ti-device-floppy" style={{ fontSize: 14 }} />
+              {saving ? "Guardando…" : "Guardar"}
+            </span>
           </button>
         )}
       </header>
@@ -1734,20 +1748,29 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
         {/* ── Resumen macros ON/OFF ── */}
         <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: "1px solid #222" }}>
           <div className="px-4 py-3 space-y-3">
-            <p className="text-white font-semibold text-sm">📊 Macros del cliente</p>
+            <p className="text-white font-semibold text-sm flex items-center gap-1.5">
+              <i className="ti ti-chart-bar" style={{ fontSize: 13, color: "#555" }} />Macros
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {([
-                { label: "💪 Día ON",  m: macrosOn,  color: "text-emerald-400" },
-                { label: "😴 Día OFF", m: macrosOff, color: "text-blue-400" },
-              ] as const).map(({ label, m, color }) => (
-                <div key={label} className="rounded-lg p-3 text-center"
-                  style={{ background: "#0A0A0A", border: "1px solid #1E1E1E" }}>
-                  <p className={`text-xs font-semibold mb-1 ${color}`}>{label}</p>
-                  <p className="text-white text-lg font-bold">{m!.kcal} <span className="text-neutral-500 text-xs">kcal</span></p>
-                  <div className="flex justify-center gap-2 mt-1 text-[10px]">
-                    <span className="text-red-400">{m!.protein_g}g P</span>
-                    <span className="text-amber-400">{m!.carbs_g}g HC</span>
-                    <span className="text-blue-400">{m!.fat_g}g G</span>
+                { label: "Día ON",  icon: "ti-dumbbell", m: macrosOn  },
+                { label: "Día OFF", icon: "ti-moon",     m: macrosOff },
+              ] as const).map(({ label, icon, m }) => (
+                <div key={label} className="rounded-xl p-3 text-center"
+                  style={{ background: "#141414", border: "1px solid #1e1e1e" }}>
+                  <p className="text-xs font-bold mb-1.5 flex items-center justify-center gap-1"
+                    style={{ color: label === "Día ON" ? "var(--mvp-red)" : "#777" }}>
+                    <i className={`ti ${icon}`} style={{ fontSize: 11 }} />{label}
+                  </p>
+                  <p className="text-white font-black tabular-nums" style={{ fontSize: 22, letterSpacing: "-0.02em" }}>
+                    {m!.kcal}<span className="text-xs font-normal ml-0.5" style={{ color: "#444" }}>kcal</span>
+                  </p>
+                  <div className="flex justify-center gap-2 mt-1.5 text-[10px]" style={{ color: "#555" }}>
+                    <span>{m!.protein_g}g P</span>
+                    <span style={{ color: "#333" }}>·</span>
+                    <span>{m!.carbs_g}g HC</span>
+                    <span style={{ color: "#333" }}>·</span>
+                    <span>{m!.fat_g}g G</span>
                   </div>
                 </div>
               ))}
@@ -1776,7 +1799,9 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
             <button
               onClick={() => setShowClientRecalc(v => !v)}
               className="w-full flex items-center justify-between px-4 py-3 text-left">
-              <span className="text-sm font-semibold text-white">⚙️ Actualizar mis datos</span>
+              <span className="text-sm font-semibold text-white flex items-center gap-1.5">
+                <i className="ti ti-settings" style={{ fontSize: 13, color: "#666" }} />Actualizar mis datos
+              </span>
               <span className="text-neutral-500 text-xs">{showClientRecalc ? "▲ Cerrar" : "▼ Cambiar peso / entreno / objetivo"}</span>
             </button>
 

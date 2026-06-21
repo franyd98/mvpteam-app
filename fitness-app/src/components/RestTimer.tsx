@@ -145,12 +145,12 @@ export default function RestTimer({
       <div
         className="pointer-events-auto max-w-2xl mx-auto overflow-hidden"
         style={{
-          background: isDone ? "#0a1a0a" : "#0a0a0a",
-          border: `1px solid ${isDone ? "rgba(74,222,128,0.3)" : "#1e1e1e"}`,
+          background: isDone ? "#0e1a0e" : "#111111",
+          border: `1px solid ${isDone ? "rgba(74,222,128,0.4)" : "#2a2a2a"}`,
           borderRadius: 20,
           boxShadow: isDone
-            ? "0 -8px 40px rgba(74,222,128,0.15), 0 4px 24px rgba(0,0,0,0.8)"
-            : "0 -8px 40px rgba(0,0,0,0.6), 0 4px 24px rgba(0,0,0,0.8)",
+            ? "0 -12px 48px rgba(74,222,128,0.2), 0 4px 24px rgba(0,0,0,0.9)"
+            : "0 -12px 48px rgba(192,41,43,0.15), 0 4px 32px rgba(0,0,0,0.9)",
         }}
       >
         {/* Progress bar */}

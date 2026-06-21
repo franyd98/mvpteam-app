@@ -733,7 +733,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 <button key={icon}
                   onClick={onClick}
                   className="w-9 h-9 rounded-xl flex items-center justify-center active:scale-95 transition-all"
-                  style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#555" }}
+                  style={{ background: "#161616", border: "1px solid #242424", color: "#aaa" }}
                   title={title}
                 >
                   <i className={`ti ti-${icon}`} style={{ fontSize: 18 }} />
@@ -781,17 +781,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     <button
                       key={m.number}
                       onClick={() => setMicrocycleNumber(m.number)}
-                      className={"relative w-10 h-10 rounded-xl text-sm font-bold transition-all active:scale-95 " +
-                        (m.number === microcycleNumber ? "text-white" : "text-neutral-600")}
+                      className={"relative w-10 h-10 rounded-xl text-sm font-black transition-all active:scale-95 "}
                       style={m.number === microcycleNumber
-                        ? { background: "var(--mvp-red)", border: "1px solid rgba(220,38,38,0.5)" }
-                        : { background: "#111", border: "1px solid #1c1c1c" }}
+                        ? { background: "var(--mvp-red)", color: "#fff", border: "1px solid rgba(192,41,43,0.6)", boxShadow: "0 2px 12px rgba(192,41,43,0.3)" }
+                        : { background: "#161616", border: "1px solid #252525", color: locked ? "#888" : "#999" }}
                     >
                       {m.number}
                       {locked && (
-                        <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
-                          style={{ background: "#161616", border: "1px solid #2a2a2a", color: "#555" }}>
-                          <i className="ti ti-lock" style={{ fontSize: 7 }} />
+                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
+                          style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }}>
+                          <i className="ti ti-lock" style={{ fontSize: 8, color: "var(--mvp-red)" }} />
                         </span>
                       )}
                     </button>
