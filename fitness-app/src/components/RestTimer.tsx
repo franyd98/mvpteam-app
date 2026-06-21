@@ -138,68 +138,65 @@ export default function RestTimer({
   const progress = Math.max(0, Math.min(1, remainingMs / (totalSeconds * 1000)));
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 px-3 pointer-events-none"
-      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 76px)" }}>
+    <div
+      className="fixed inset-x-0 bottom-0 z-50 px-3 pointer-events-none"
+      style={{ paddingBottom: "calc(max(env(safe-area-inset-bottom), 16px) + 60px)" }}
+    >
       <div
-        className={
-          "pointer-events-auto max-w-2xl mx-auto rounded-2xl border shadow-2xl overflow-hidden transition-colors " +
-          (isDone
-            ? "bg-emerald-900 border-emerald-700"
-            : "bg-neutral-900 border-neutral-700")
-        }
+        className="pointer-events-auto max-w-2xl mx-auto overflow-hidden"
+        style={{
+          background: isDone ? "#0a1a0a" : "#0a0a0a",
+          border: `1px solid ${isDone ? "rgba(74,222,128,0.3)" : "#1e1e1e"}`,
+          borderRadius: 20,
+          boxShadow: isDone
+            ? "0 -8px 40px rgba(74,222,128,0.15), 0 4px 24px rgba(0,0,0,0.8)"
+            : "0 -8px 40px rgba(0,0,0,0.6), 0 4px 24px rgba(0,0,0,0.8)",
+        }}
       >
-        {/* Barra de progreso */}
-        <div
-          className={
-            "h-1 transition-all " +
-            (isDone ? "bg-emerald-400" : "bg-white/60")
-          }
-          style={{ width: `${progress * 100}%` }}
+        {/* Progress bar */}
+        <div className="h-[3px] rounded-t-[20px] transition-all duration-500"
+          style={{
+            width: `${progress * 100}%`,
+            background: isDone ? "var(--mvp-green)" : "var(--mvp-red)",
+          }}
         />
 
-        <div className="flex items-center gap-2 p-3">
-          {/* Tiempo grande */}
-          <div className="flex-1">
-            <p className="text-[10px] uppercase tracking-wider text-neutral-400">
-              {isDone ? "¡Descanso terminado!" : "Descanso"}
+        <div className="flex items-center gap-3 px-4 py-3.5">
+          {/* Timer display */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] uppercase tracking-[0.1em] font-black mb-0.5"
+              style={{ color: isDone ? "var(--mvp-green)" : "#444" }}>
+              {isDone ? "¡A entrenar!" : "Descanso"}
             </p>
-            <p
-              className={
-                "text-3xl font-bold tabular-nums " +
-                (isDone ? "text-emerald-200" : "text-white")
-              }
-            >
+            <p className="font-black tabular-nums leading-none"
+              style={{
+                fontSize: 36,
+                letterSpacing: "-0.03em",
+                color: isDone ? "var(--mvp-green)" : "#fff",
+              }}>
               {timeStr}
             </p>
           </div>
 
-          {/* Controles de ajuste */}
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => onAdjust(-15)}
-              className="w-12 h-12 rounded-xl bg-neutral-800 text-white font-medium hover:bg-neutral-700"
-              title="Quitar 15 segundos"
-            >
+          {/* Controls */}
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => onAdjust(-15)}
+              className="w-11 h-11 rounded-2xl text-sm font-bold transition-all active:scale-95"
+              style={{ background: "#141414", border: "1px solid #222", color: "#666" }}>
               −15
             </button>
-            <button
-              onClick={() => onAdjust(15)}
-              className="w-12 h-12 rounded-xl bg-neutral-800 text-white font-medium hover:bg-neutral-700"
-              title="Añadir 15 segundos"
-            >
+            <button onClick={() => onAdjust(15)}
+              className="w-11 h-11 rounded-2xl text-sm font-bold transition-all active:scale-95"
+              style={{ background: "#141414", border: "1px solid #222", color: "#666" }}>
               +15
             </button>
-            <button
-              onClick={onDismiss}
-              className={
-                "w-12 h-12 rounded-xl font-bold transition-colors " +
-                (isDone
-                  ? "bg-white text-black"
-                  : "bg-neutral-700 text-white hover:bg-neutral-600")
-              }
-              title={isDone ? "Cerrar" : "Saltar descanso"}
-            >
-              {isDone ? "✓" : "⤼"}
+            <button onClick={onDismiss}
+              className="w-11 h-11 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center"
+              style={isDone
+                ? { background: "var(--mvp-green)", color: "#000" }
+                : { background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#888" }}>
+              <i className={`ti ${isDone ? "ti-check" : "ti-player-skip-forward"}`}
+                style={{ fontSize: 18 }} />
             </button>
           </div>
         </div>

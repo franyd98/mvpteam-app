@@ -317,18 +317,25 @@ function ShopBtn({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={() => { onClick(); setAdded(true); setTimeout(() => setAdded(false), 1500); }}
-      className={`w-7 h-7 rounded-lg text-sm shrink-0 flex items-center justify-center transition-all duration-200
-        ${added ? "bg-green-900 text-green-400 scale-110" : "bg-neutral-800 text-neutral-500 active:text-white"}`}
+      className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
+      style={added
+        ? { background: "var(--done-bg)", border: "1px solid var(--done-border)", color: "#888" }
+        : { background: "#1a1a1a", border: "1px solid #222", color: "#555" }}
       title="Añadir a la lista de la compra">
-      {added ? "✓" : "🛒"}
+      <i className={`ti ${added ? "ti-check" : "ti-shopping-cart"}`} style={{ fontSize: 12 }} />
     </button>
   );
 }
 
 // ── MealCards ─────────────────────────────────────────────────────────────────
 const OPT_LABELS  = ["A", "B", "C", "D"];
-// Un único acento por comida para no contaminar con colores
-const MEAL_ACCENT_COLORS = ["#c0292b", "#a0292b", "#932526", "#7a2020", "#6b1d1d", "#5f1b1b"];
+// Acento único — solo rojo MVP, misma paleta que el resto de la app
+const MEAL_ACCENT_COLORS = [
+  "var(--mvp-red)", "var(--mvp-red)", "var(--mvp-red)",
+  "var(--mvp-red)", "var(--mvp-red)", "var(--mvp-red)",
+];
+// Tabler icons por índice de comida (desayuno, media mañana, comida…)
+const MEAL_ICONS = ["ti-sun", "ti-coffee", "ti-bowl", "ti-apple", "ti-moon-2", "ti-salad"];
 
 function MealCards({
   meals, dayType, selectedOptions, pendingSave,
@@ -373,14 +380,19 @@ function MealCards({
               <button
                 onClick={() => toggleCollapse(meal.id)}
                 className="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-70">
-                <span className="text-xl shrink-0">{meal.emoji}</span>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }}>
+                  <i className={`ti ${MEAL_ICONS[mealIndex % MEAL_ICONS.length]}`}
+                    style={{ fontSize: 16, color: "var(--mvp-red)" }} />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-bold uppercase tracking-widest mb-0.5" style={{ color: accent }}>
+                  <p className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: "#333" }}>
                     {`Comida ${mealIndex + 1}`}
                   </p>
                   <span className="text-white font-semibold text-sm block truncate">{meal.name}</span>
                 </div>
-                <i className={`ti ${isCollapsed ? "ti-chevron-down" : "ti-chevron-up"} text-neutral-700`} style={{ fontSize: 14 }} />
+                <i className={`ti ${isCollapsed ? "ti-chevron-down" : "ti-chevron-up"}`}
+                  style={{ fontSize: 14, color: "#333" }} />
               </button>
 
               {totalOpts > 1 && (
@@ -414,8 +426,8 @@ function MealCards({
                         <div className="flex items-center gap-2 mb-1.5">
                           <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{group.label}</p>
                           {group.isChoice && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold"
-                              style={{ background: "rgba(129,140,248,0.1)", color: "#818cf8", border: "1px solid rgba(129,140,248,0.2)" }}>elige uno</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold"
+                              style={{ background: "var(--mvp-red-soft)", color: "var(--mvp-red)", border: "1px solid var(--mvp-red-border)" }}>elige uno</span>
                           )}
                         </div>
                       )}
@@ -677,7 +689,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const saveOptionForMeal = (mealId: string, current: Record<string, number>) => {
     try { localStorage.setItem(OPTS_KEY, JSON.stringify(current)); } catch {}
     setPendingSave(prev => { const s = new Set(prev); s.delete(mealId); return s; });
-    showToast("✅ Opción guardada");
+    showToast("Opción guardada");
   };
 
   // ── Datos del plan que se muestra ─────────────────────────────────────────
@@ -776,7 +788,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             </div>
           ) : !displayPlan ? (
             <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
-              <p className="text-5xl mb-4">🥗</p>
+              <i className="ti ti-salad mb-4 block" style={{ fontSize: 40, color: "#333" }} />
               <p className="text-white font-semibold mb-2">Sin plan activo</p>
               <p className="text-neutral-500 text-sm leading-relaxed mb-6">
                 Genera tu primera dieta personalizada con tus macros.
@@ -794,12 +806,13 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
               {/* Banner "viendo historial" */}
               {viewingHistEntry && (
                 <div className="rounded-xl px-4 py-3 flex items-center gap-3"
-                  style={{ background: "#1A1A00", border: "1px solid #3A3000" }}>
-                  <span className="text-amber-400 text-sm flex-1">🕐 {viewingHistEntry.planName}</span>
+                  style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+                  <i className="ti ti-clock" style={{ fontSize: 14, color: "#555" }} />
+                  <span className="text-neutral-400 text-sm flex-1">{viewingHistEntry.planName}</span>
                   <button onClick={() => setViewingHistEntry(null)}
                     className="text-xs font-semibold px-3 py-1.5 rounded-lg active:opacity-70"
-                    style={{ background: "#2A2000", color: "#FACC15" }}>
-                    ← Volver a actual
+                    style={{ background: "#1a1a1a", border: "1px solid #222", color: "#999" }}>
+                    Volver
                   </button>
                 </div>
               )}
@@ -819,24 +832,31 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                       style={isActive
                         ? { background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }
                         : { background: "#0f0f0f", border: "1px solid #1a1a1a" }}>
-                      <p className="text-[9px] font-bold uppercase tracking-widest mb-2.5"
-                        style={{ color: isActive ? "var(--mvp-red)" : "#444" }}>
-                        {isOn ? "💪 Entreno" : "😴 Descanso"}
-                      </p>
-                      <p className="tabular-nums font-bold leading-none mb-3" style={{ fontSize: 26, color: isActive ? "#fff" : "#555" }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+                          style={{ background: isActive ? "var(--mvp-red-soft)" : "rgba(255,255,255,0.03)", border: isActive ? "1px solid var(--mvp-red-border)" : "1px solid #1e1e1e" }}>
+                          <i className={`ti ${isOn ? "ti-dumbbell" : "ti-moon"}`}
+                            style={{ fontSize: 11, color: isActive ? "var(--mvp-red)" : "#444" }} />
+                        </div>
+                        <p className="text-[9px] font-black uppercase tracking-widest"
+                          style={{ color: isActive ? "var(--mvp-red)" : "#444" }}>
+                          {isOn ? "Día entreno" : "Día descanso"}
+                        </p>
+                      </div>
+                      <p className="tabular-nums font-black leading-none mb-3" style={{ fontSize: 36, letterSpacing: "-0.03em", color: isActive ? "#fff" : "#333" }}>
                         {kcal ?? "—"}
-                        <span className="text-neutral-600 font-normal text-[11px] ml-1">kcal</span>
+                        <span className="font-normal ml-1.5" style={{ fontSize: 13, color: isActive ? "#555" : "#2a2a2a" }}>kcal</span>
                       </p>
-                      <div className="grid grid-cols-3 gap-1">
+                      <div className="grid grid-cols-3 gap-1.5">
                         {[
                           { label: "P",  val: prot  },
                           { label: "HC", val: carbs },
                           { label: "G",  val: fat   },
                         ].map(({ label, val }) => (
-                          <div key={label} className="rounded-lg py-1.5 text-center"
-                            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                            <p className="text-[8px] font-semibold tracking-wide text-neutral-600">{label}</p>
-                            <p className="text-[11px] font-bold tabular-nums mt-0.5" style={{ color: isActive ? "#e5e5e5" : "#555" }}>{val ?? "—"}g</p>
+                          <div key={label} className="rounded-xl py-2 text-center"
+                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <p className="text-[8px] font-black tracking-[0.08em] mb-0.5" style={{ color: isActive ? "#555" : "#2a2a2a" }}>{label}</p>
+                            <p className="text-sm font-black tabular-nums" style={{ color: isActive ? "#ccc" : "#444", letterSpacing: "-0.02em" }}>{val ?? "—"}<span className="text-[9px] font-normal ml-0.5" style={{ color: isActive ? "#444" : "#222" }}>g</span></p>
                           </div>
                         ))}
                       </div>
@@ -858,8 +878,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
 
               {/* Indicaciones */}
               {displayPlan.notes && displayPlan.notes !== "__CLIENT_GENERATED__" && (
-                <div className="rounded-xl px-4 py-3" style={{ background: "#111", border: "1px solid #2A1800" }}>
-                  <p className="text-[10px] text-amber-600 uppercase tracking-wider mb-1">📌 Indicaciones</p>
+                <div className="rounded-xl px-4 py-3" style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+                  <p className="text-[10px] text-neutral-600 uppercase tracking-wider mb-1">
+                    <i className="ti ti-info-circle mr-1" style={{ fontSize: 10 }} />Indicaciones
+                  </p>
                   <p className="text-neutral-300 text-xs leading-relaxed whitespace-pre-line">{displayPlan.notes}</p>
                 </div>
               )}
@@ -930,29 +952,33 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between px-4 py-4 border-b border-neutral-800 shrink-0">
                 <div>
-                  <p className="text-white font-bold text-base">🛒 Lista de la compra</p>
-                  <p className="text-neutral-500 text-xs mt-0.5">
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold">Lista de la compra</p>
+                  <p className="text-white font-bold text-sm mt-0.5">
                     {shopList.length > 0
                       ? `${shopList.length} ingrediente${shopList.length !== 1 ? "s" : ""}`
-                      : "Pulsa 🛒 junto a un alimento para añadirlo"}
+                      : "Sin artículos todavía"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => { setShowShopList(false); setFoodSearchFromCart(true); setShowFoodSearch(true); }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 active:text-white"
-                    style={{ background: "#1A1A1A" }} title="Buscar alimento">🔍</button>
+                    className="w-8 h-8 rounded-xl flex items-center justify-center"
+                    style={{ background: "#1a1a1a", border: "1px solid #222", color: "#666" }} title="Buscar alimento">
+                    <i className="ti ti-search" style={{ fontSize: 14 }} />
+                  </button>
                   <button onClick={() => setShowShopList(false)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-500 active:text-white"
-                    style={{ background: "#1A1A1A" }}>✕</button>
+                    className="w-8 h-8 rounded-xl flex items-center justify-center"
+                    style={{ background: "#1a1a1a", border: "1px solid #222", color: "#666" }}>
+                    <i className="ti ti-x" style={{ fontSize: 14 }} />
+                  </button>
                 </div>
               </div>
               <div className="overflow-y-auto flex-1">
                 {shopList.length === 0 ? (
                   <div className="py-12 text-center">
-                    <p className="text-4xl mb-3">🛒</p>
-                    <p className="text-neutral-400 text-sm">Pulsa el icono 🛒 junto a cualquier</p>
-                    <p className="text-neutral-400 text-sm">alimento para añadirlo aquí</p>
+                    <i className="ti ti-shopping-cart mb-3 block" style={{ fontSize: 36, color: "#333" }} />
+                    <p className="text-neutral-500 text-sm">Toca el carrito junto a cualquier alimento</p>
+                    <p className="text-neutral-600 text-sm">para añadirlo aquí</p>
                   </div>
                 ) : (
                   <div className="px-4 py-3 space-y-1">
@@ -973,19 +999,21 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                                 <button
                                   onClick={() => toggleShopChecked(id, !checked)}
                                   className="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:opacity-70"
-                                  style={{ background: checked ? "#0A1A0A" : "#141414", border: `1px solid ${checked ? "#1A3A1A" : "#1E1E1E"}` }}>
+                                  style={{ background: checked ? "var(--done-bg)" : "#141414", border: `1px solid ${checked ? "var(--done-border)" : "#1E1E1E"}` }}>
                                   <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-                                    style={{ background: checked ? "#16A34A" : "#222", border: `1px solid ${checked ? "#16A34A" : "#333"}` }}>
-                                    {checked && <span className="text-white text-xs font-bold">✓</span>}
+                                    style={{ background: checked ? "rgba(255,255,255,0.1)" : "#222", border: `1px solid ${checked ? "rgba(255,255,255,0.15)" : "#333"}` }}>
+                                    {checked && <i className="ti ti-check" style={{ fontSize: 11, color: "#aaa" }} />}
                                   </div>
                                   <span className="flex-1 text-sm"
-                                    style={{ color: checked ? "#4A7A4A" : "#ddd", textDecoration: checked ? "line-through" : "none" }}>
+                                    style={{ color: checked ? "#555" : "#ddd", textDecoration: checked ? "line-through" : "none" }}>
                                     {item.name}
                                   </span>
                                 </button>
                                 <button onClick={() => removeShopItem(id)}
-                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-600 active:text-red-400 shrink-0"
-                                  style={{ background: "#1A1A1A" }}>✕</button>
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                  style={{ background: "#1a1a1a", color: "#555" }}>
+                                  <i className="ti ti-x" style={{ fontSize: 12 }} />
+                                </button>
                               </div>
                             );
                           })}

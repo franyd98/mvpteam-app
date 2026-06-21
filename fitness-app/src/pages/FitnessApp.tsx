@@ -593,15 +593,15 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         {/* Top section: big streak number + status badge */}
         <div className="flex items-end justify-between px-4 pt-4 pb-3">
           <div>
-            <p className="text-[9px] uppercase tracking-[0.12em] font-black mb-1" style={{ color: "#252525" }}>
+            <p className="text-[9px] uppercase tracking-[0.12em] font-black mb-1" style={{ color: "#444" }}>
               Racha
             </p>
             <div className="flex items-baseline gap-1.5">
               <span className="font-black leading-none tabular-nums"
-                style={{ fontSize: 52, color: streak > 0 ? "var(--mvp-red)" : "#1a1a1a", lineHeight: 1 }}>
+                style={{ fontSize: 52, color: streak > 0 ? "var(--mvp-red)" : "#2a2a2a", lineHeight: 1 }}>
                 {streak}
               </span>
-              <span className="text-sm font-medium pb-1" style={{ color: "#333" }}>
+              <span className="text-sm font-semibold pb-1" style={{ color: "#555" }}>
                 {streak === 1 ? "día" : "días"}
               </span>
             </div>
@@ -639,26 +639,30 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             const isManualRest = manualRestDays.has(ds);
             const canToggle    = isPast;
 
+            // Rest takes visual priority over trained (user explicitly marked it)
+            const showAsRest = isManualRest;
+            const showAsTrained = trained && !isManualRest;
+
             let bg: string, borderStyle: string, color: string, shadow = "none";
-            if (trained && isToday) {
+            if (showAsTrained && isToday) {
               bg = "var(--mvp-red)"; borderStyle = "none"; color = "#fff";
               shadow = "0 0 20px rgba(192,41,43,0.5)";
-            } else if (trained) {
+            } else if (showAsTrained) {
               bg = "var(--mvp-red)"; borderStyle = "none"; color = "#fff";
-            } else if (isToday) {
+            } else if (isToday && !showAsRest) {
               bg = "transparent"; borderStyle = "2px solid var(--mvp-red)"; color = "var(--mvp-red)";
-            } else if (isManualRest) {
-              bg = "rgba(255,255,255,0.03)"; borderStyle = "1px solid rgba(255,255,255,0.07)"; color = "#444";
+            } else if (showAsRest) {
+              bg = "#1c1c1c"; borderStyle = "1px solid #303030"; color = "#777";
             } else if (isPast) {
-              bg = "#111"; borderStyle = "1px solid #161616"; color = "#2a2a2a";
+              bg = "#141414"; borderStyle = "1px solid #1e1e1e"; color = "#444";
             } else {
-              bg = "#0a0a0a"; borderStyle = "1px solid #111"; color = "#1a1a1a";
+              bg = "#0d0d0d"; borderStyle = "1px solid #161616"; color = "#2a2a2a";
             }
 
             return (
               <div key={ds} className="flex-1 flex flex-col items-center gap-1.5">
                 <span className="text-[9px] font-black tracking-wider"
-                  style={{ color: isToday ? "var(--mvp-red)" : "#2a2a2a" }}>
+                  style={{ color: isToday ? "var(--mvp-red)" : "#555" }}>
                   {DAY_LABELS[i]}
                 </span>
                 <button
@@ -675,10 +679,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   }}
                   title={canToggle ? (isManualRest ? "Quitar descanso" : "Marcar descanso") : undefined}
                 >
-                  {trained
+                  {showAsTrained
                     ? <i className="ti ti-check" style={{ fontSize: 12 }} />
-                    : isManualRest
-                      ? <i className="ti ti-moon" style={{ fontSize: 10 }} />
+                    : showAsRest
+                      ? <i className="ti ti-moon" style={{ fontSize: 11 }} />
                       : null}
                 </button>
               </div>
@@ -1025,9 +1029,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       >
         <div className="flex items-stretch max-w-2xl mx-auto">
           {[
-            { tab: "workout" as const, tiIcon: "barbell",   label: "Entreno" },
-            { tab: "diet"    as const, tiIcon: "apple",      label: "Dieta" },
-            { tab: "checkin" as const, tiIcon: "chart-bar",  label: "Check-in" },
+            { tab: "workout" as const, tiIcon: "dumbbell",     label: "Entreno" },
+            { tab: "diet"    as const, tiIcon: "salad",        label: "Dieta" },
+            { tab: "checkin" as const, tiIcon: "heartbeat",    label: "Check-in" },
           ].map(({ tab, tiIcon, label }) => {
             const active = activeTab === tab;
             return (

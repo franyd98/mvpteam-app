@@ -39,14 +39,17 @@ function FatigueSlider({ label, value, onChange }: {
   label: string; value: string; onChange: (v: string) => void;
 }) {
   const n = Number(value) || 0;
-  const color = n >= 8 ? "bg-red-600" : n >= 5 ? "bg-amber-400" : n > 0 ? "bg-emerald-600" : "bg-neutral-800";
+  // Color semántico: alto = rojo, medio = neutro, bajo = casi invisible
+  const dotBg = n >= 8 ? "var(--mvp-red)" : n >= 5 ? "#3a3a3a" : n > 0 ? "#222" : "#141414";
+  const dotColor = n >= 8 ? "#fff" : n >= 5 ? "#aaa" : n > 0 ? "#666" : "#333";
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-neutral-300 w-28 shrink-0">{label}</span>
+    <div className="flex items-center gap-3 py-0.5">
+      <span className="text-xs font-medium w-28 shrink-0" style={{ color: "#777" }}>{label}</span>
       <input type="range" min="0" max="10" step="1" value={value || "0"}
         onChange={e => onChange(e.target.value)}
-        className="flex-1 accent-white" />
-      <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center text-xs font-bold text-white shrink-0`}>
+        className="flex-1" style={{ accentColor: n >= 8 ? "var(--mvp-red)" : "#555" }} />
+      <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-all"
+        style={{ background: dotBg, color: dotColor }}>
         {value || "0"}
       </div>
     </div>
@@ -174,7 +177,8 @@ export function AntroTable({ weightLogs, perimLogs, foldLogs }: {
                 <div className="flex items-center justify-center gap-1">
                   <p className="text-[10px] text-neutral-500 font-semibold uppercase">V{i + 1}</p>
                   {isP && (
-                    <span className="text-[8px] bg-emerald-800 text-emerald-300 rounded px-1 font-bold leading-tight">P</span>
+                    <span className="text-[8px] rounded px-1 font-bold leading-tight"
+                      style={{ background: "var(--mvp-red-soft)", color: "var(--mvp-red)", border: "1px solid var(--mvp-red-border)" }}>P</span>
                   )}
                 </div>
                 <p className="text-[10px] text-neutral-400">{fmtShort(date)}</p>
@@ -320,9 +324,9 @@ function ProgresoTab({ weightLogs, foldLogs, perimLogs, foldKeys }: {
   }
 
   const charts: { title: string; pts: ChartPoint[]; color: string; unit: string }[] = [
-    { title: "⚖️ Peso corporal",       pts: weightPts, color: "#C0394F", unit: " kg" },
-    { title: "📌 % Grasa corporal",    pts: fatPts,    color: "#F59E0B", unit: "%"   },
-    { title: "📏 Perímetro abdominal", pts: abdPts,    color: "#3B82F6", unit: " cm" },
+    { title: "Peso corporal",      pts: weightPts, color: "var(--mvp-red)", unit: " kg" },
+    { title: "% Grasa corporal",   pts: fatPts,    color: "#888",           unit: "%"   },
+    { title: "Perímetro abdominal",pts: abdPts,    color: "#666",           unit: " cm" },
   ];
 
   return (
@@ -333,7 +337,7 @@ function ProgresoTab({ weightLogs, foldLogs, perimLogs, foldKeys }: {
         const first = pts[0].value;
         const last  = pts[pts.length - 1].value;
         const delta = last - first;
-        const deltaColor = delta < 0 ? "#4ADE80" : delta > 0 ? "#F87171" : "#FBBF24";
+        const deltaColor = delta < 0 ? "var(--mvp-green)" : delta > 0 ? "var(--mvp-red)" : "#555";
         return (
           <div key={title} className="rounded-2xl p-4 space-y-2" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
             <div className="flex items-center justify-between">
@@ -727,19 +731,19 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     ["adductor", "Aductor"], ["hamstring", "Femoral"], ["glute", "Glúteo"], ["calf", "Gemelo"],
   ] as const;
 
-  const TABS: [Tab, string][] = [
-    ["hoy",      "⚡ Hoy"],
-    ["progreso", "📈 Progreso"],
-    ["registro", "📋 Registro"],
+  const TABS: [Tab, string, string][] = [
+    ["hoy",      "Hoy",      "ti-home"],
+    ["progreso", "Progreso", "ti-trending-up"],
+    ["registro", "Registro", "ti-clipboard-list"],
   ];
 
-  const REG_TABS: [RegTab, string][] = [
-    ["peso",         "⚖️ Peso"],
-    ["perimetros",   "📏 Perímetros"],
-    ["pliegues",     "📌 Pliegues"],
-    ["fatiga",       "🔥 Fatiga"],
-    ["antropometria","📊 Antrop."],
-    ["fotos",        "📷 Fotos"],
+  const REG_TABS: [RegTab, string, string][] = [
+    ["peso",         "Peso",        "ti-scale"],
+    ["perimetros",   "Perímetros",  "ti-ruler"],
+    ["pliegues",     "Pliegues",    "ti-body-scan"],
+    ["fatiga",       "Fatiga",      "ti-flame"],
+    ["antropometria","Antrop.",     "ti-chart-bar"],
+    ["fotos",        "Fotos",       "ti-camera"],
   ];
 
   // Los 10 sitios de la fórmula Excel (Σ/1000 = % grasa)
@@ -771,12 +775,13 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
       <div className="tabs-fade-right shrink-0 max-w-2xl mx-auto w-full"
         style={{ background: "#0a0a0a", borderBottom: "1px solid #141414" }}>
         <div className="flex gap-1.5 px-3 py-2.5 overflow-x-auto scrollbar-hide">
-          {TABS.map(([t, label]) => (
+          {TABS.map(([t, label, icon]) => (
             <button key={t} onClick={() => setTab(t)}
-              className="shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all select-none"
+              className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all select-none"
               style={tab === t
                 ? { background: "var(--mvp-red)", color: "#fff", border: "1px solid rgba(220,38,38,0.5)" }
                 : { background: "#111", border: "1px solid #1c1c1c", color: "#555" }}>
+              <i className={`ti ${icon}`} style={{ fontSize: 13 }} />
               {label}
             </button>
           ))}
@@ -785,12 +790,13 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
         {/* Sub-tabs de Registro semanal */}
         {tab === "registro" && (
           <div className="flex gap-1.5 px-3 pb-2.5 overflow-x-auto scrollbar-hide">
-            {REG_TABS.map(([t, label]) => (
+            {REG_TABS.map(([t, label, icon]) => (
               <button key={t} onClick={() => setRegTab(t)}
-                className="shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all select-none"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all select-none"
                 style={regTab === t
                   ? { background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)", color: "var(--mvp-red)" }
                   : { background: "#0d0d0d", border: "1px solid #161616", color: "#444" }}>
+                <i className={`ti ${icon}`} style={{ fontSize: 11 }} />
                 {label}
               </button>
             ))}
@@ -810,18 +816,18 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
             {/* Streak */}
             {streak > 0 && (
               <div className="flex items-center gap-4 px-5 py-4 rounded-2xl"
-                style={{ background: "linear-gradient(135deg,#1A0808,#2A1008)", border: "1px solid #3A1A0A" }}>
-                <span className="text-4xl">🔥</span>
+                style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+                <i className="ti ti-flame shrink-0" style={{ fontSize: 32, color: "var(--mvp-red)" }} />
                 <div>
                   <p className="text-white font-bold text-2xl leading-none">{streak}</p>
-                  <p className="text-neutral-400 text-sm">
+                  <p className="text-neutral-500 text-sm">
                     {streak === 1 ? "día registrado" : "días seguidos registrando"}
                   </p>
                 </div>
                 {streak >= 7 && (
-                  <span className="ml-auto text-xs font-bold px-2 py-1 rounded-lg"
-                    style={{ background: "#8B1A2F20", color: "#C0394F" }}>
-                    🏅 {streak >= 30 ? "Mes completo" : streak >= 14 ? "2 semanas" : "1 semana"}
+                  <span className="ml-auto text-[11px] font-semibold px-2 py-1 rounded-lg"
+                    style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)", color: "var(--mvp-red)" }}>
+                    {streak >= 30 ? "Mes completo" : streak >= 14 ? "2 semanas" : "1 semana"}
                   </span>
                 )}
               </div>
@@ -831,7 +837,7 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
             <div className="rounded-2xl p-5 space-y-5"
               style={{ background: "#111", border: "1px solid #1E1E1E" }}>
 
-              <p className="text-white font-semibold text-sm">⚡ Registro del día</p>
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-500">Registro del día</p>
 
               {/* Fecha */}
               <div className="flex flex-col gap-1">
@@ -858,19 +864,21 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {([
-                    { id: "bajo"   as EnergyLevel, emoji: "😴", label: "Bajo",      bg: "#0E1020" },
-                    { id: "normal" as EnergyLevel, emoji: "😐", label: "Normal",    bg: "#0E1A0E" },
-                    { id: "alto"   as EnergyLevel, emoji: "🔥", label: "Con energía", bg: "#1A0E05" },
-                  ]).map(({ id, emoji, label, bg }) => {
+                    { id: "bajo"   as EnergyLevel, icon: "ti-zzz",    label: "Bajo"       },
+                    { id: "normal" as EnergyLevel, icon: "ti-minus",   label: "Normal"     },
+                    { id: "alto"   as EnergyLevel, icon: "ti-bolt",    label: "Con energía"},
+                  ]).map(({ id, icon, label }) => {
                     const active = quickEnergy === id;
                     return (
                       <button key={id} onClick={() => setQuickEnergy(active ? "" : id)}
-                        className="flex flex-col items-center gap-1.5 py-3.5 rounded-xl transition-all active:scale-95"
+                        className="flex flex-col items-center gap-2 py-4 rounded-2xl transition-all active:scale-95"
                         style={active
-                          ? { background: bg, border: "2px solid #C0394F" }
-                          : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-                        <span className="text-2xl">{emoji}</span>
-                        <span className="text-[11px] font-medium text-neutral-300 leading-tight text-center">{label}</span>
+                          ? { background: "var(--mvp-red-soft)", border: "2px solid var(--mvp-red)" }
+                          : { background: "#111", border: "1px solid #1e1e1e" }}>
+                        <i className={`ti ${icon}`}
+                          style={{ fontSize: 22, color: active ? "var(--mvp-red)" : "#444" }} />
+                        <span className="text-[11px] font-semibold leading-tight text-center"
+                          style={{ color: active ? "var(--mvp-red)" : "#555" }}>{label}</span>
                       </button>
                     );
                   })}
@@ -882,11 +890,15 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                 <label className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-2">
                   Foto del día (opcional)
                 </label>
-                <label className="flex items-center justify-center gap-2 py-3.5 rounded-xl cursor-pointer active:opacity-70 transition-opacity"
-                  style={{ background: "#1A1A1A", border: "1px dashed #333" }}>
-                  <span className="text-lg">📷</span>
-                  <span className="text-neutral-400 text-sm">
-                    {quickPhotoReady ? "✅ Foto lista" : "Elegir foto del carrete"}
+                <label className="flex items-center justify-center gap-2 py-3.5 rounded-2xl cursor-pointer active:opacity-70 transition-opacity"
+                  style={quickPhotoReady
+                    ? { background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }
+                    : { background: "#111", border: "1px dashed #222" }}>
+                  <i className={`ti ${quickPhotoReady ? "ti-check" : "ti-camera"}`}
+                    style={{ fontSize: 18, color: quickPhotoReady ? "var(--mvp-red)" : "#555" }} />
+                  <span className="text-sm font-medium"
+                    style={{ color: quickPhotoReady ? "var(--mvp-red)" : "#666" }}>
+                    {quickPhotoReady ? "Foto lista" : "Elegir foto del carrete"}
                   </span>
                   <input type="file" accept="image/*" className="hidden"
                     onChange={handleQuickPhoto} />
@@ -897,11 +909,13 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
               <button
                 onClick={saveQuick}
                 disabled={savingQuick || (!quickWeight && !quickPhotoFile)}
-                className="w-full py-4 rounded-xl text-sm font-bold transition-all disabled:opacity-40 active:scale-[0.98]"
+                className="w-full py-4 rounded-2xl text-sm font-black transition-all disabled:opacity-30 active:scale-[0.98] flex items-center justify-center gap-2"
                 style={quickSaved
-                  ? { background: "#0A2A1A", border: "1px solid #1A4A2A", color: "#4ADE80" }
-                  : { background: "#fff", color: "#000" }}>
-                {savingQuick ? "Guardando…" : quickSaved ? "✅ ¡Registrado!" : "💾 Guardar registro de hoy"}
+                  ? { background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)", color: "var(--mvp-red)" }
+                  : { background: "var(--mvp-red)", color: "#fff", boxShadow: "0 4px 20px rgba(192,41,43,0.3)" }}>
+                <i className={`ti ${savingQuick ? "ti-loader-2" : quickSaved ? "ti-check" : "ti-device-floppy"}`}
+                  style={{ fontSize: 18 }} />
+                {savingQuick ? "Guardando…" : quickSaved ? "¡Registrado!" : "Guardar registro de hoy"}
               </button>
             </div>
 
@@ -911,23 +925,26 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                 <p className="text-[10px] uppercase tracking-wider text-neutral-500 px-1">Últimos registros</p>
                 {weightLogs.slice(0, 5).map((log: any) => {
                   const energy = log.notes?.match(/energy:(\w+)/)?.[1] as EnergyLevel | undefined;
-                  const emojiMap: Record<string, string> = { bajo: "😴", normal: "😐", alto: "🔥" };
+                  const iconMap: Record<string, string> = { bajo: "ti-zzz", normal: "ti-minus", alto: "ti-bolt" };
                   return (
-                    <div key={log.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                      style={{ background: "#0F0F0F", border: "1px solid #1A1A1A" }}>
+                    <div key={log.id} className="flex items-center gap-3 px-4 py-3.5 rounded-2xl"
+                      style={{ background: "#0f0f0f", border: "1px solid #161616" }}>
                       <div className="flex-1 min-w-0">
-                        <p className="text-neutral-400 text-xs">{fmtDate(log.date)}</p>
+                        <p className="text-xs" style={{ color: "#555" }}>{fmtDate(log.date)}</p>
                       </div>
-                      {energy && <span className="text-lg">{emojiMap[energy]}</span>}
+                      {energy && (
+                        <i className={`ti ${iconMap[energy] ?? "ti-minus"}`}
+                          style={{ fontSize: 14, color: energy === "alto" ? "var(--mvp-red)" : "#444" }} />
+                      )}
                       {log.weight_fasting && (
-                        <p className="text-white font-bold text-sm tabular-nums">{log.weight_fasting} kg</p>
+                        <p className="font-black text-sm tabular-nums text-white">{log.weight_fasting} <span className="text-xs font-normal" style={{ color: "#555" }}>kg</span></p>
                       )}
                       <button
                         onClick={() => deleteWeight(log.id)}
                         disabled={deletingId === log.id}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-600 hover:text-red-400 disabled:opacity-40 shrink-0 transition-colors active:scale-90"
-                        style={{ background: "#1A1A1A" }}>
-                        {deletingId === log.id ? "…" : "✕"}
+                        className="w-7 h-7 rounded-xl flex items-center justify-center disabled:opacity-30 shrink-0 active:scale-90 transition-all"
+                        style={{ background: "#1a1a1a", color: "#444" }}>
+                        <i className={`ti ${deletingId === log.id ? "ti-loader-2" : "ti-x"}`} style={{ fontSize: 12 }} />
                       </button>
                     </div>
                   );
@@ -978,9 +995,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                       <button
                         onClick={() => deleteWeight(log.id)}
                         disabled={deletingId === log.id}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:text-red-300 disabled:opacity-40 shrink-0 transition-colors"
-                        style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
-                        {deletingId === log.id ? "…" : "🗑️"}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center disabled:opacity-30 shrink-0 transition-all active:scale-90"
+                        style={{ background: "#1a1a1a", color: "#555" }}>
+                        <i className={`ti ${deletingId === log.id ? "ti-loader-2" : "ti-x"}`} style={{ fontSize: 12 }} />
                       </button>
                     </div>
                   ))}
@@ -1039,9 +1056,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                         <button
                           onClick={() => deletePerim(log.id)}
                           disabled={deletingId === log.id}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-red-300 disabled:opacity-40 transition-colors"
-                          style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
-                          {deletingId === log.id ? "…" : "🗑️"}
+                          className="w-7 h-7 rounded-xl flex items-center justify-center disabled:opacity-30 transition-all active:scale-90"
+                          style={{ background: "#1a1a1a", color: "#555" }}>
+                          <i className={`ti ${deletingId === log.id ? "ti-loader-2" : "ti-x"}`} style={{ fontSize: 12 }} />
                         </button>
                       </div>
                       <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs">
@@ -1133,16 +1150,16 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                               <span className="text-neutral-500 text-xs">Σ {sum.toFixed(1)} mm</span>
                               <span className="text-white text-xs font-bold">{(sum / 10).toFixed(2)}% grasa</span>
                               {log.fat_pct_real != null && (
-                                <span className="text-amber-400 text-xs font-bold">{log.fat_pct_real}% real</span>
+                                <span className="text-xs font-bold" style={{ color: "var(--mvp-red)" }}>{log.fat_pct_real}% real</span>
                               )}
                             </div>
                           )}
                           <button
                             onClick={() => deleteFold(log.id)}
                             disabled={deletingId === log.id}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-red-300 disabled:opacity-40 shrink-0 transition-colors"
-                            style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
-                            {deletingId === log.id ? "…" : "🗑️"}
+                            className="w-7 h-7 rounded-xl flex items-center justify-center disabled:opacity-30 shrink-0 transition-all active:scale-90"
+                            style={{ background: "#1a1a1a", color: "#555" }}>
+                            <i className={`ti ${deletingId === log.id ? "ti-loader-2" : "ti-x"}`} style={{ fontSize: 12 }} />
                           </button>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-xs">
@@ -1175,20 +1192,22 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {([
-                    { id: "bajo",   emoji: "😴", label: "Bajo",       bg: "#0E1020" },
-                    { id: "normal", emoji: "😐", label: "Normal",     bg: "#0E1A0E" },
-                    { id: "alto",   emoji: "🔥", label: "Con energía", bg: "#1A0E05" },
-                  ] as const).map(({ id, emoji, label, bg }) => {
+                    { id: "bajo",   icon: "ti-zzz",  label: "Bajo"        },
+                    { id: "normal", icon: "ti-minus", label: "Normal"      },
+                    { id: "alto",   icon: "ti-bolt",  label: "Con energía" },
+                  ] as const).map(({ id, icon, label }) => {
                     const active = ff.global_energy === id;
                     return (
                       <button key={id} type="button"
                         onClick={() => setFf(p => ({ ...p, global_energy: active ? "" : id }))}
-                        className="flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all active:scale-95"
+                        className="flex flex-col items-center gap-2 py-4 rounded-2xl transition-all active:scale-95"
                         style={active
-                          ? { background: bg, border: "2px solid #C0394F" }
-                          : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-                        <span className="text-2xl">{emoji}</span>
-                        <span className="text-[11px] font-medium text-neutral-300 leading-tight text-center">{label}</span>
+                          ? { background: "var(--mvp-red-soft)", border: "2px solid var(--mvp-red)" }
+                          : { background: "#111", border: "1px solid #1e1e1e" }}>
+                        <i className={`ti ${icon}`}
+                          style={{ fontSize: 22, color: active ? "var(--mvp-red)" : "#444" }} />
+                        <span className="text-[11px] font-semibold leading-tight text-center"
+                          style={{ color: active ? "var(--mvp-red)" : "#555" }}>{label}</span>
                       </button>
                     );
                   })}
@@ -1240,8 +1259,10 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                         <span className="text-neutral-400 text-xs">{fmtDate(log.date)}</span>
                         {(() => {
                           const e = log.notes?.match(/energy:(\w+)/)?.[1];
-                          const em: Record<string, string> = { bajo: "😴", normal: "😐", alto: "🔥" };
-                          return e ? <span className="text-lg leading-none">{em[e]}</span> : null;
+                          const iconMap: Record<string, string> = { bajo: "ti-zzz", normal: "ti-minus", alto: "ti-bolt" };
+                          return e && iconMap[e]
+                            ? <i className={`ti ${iconMap[e]}`} style={{ fontSize: 14, color: e === "alto" ? "var(--mvp-red)" : "#555" }} />
+                            : null;
                         })()}
                         {log.session_type && <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300">{log.session_type}</span>}
                         {log.microcycle && <span className="text-neutral-600 text-xs">Mc {log.microcycle}</span>}
@@ -1249,20 +1270,22 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                         <button
                           onClick={() => deleteFatigue(log.id)}
                           disabled={deletingId === log.id}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-red-300 disabled:opacity-40 transition-colors"
-                          style={{ background: "#1A0808", border: "1px solid #3A1010" }}>
-                          {deletingId === log.id ? "…" : "🗑️"}
+                          className="w-7 h-7 rounded-xl flex items-center justify-center disabled:opacity-30 transition-all active:scale-90"
+                          style={{ background: "#1a1a1a", color: "#555" }}>
+                          <i className={`ti ${deletingId === log.id ? "ti-loader-2" : "ti-x"}`} style={{ fontSize: 12 }} />
                         </button>
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {muscleGroups.map(([key, label]) => {
                           const val = log[key] ?? 0;
                           if (!val) return null;
-                          const color = val >= 8 ? "bg-red-500" : val >= 5 ? "bg-amber-400" : "bg-emerald-500";
+                          const dotBg = val >= 8 ? "var(--mvp-red)" : val >= 5 ? "#2a2a2a" : "#1a1a1a";
+                          const dotColor = val >= 8 ? "#fff" : val >= 5 ? "#888" : "#555";
                           return (
                             <div key={key} className="flex flex-col items-center gap-0.5">
-                              <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center text-xs font-bold text-white`}>{val}</div>
-                              <span className="text-[9px] text-neutral-600 text-center leading-tight">{label}</span>
+                              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black"
+                                style={{ background: dotBg, color: dotColor }}>{val}</div>
+                              <span className="text-[9px] text-center leading-tight" style={{ color: "#555" }}>{label}</span>
                             </div>
                           );
                         })}
@@ -1298,15 +1321,13 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
                 onChange={handleUploadPhoto}
               />
               {uploading ? (
-                <>
-                  <span className="text-sm">Subiendo...</span>
-                </>
+                <span className="text-sm" style={{ color: "#666" }}>Subiendo...</span>
               ) : (
                 <>
-                  <span className="text-2xl">📷</span>
+                  <i className="ti ti-camera" style={{ fontSize: 22, color: "#555" }} />
                   <div>
-                    <p className="text-sm font-medium">Subir foto de progreso</p>
-                    <p className="text-xs text-neutral-500">Cámara o galería</p>
+                    <p className="text-sm font-medium" style={{ color: "#888" }}>Subir foto de progreso</p>
+                    <p className="text-xs" style={{ color: "#555" }}>Cámara o galería</p>
                   </div>
                 </>
               )}
@@ -1320,27 +1341,28 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
             {/* Grid de fotos */}
             {photoLogs.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-4xl mb-3">📷</p>
-                <p className="text-neutral-400 text-sm">Aún no hay fotos.</p>
-                <p className="text-neutral-600 text-xs mt-1">Sube tu primera foto de progreso.</p>
+                <i className="ti ti-camera block mb-3" style={{ fontSize: 40, color: "#2a2a2a" }} />
+                <p className="text-sm" style={{ color: "#555" }}>Aún no hay fotos.</p>
+                <p className="text-xs mt-1" style={{ color: "#333" }}>Sube tu primera foto de progreso.</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2">
                 {photoLogs.map(photo => (
-                  <div key={photo.id} className="relative aspect-square bg-neutral-800 rounded-xl overflow-hidden flex items-center justify-center">
-                    <span className="text-3xl text-neutral-600 select-none">📷</span>
+                  <div key={photo.id} className="relative aspect-square rounded-2xl overflow-hidden flex items-center justify-center"
+                    style={{ background: "#111" }}>
+                    <i className="ti ti-camera" style={{ fontSize: 28, color: "#2a2a2a" }} />
                     <img
                       src={photo.url}
                       alt="foto progreso"
-                      className="absolute inset-0 w-full h-full object-cover rounded-xl cursor-pointer"
+                      className="absolute inset-0 w-full h-full object-cover rounded-2xl cursor-pointer"
                       onClick={() => setPreviewUrl(photo.url)}
                       onError={e => { (e.target as HTMLImageElement).style.opacity = "0"; }}
                     />
                     <button
                       onClick={() => handleDeletePhoto(photo)}
-                      className="absolute top-1 right-1 w-7 h-7 rounded-full flex items-center justify-center text-white text-sm shadow-md"
-                      style={{ background: "rgba(0,0,0,0.65)" }}>
-                      🗑️
+                      className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center shadow-md"
+                      style={{ background: "rgba(0,0,0,0.7)" }}>
+                      <i className="ti ti-x" style={{ fontSize: 12, color: "#ccc" }} />
                     </button>
                     <p className="absolute bottom-0 left-0 right-0 text-[9px] text-center text-white/60 bg-black/40 rounded-b-xl py-0.5">
                       {fmtShort(photo.taken_at)}
