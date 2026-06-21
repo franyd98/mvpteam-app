@@ -1322,7 +1322,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
               {/* Chips de grupos musculares */}
               <div className="px-5 pb-3 shrink-0">
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                <div className="flex flex-wrap gap-2">
                   {muscles.map(m => (
                     <button key={m}
                       onClick={() => { setStatsMuscle(m); setStatsExpandedKey(null); }}
