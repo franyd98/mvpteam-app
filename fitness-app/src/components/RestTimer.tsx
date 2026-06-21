@@ -164,8 +164,9 @@ export default function RestTimer({
         <div className="flex items-center gap-3 px-4 py-3.5">
           {/* Timer display */}
           <div className="flex-1 min-w-0">
-            <p className="text-[9px] uppercase tracking-[0.1em] font-black mb-0.5"
-              style={{ color: isDone ? "var(--mvp-green)" : "#444" }}>
+            <p className="text-[9px] uppercase tracking-[0.1em] font-black mb-0.5 flex items-center gap-1"
+              style={{ color: isDone ? "var(--mvp-green)" : "#555" }}>
+              <i className={`ti ti-${isDone ? "check" : "clock"}`} style={{ fontSize: 10 }} />
               {isDone ? "¡A entrenar!" : "Descanso"}
             </p>
             <p className="font-black tabular-nums leading-none"

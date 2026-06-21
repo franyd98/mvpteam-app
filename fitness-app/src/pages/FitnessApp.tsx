@@ -70,6 +70,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [calYear,  setCalYear]  = useState(() => new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
 
+  // Estadísticas — filtro de músculo y ejercicio expandido
+  const [statsMuscle,      setStatsMuscle]      = useState<string>("Todos");
+  const [statsExpandedKey, setStatsExpandedKey] = useState<string | null>(null);
+
   // Días de descanso marcados manualmente (persist en localStorage)
   const [manualRestDays, setManualRestDays] = useState<Set<string>>(() => {
     try {
@@ -805,7 +809,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                       : { background: "#111", border: "1px solid #1c1c1c", color: "#555" }}
                     title={isLocked(dayId, microcycleNumber) ? "Desbloquear semana" : "Bloquear semana completada"}
                   >
-                    <i className={`ti ti-${isLocked(dayId, microcycleNumber) ? "lock" : "lock-open"}`} style={{ fontSize: 13 }} />
+                    <i className={`ti ti-${isLocked(dayId, microcycleNumber) ? "lock" : "lock-open"}`}
+                      style={{ fontSize: 13, color: isLocked(dayId, microcycleNumber) ? "var(--mvp-red)" : undefined }} />
                     {isLocked(dayId, microcycleNumber) ? " Bloqueada" : " Bloquear"}
                   </button>
                 )}
@@ -813,9 +818,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
               {/* Aviso visible cuando el microciclo actual está bloqueado */}
               {isLocked(dayId, microcycleNumber) && (
-                <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <i className="ti ti-lock text-neutral-600" style={{ fontSize: 13 }} />
-                  <p className="text-neutral-600 text-xs">
+                <div className="mt-2 flex items-center gap-2 px-3 py-2.5 rounded-xl"
+                  style={{ background: "#111", border: "1px solid #222" }}>
+                  <i className="ti ti-lock shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
+                  <p className="text-xs font-medium" style={{ color: "#888" }}>
                     Semana bloqueada — registros protegidos. Pulsa para editar.
                   </p>
                 </div>
@@ -976,11 +982,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                                     {prog}
                                   </span>
                                 )}
-                                {mcLocked && <i className="ti ti-lock ml-1" style={{ fontSize: 10, color: "#333" }} />}
+                                {mcLocked && <i className="ti ti-lock ml-1" style={{ fontSize: 10, color: "#666" }} />}
                               </div>
                             ) : (
                               <i className={`ti ti-${mcLocked ? "lock" : "chevron-right"}`}
-                                style={{ fontSize: 13, color: mcLocked ? "#1a1a1a" : "#333" }} />
+                                style={{ fontSize: 13, color: mcLocked ? "#555" : "#333" }} />
                             )}
                           </button>
                           {!log && validPrevLog && (
@@ -1029,7 +1035,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       >
         <div className="flex items-stretch max-w-2xl mx-auto">
           {[
-            { tab: "workout" as const, tiIcon: "dumbbell",     label: "Entreno" },
+            { tab: "workout" as const, tiIcon: "barbell",       label: "Entreno" },
             { tab: "diet"    as const, tiIcon: "salad",        label: "Dieta" },
             { tab: "checkin" as const, tiIcon: "heartbeat",    label: "Check-in" },
           ].map(({ tab, tiIcon, label }) => {
@@ -1085,40 +1091,65 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         ];
 
         return (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+            style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" }}
             onClick={() => setShowCalendar(false)}>
-            <div className="w-full max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden"
-              style={{ background: "#111", border: "1px solid #222" }}
+            <div className="w-full max-w-sm overflow-hidden"
+              style={{
+                background: "#0a0a0a",
+                border: "1px solid #1a1a1a",
+                borderRadius: "24px 24px 0 0",
+                boxShadow: "0 -24px 60px rgba(0,0,0,0.8)",
+              }}
               onClick={e => e.stopPropagation()}>
 
               {/* Cabecera */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <div className="flex items-center justify-between px-5 pt-6 pb-4">
                 <button
                   onClick={() => { const d = new Date(calYear, calMonth - 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()); }}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 active:bg-neutral-800 text-lg">‹</button>
+                  className="w-9 h-9 rounded-2xl flex items-center justify-center active:scale-90 transition-all"
+                  style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#666" }}>
+                  <i className="ti ti-chevron-left" style={{ fontSize: 16 }} />
+                </button>
                 <div className="text-center">
-                  <p className="text-white font-bold text-base">{MONTH_NAMES[calMonth]} {calYear}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "var(--mvp-red)" }}>
-                    {trainedThisMonth} {trainedThisMonth === 1 ? "día entrenado" : "días entrenados"}
-                    {isCurrentMonth && daysPassed > 0 && (
-                      <span className="text-neutral-500"> · {Math.round(trainedThisMonth / daysPassed * 100)}% del mes</span>
-                    )}
-                  </p>
+                  <p className="text-white font-black text-lg">{MONTH_NAMES[calMonth]} {calYear}</p>
+                  <div className="flex items-center justify-center gap-2 mt-0.5">
+                    <span className="font-black tabular-nums" style={{ fontSize: 22, color: "var(--mvp-red)" }}>
+                      {trainedThisMonth}
+                    </span>
+                    <div className="text-left">
+                      <p className="text-[10px] font-black uppercase tracking-wide" style={{ color: "var(--mvp-red)" }}>
+                        {trainedThisMonth === 1 ? "día" : "días"}
+                      </p>
+                      {isCurrentMonth && daysPassed > 0 && (
+                        <p className="text-[9px]" style={{ color: "#444" }}>
+                          {Math.round(trainedThisMonth / daysPassed * 100)}% del mes
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <button
                   onClick={() => { const d = new Date(calYear, calMonth + 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()); }}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 active:bg-neutral-800 text-lg">›</button>
+                  className="w-9 h-9 rounded-2xl flex items-center justify-center active:scale-90 transition-all"
+                  style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#666" }}>
+                  <i className="ti ti-chevron-right" style={{ fontSize: 16 }} />
+                </button>
               </div>
 
-              {/* Días de la semana */}
-              <div className="grid grid-cols-7 px-3 pb-1">
+              {/* Divisor */}
+              <div className="divider-fade mb-3" />
+
+              {/* Labels de días */}
+              <div className="grid grid-cols-7 px-4 mb-1">
                 {DAY_LABELS.map(l => (
-                  <div key={l} className="text-center text-[10px] font-semibold text-neutral-600 py-1">{l}</div>
+                  <div key={l} className="text-center text-[9px] font-black tracking-wider py-1"
+                    style={{ color: "#333" }}>{l}</div>
                 ))}
               </div>
 
               {/* Grid de días */}
-              <div className="grid grid-cols-7 px-3 pb-5 gap-1">
+              <div className="grid grid-cols-7 px-4 pb-6 gap-1.5">
                 {cells.map((day, i) => {
                   if (!day) return <div key={`e${i}`} />;
                   const ds = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -1126,47 +1157,52 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   const isRest     = manualRestDays.has(ds);
                   const isToday    = ds === todayStr;
                   const isPast     = ds <= todayStr;
-
-                  // entrenado pero marcado como descanso manual → descanso gana
                   const showTrained = trained && !isRest;
+
+                  let bg: string, border: string, color: string, shadow = "none";
+                  if (showTrained && isToday) {
+                    bg = "var(--mvp-red)"; border = "none"; color = "#fff";
+                    shadow = "0 0 14px rgba(192,41,43,0.5)";
+                  } else if (showTrained) {
+                    bg = "var(--mvp-red)"; border = "none"; color = "#fff";
+                  } else if (isRest) {
+                    bg = "#1c1c1c"; border = "1px solid #2a2a2a"; color = "#666";
+                  } else if (isToday) {
+                    bg = "transparent"; border = "2px solid var(--mvp-red)"; color = "var(--mvp-red)";
+                  } else if (isPast) {
+                    bg = "#0e0e0e"; border = "1px solid #141414"; color = "#333";
+                  } else {
+                    bg = "transparent"; border = "none"; color = "#1e1e1e";
+                  }
 
                   return (
                     <div key={day}
-                      className="aspect-square flex items-center justify-center rounded-xl text-sm font-semibold relative"
-                      style={
-                        showTrained
-                          ? { background: "var(--mvp-green-soft)", border: "1px solid var(--mvp-green-border)", color: "var(--mvp-green)" }
-                          : isRest
-                          ? { background: "#0D1B2E", color: "#3A7BD5", border: "1px solid #1E3A5F" }
-                          : isToday
-                          ? { background: "var(--mvp-red)", color: "#fff", boxShadow: "0 0 0 3px rgba(220,38,38,0.2)" }
-                          : isPast
-                          ? { background: "#0D0D0D", color: "#333" }
-                          : { background: "transparent", color: "#1E1E1E" }
-                      }>
-                      {day}
-                      {isToday && !showTrained && !isRest && (
-                        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white opacity-60" />
-                      )}
-                      {showTrained && isToday && (
-                        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white opacity-80" />
-                      )}
+                      className="aspect-square flex flex-col items-center justify-center rounded-xl text-xs font-black relative transition-all"
+                      style={{ background: bg, border, color, boxShadow: shadow }}>
+                      {showTrained
+                        ? <i className="ti ti-check" style={{ fontSize: 11 }} />
+                        : isRest
+                          ? <i className="ti ti-moon" style={{ fontSize: 10 }} />
+                          : <span>{day}</span>
+                      }
                     </div>
                   );
                 })}
               </div>
 
-              {/* Leyenda */}
-              <div className="flex items-center justify-center gap-4 pb-5 text-xs text-neutral-600 flex-wrap px-4">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded" style={{ background: "var(--mvp-green-soft)", border: "1px solid var(--mvp-green-border)" }} /> Entrenado
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded" style={{ background: "#0D1B2E", border: "1px solid #1E3A5F" }} /> Descanso
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded" style={{ background: "#0D0D0D", border: "1px solid #1a1a1a" }} /> Sin actividad
-                </span>
+              {/* Leyenda compacta */}
+              <div className="flex items-center justify-center gap-5 pb-6 px-4">
+                {[
+                  { bg: "var(--mvp-red)", label: "Entrenado" },
+                  { bg: "#1c1c1c", border: "1px solid #2a2a2a", label: "Descanso" },
+                  { bg: "#0e0e0e", border: "1px solid #141414", label: "Sin actividad" },
+                ].map(({ bg, border: b, label }) => (
+                  <span key={label} className="flex items-center gap-1.5 text-[10px]" style={{ color: "#555" }}>
+                    <span className="w-3 h-3 rounded-md shrink-0"
+                      style={{ background: bg, border: b }} />
+                    {label}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -1211,108 +1247,214 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       {renderExHistoryModal()}
 
       {/* ── Panel global de estadísticas ── */}
-      {showStats && program && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-3"
-          onClick={() => setShowStats(false)}>
-          <div className="w-full max-w-lg rounded-2xl overflow-hidden max-h-[85dvh] flex flex-col"
-            style={{ background: "#111", border: "1px solid #222" }}
-            onClick={e => e.stopPropagation()}>
-            {/* Cabecera fija */}
-            <div className="flex items-center justify-between p-4 border-b border-neutral-800 shrink-0">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-neutral-500">Estadísticas</p>
-                <p className="text-white font-bold text-sm">Progresión de cargas</p>
+      {showStats && program && (() => {
+        // Extraer todos los ejercicios únicos con sus datos de logs
+        type ExEntry = { name: string; muscle: string; dayId: string; exIdx: number; sparkPts: ChartPoint[]; latestLog: SetLog | null; trend: "↑"|"="|"↓"|null };
+        const allEntries: ExEntry[] = [];
+        program.days.forEach(d => {
+          const exList = d.microcycles[0]?.exercises ?? [];
+          exList.forEach((ex, exIdx) => {
+            const exLogs = logs.filter(l => l.dayId === d.id && l.exerciseIndex === exIdx);
+            const byMc: Record<number, number> = {};
+            exLogs.forEach(l => {
+              if (!byMc[l.microcycleNumber] || l.weight > byMc[l.microcycleNumber])
+                byMc[l.microcycleNumber] = l.weight;
+            });
+            const sparkPts: ChartPoint[] = Object.entries(byMc)
+              .sort((a, b) => Number(a[0]) - Number(b[0]))
+              .map(([mc, w]) => ({ label: `Mc${mc}`, value: w }));
+            const latestLog = exLogs.length > 0
+              ? [...exLogs].sort((a, b) => b.loggedAt.localeCompare(a.loggedAt))[0]
+              : null;
+            const trend: "↑"|"="|"↓"|null = sparkPts.length >= 2
+              ? sparkPts[sparkPts.length-1].value > sparkPts[sparkPts.length-2].value ? "↑"
+                : sparkPts[sparkPts.length-1].value < sparkPts[sparkPts.length-2].value ? "↓" : "="
+              : null;
+            allEntries.push({ name: ex.name, muscle: ex.muscleGroup ?? "Otros", dayId: d.id, exIdx, sparkPts, latestLog, trend });
+          });
+        });
+
+        // Grupos musculares únicos
+        const muscles = ["Todos", ...Array.from(new Set(allEntries.map(e => e.muscle))).sort()];
+
+        // Filtrar
+        const filtered = statsMuscle === "Todos"
+          ? allEntries
+          : allEntries.filter(e => e.muscle === statsMuscle);
+
+        // Separar: con datos y sin datos
+        const withLogs    = filtered.filter(e => e.latestLog !== null);
+        const withoutLogs = filtered.filter(e => e.latestLog === null);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+            style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
+            onClick={() => { setShowStats(false); setStatsExpandedKey(null); }}>
+            <div className="w-full max-w-lg flex flex-col sm:rounded-2xl overflow-hidden"
+              style={{
+                background: "#080808",
+                border: "1px solid #141414",
+                borderRadius: "24px 24px 0 0",
+                maxHeight: "90dvh",
+                boxShadow: "0 -24px 60px rgba(0,0,0,0.8)",
+              }}
+              onClick={e => e.stopPropagation()}>
+
+              {/* Cabecera */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.12em] font-black mb-0.5" style={{ color: "#333" }}>Estadísticas</p>
+                  <p className="text-white font-black text-lg">Progresión</p>
+                </div>
+                <button
+                  onClick={() => { setShowStats(false); setStatsExpandedKey(null); }}
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-all active:scale-90"
+                  style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#555" }}>
+                  <i className="ti ti-x" style={{ fontSize: 16 }} />
+                </button>
               </div>
-              <button onClick={() => setShowStats(false)}
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "#1a1a1a", border: "1px solid #222", color: "#666" }}>
-                <i className="ti ti-x" style={{ fontSize: 14 }} />
-              </button>
-            </div>
-            {/* Lista de días y ejercicios con sparklines */}
-            <div className="overflow-y-auto">
-              {program.days.map(d => {
-                const dayExercises = d.microcycles[0]?.exercises ?? [];
-                if (dayExercises.length === 0) return null;
-                return (
-                  <div key={d.id}>
-                    <p className="px-4 py-2 text-[10px] uppercase tracking-wider text-neutral-500 bg-neutral-900/60 sticky top-0">
-                      {d.name}
-                    </p>
-                    {dayExercises.map((ex, exIdx) => {
-                      const exLogs = logs.filter(l => l.dayId === d.id && l.exerciseIndex === exIdx);
-                      const hasLogs = exLogs.length > 0;
 
-                      // Agrupar por microciclo → peso máximo
-                      const byMc: Record<number, number> = {};
-                      exLogs.forEach(l => {
-                        if (!byMc[l.microcycleNumber] || l.weight > byMc[l.microcycleNumber])
-                          byMc[l.microcycleNumber] = l.weight;
-                      });
-                      const sparkPts: ChartPoint[] = Object.entries(byMc)
-                        .sort((a, b) => Number(a[0]) - Number(b[0]))
-                        .map(([mc, w]) => ({ label: `S${mc}`, value: w }));
+              {/* Chips de grupos musculares */}
+              <div className="px-5 pb-3 shrink-0">
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                  {muscles.map(m => (
+                    <button key={m}
+                      onClick={() => { setStatsMuscle(m); setStatsExpandedKey(null); }}
+                      className="shrink-0 px-3.5 py-2 rounded-2xl text-[11px] font-bold transition-all active:scale-95"
+                      style={statsMuscle === m
+                        ? { background: "var(--mvp-red)", color: "#fff", boxShadow: "0 2px 12px rgba(192,41,43,0.3)" }
+                        : { background: "#111", border: "1px solid #1a1a1a", color: "#555" }}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                      const latestLog = hasLogs
-                        ? [...exLogs].sort((a, b) => b.loggedAt.localeCompare(a.loggedAt))[0]
-                        : null;
+              {/* Divisor */}
+              <div className="divider-fade mx-5 shrink-0 mb-1" />
 
-                      // Tendencia: ↑ sube, = igual, ↓ baja
-                      const trend = sparkPts.length >= 2
-                        ? sparkPts[sparkPts.length - 1].value > sparkPts[sparkPts.length - 2].value ? "↑"
-                          : sparkPts[sparkPts.length - 1].value < sparkPts[sparkPts.length - 2].value ? "↓" : "="
-                        : null;
-                      const trendColor = trend === "↑" ? "#4ADE80" : trend === "↓" ? "#F87171" : "#FACC15";
-
-                      return (
-                        <button key={exIdx}
-                          onClick={() => { setShowStats(false); setExHistory({ name: ex.name, dayId: d.id, exerciseIndex: exIdx }); }}
-                          disabled={!hasLogs}
-                          className={"w-full flex items-center gap-3 px-4 py-3 border-b text-left transition-colors " +
-                            (hasLogs ? "active:bg-neutral-800/60" : "opacity-35 cursor-default")}
-                          style={{ borderColor: "#1a1a1a" }}>
-
-                          {/* Info ejercicio */}
-                          <div className="min-w-0" style={{ width: "38%" }}>
-                            <p className="text-[10px] text-neutral-500 truncate">{ex.muscleGroup}</p>
-                            <p className="text-xs text-white font-medium leading-snug" style={{
-                              display: "-webkit-box", WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical", overflow: "hidden"
-                            }}>{ex.name}</p>
-                          </div>
-
-                          {/* Sparkline */}
-                          <div className="flex-1 min-w-0">
-                            {sparkPts.length >= 2 ? (
-                              <MiniChart data={sparkPts} color="#C0394F" unit="" height={36} hideLabels />
-                            ) : hasLogs ? (
-                              <p className="text-[10px] text-neutral-600 text-center">1 registro</p>
-                            ) : null}
-                          </div>
-
-                          {/* Último + tendencia */}
-                          {latestLog ? (
-                            <div className="text-right shrink-0" style={{ width: "22%" }}>
-                              <p className="text-xs font-bold text-white tabular-nums">
-                                {latestLog.weight}<span className="text-neutral-500 font-normal text-[10px]"> {latestLog.unit}</span>
-                              </p>
-                              <p className="text-[10px] tabular-nums" style={{ color: trendColor }}>
-                                {trend ?? "—"} {latestLog.reps} reps
-                              </p>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-neutral-600 shrink-0">Sin datos</span>
-                          )}
-                        </button>
-                      );
-                    })}
+              {/* Lista */}
+              <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
+                {withLogs.length === 0 && (
+                  <div className="text-center py-16">
+                    <i className="ti ti-chart-line block mb-3" style={{ fontSize: 36, color: "#1e1e1e" }} />
+                    <p className="text-sm font-semibold" style={{ color: "#333" }}>Sin registros para este músculo</p>
+                    <p className="text-xs mt-1" style={{ color: "#222" }}>Entrena y guarda series para ver la progresión</p>
                   </div>
-                );
-              })}
+                )}
+                {withLogs.map(entry => {
+                  const key = `${entry.dayId}:${entry.exIdx}`;
+                  const isExpanded = statsExpandedKey === key;
+
+                  return (
+                    <div key={key}
+                      className="rounded-2xl overflow-hidden transition-all"
+                      style={{ background: isExpanded ? "#0e0e0e" : "#0c0c0c", border: `1px solid ${isExpanded ? "rgba(192,41,43,0.2)" : "#161616"}` }}>
+
+                      {/* Fila principal — siempre visible */}
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all active:opacity-80"
+                        onClick={() => setStatsExpandedKey(isExpanded ? null : key)}>
+
+                        {/* Icono tendencia */}
+                        <div className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center"
+                          style={entry.trend === "↑"
+                            ? { background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }
+                            : { background: "#141414", border: "1px solid #1e1e1e" }}>
+                          <i className={`ti ti-trending-${entry.trend === "↑" ? "up" : entry.trend === "↓" ? "down" : "flat"}`}
+                            style={{ fontSize: 14, color: entry.trend === "↑" ? "var(--mvp-red)" : "#444" }} />
+                        </div>
+
+                        {/* Nombre + músculo */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[9px] font-black uppercase tracking-wider mb-0.5" style={{ color: "#333" }}>
+                            {entry.muscle}
+                          </p>
+                          <p className="text-sm font-semibold text-white leading-snug"
+                            style={{ display: "-webkit-box", WebkitLineClamp: isExpanded ? 10 : 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                            {entry.name}
+                          </p>
+                        </div>
+
+                        {/* Último peso */}
+                        {entry.latestLog && !isExpanded && (
+                          <div className="text-right shrink-0">
+                            <p className="font-black tabular-nums text-white" style={{ fontSize: 18, letterSpacing: "-0.02em" }}>
+                              {entry.latestLog.weight}
+                            </p>
+                            <p className="text-[10px]" style={{ color: "#444" }}>
+                              {entry.latestLog.unit} × {entry.latestLog.reps}
+                            </p>
+                          </div>
+                        )}
+
+                        <i className={`ti ti-chevron-${isExpanded ? "up" : "down"} shrink-0`}
+                          style={{ fontSize: 14, color: "#333" }} />
+                      </button>
+
+                      {/* Expansión — chart grande + métricas */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4">
+                          {/* Métricas clave */}
+                          {entry.latestLog && (
+                            <div className="grid grid-cols-3 gap-2 mb-4">
+                              {[
+                                { label: "Último peso", val: `${entry.latestLog.weight} ${entry.latestLog.unit}` },
+                                { label: "Últimas reps", val: `${entry.latestLog.reps} reps` },
+                                { label: "Sesiones", val: String(entry.sparkPts.length) },
+                              ].map(({ label, val }) => (
+                                <div key={label} className="rounded-xl py-2.5 px-3 text-center"
+                                  style={{ background: "#111", border: "1px solid #1a1a1a" }}>
+                                  <p className="text-[9px] font-black uppercase tracking-wider mb-1" style={{ color: "#333" }}>{label}</p>
+                                  <p className="text-sm font-black text-white tabular-nums">{val}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {/* Sparkline grande */}
+                          {entry.sparkPts.length >= 2 ? (
+                            <MiniChart data={entry.sparkPts} color="var(--mvp-red)" unit={` ${entry.latestLog?.unit ?? ""}`} height={80} />
+                          ) : (
+                            <p className="text-center text-sm py-4" style={{ color: "#444" }}>Solo 1 semana registrada — sigue entrenando</p>
+                          )}
+                          {/* Botón ver historial completo */}
+                          <button
+                            onClick={() => { setShowStats(false); setStatsExpandedKey(null); setExHistory({ name: entry.name, dayId: entry.dayId, exerciseIndex: entry.exIdx }); }}
+                            className="mt-3 w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
+                            style={{ background: "#141414", border: "1px solid #1e1e1e", color: "#666" }}>
+                            <i className="ti ti-history" style={{ fontSize: 13 }} />
+                            Ver historial completo
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Ejercicios sin datos — colapsados al final */}
+                {withoutLogs.length > 0 && withLogs.length > 0 && (
+                  <p className="text-[9px] uppercase tracking-wider px-1 pt-3 pb-1" style={{ color: "#1e1e1e" }}>
+                    Sin registros ({withoutLogs.length})
+                  </p>
+                )}
+                {withoutLogs.map(entry => (
+                  <div key={`${entry.dayId}:${entry.exIdx}`}
+                    className="flex items-center gap-3 px-4 py-3 rounded-2xl opacity-30"
+                    style={{ background: "#0a0a0a", border: "1px solid #111" }}>
+                    <div className="w-8 h-8 rounded-xl shrink-0"
+                      style={{ background: "#111", border: "1px solid #1a1a1a" }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] font-black uppercase tracking-wider mb-0.5" style={{ color: "#1e1e1e" }}>{entry.muscle}</p>
+                      <p className="text-xs text-white truncate">{entry.name}</p>
+                    </div>
+                    <i className="ti ti-minus shrink-0" style={{ fontSize: 12, color: "#222" }} />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Modal: Cambiar ejercicio ── */}
       {swapTarget && (() => {
