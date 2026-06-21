@@ -22,12 +22,12 @@ const ACTIVITY_LEVELS = [
 ];
 
 const GOAL_OPTIONS = [
-  { label: "Pérdida de grasa intensa",  sublabel: "−20% · máx. déficit",    value: -0.20, protein: 2.2, fat: 0.6, color: "text-red-400" },
+  { label: "Pérdida de grasa intensa",  sublabel: "−20% · máx. déficit",    value: -0.20, protein: 2.2, fat: 0.6, color: "text-white" },
   { label: "Pérdida de grasa",          sublabel: "−15% · déficit moderado", value: -0.15, protein: 2.1, fat: 0.6, color: "text-orange-400" },
   { label: "Pérdida de grasa suave",    sublabel: "−10% · déficit leve",     value: -0.10, protein: 2.0, fat: 0.7, color: "text-yellow-400" },
   { label: "Mantenimiento",             sublabel: "0% · sostener peso",      value:  0.00, protein: 1.9, fat: 0.8, color: "text-neutral-300" },
   { label: "Ganancia muscular",         sublabel: "+5% · ligero superávit",  value:  0.05, protein: 2.0, fat: 1.0, color: "text-emerald-400" },
-  { label: "Volumen / masa",            sublabel: "+10% · superávit amplio", value:  0.10, protein: 2.1, fat: 1.0, color: "text-blue-400" },
+  { label: "Volumen / masa",            sublabel: "+10% · superávit amplio", value:  0.10, protein: 2.1, fat: 1.0, color: "text-white" },
 ];
 
 function computeMacros(
@@ -1873,17 +1873,17 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
 
                 {/* Preview macros */}
                 {calcResult && (
-                  <div className="rounded-xl p-3 space-y-2" style={{ background: "#0A1A0A", border: "1px solid #1A3A1A" }}>
-                    <p className="text-[10px] uppercase tracking-wider text-emerald-600">Nuevos macros calculados</p>
+                  <div className="rounded-xl p-3 space-y-2" style={{ background: "#111", border: "1px solid #1e1e1e" }}>
+                    <p className="text-[10px] uppercase tracking-wider text-neutral-500 flex items-center gap-1">Nuevos macros calculados</p>
                     <div className="flex gap-2">
                       {[
-                        { label: "Proteína", val: calcResult.protein_g, color: "#F87171" },
-                        { label: "Hidratos", val: calcResult.carbs_g,   color: "#FBBF24" },
-                        { label: "Grasa",    val: calcResult.fat_g,     color: "#60A5FA" },
-                      ].map(({ label, val, color }) => (
-                        <div key={label} className="flex-1 rounded-lg px-2 py-2 text-center" style={{ background: "#111" }}>
-                          <p className="text-[9px] text-neutral-500 uppercase">{label}</p>
-                          <p className="text-sm font-bold" style={{ color }}>{val.toFixed(0)}<span className="text-[10px] font-normal text-neutral-500">g</span></p>
+                        { label: "Proteína", val: calcResult.protein_g },
+                        { label: "Hidratos", val: calcResult.carbs_g },
+                        { label: "Grasa",    val: calcResult.fat_g },
+                      ].map(({ label, val }) => (
+                        <div key={label} className="flex-1 rounded-lg px-2 py-2 text-center" style={{ background: "#161616" }}>
+                          <p className="text-[9px] uppercase mb-1" style={{ color: "#444" }}>{label}</p>
+                          <p className="text-sm font-bold text-white">{val.toFixed(0)}<span className="text-[10px] font-normal" style={{ color: "#555" }}>g</span></p>
                         </div>
                       ))}
                     </div>
@@ -1929,15 +1929,17 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
         {/* ── Botón generar ── */}
         {!generated ? (
           <button onClick={handleGenerate}
-            className="w-full py-4 rounded-xl text-white font-bold text-sm"
+            className="w-full py-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"
             style={{ background: "linear-gradient(135deg,#8B1A2F,#C0392B)" }}>
-            ✨ Generar plan automáticamente
+            <i className="ti ti-bolt" style={{ fontSize: 16 }} />
+            Generar plan automáticamente
           </button>
         ) : (
           <button onClick={handleGenerate}
-            className="w-full py-3 rounded-xl text-sm font-medium text-neutral-400"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-            🔄 Regenerar desde cero
+            className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#888" }}>
+            <i className="ti ti-refresh" style={{ fontSize: 15 }} />
+            Regenerar desde cero
           </button>
         )}
 
@@ -1949,10 +1951,16 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
               style={{ background: "#111", border: "1px solid #222" }}>
               {(["on", "off"] as const).map(t => (
                 <button key={t} onClick={() => setActiveTab(t)}
-                  className={"flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors " +
-                    (activeTab === t ? "bg-white text-black" : "text-neutral-400")}>
-                  {t === "on" ? "💪 Día ON" : "😴 Día OFF"}
-                  <span className="block text-xs font-normal mt-0.5 text-neutral-500">
+                  className={"flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all " +
+                    (activeTab === t ? "text-white" : "text-neutral-600")}
+                  style={activeTab === t
+                    ? { background: "var(--mvp-red)", boxShadow: "0 2px 12px rgba(192,41,43,0.3)" }
+                    : {}}>
+                  <span className="flex items-center justify-center gap-1.5">
+                    <i className={`ti ti-${t === "on" ? "dumbbell" : "moon"}`} style={{ fontSize: 13 }} />
+                    Día {t === "on" ? "ON" : "OFF"}
+                  </span>
+                  <span className="block text-xs font-normal mt-0.5" style={{ color: activeTab === t ? "rgba(255,255,255,0.7)" : "#444" }}>
                     {t === "on" ? macrosOn.kcal : macrosOff?.kcal} kcal
                   </span>
                 </button>
@@ -1967,9 +1975,9 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[
                     { label: "Kcal",  gen: totalGen.kcal,    tgt: activeMacros.kcal,      color: "text-white" },
-                    { label: "Prot",  gen: totalGen.protein, tgt: activeMacros.protein_g, color: "text-red-400" },
-                    { label: "HC",    gen: totalGen.carbs,   tgt: activeMacros.carbs_g,   color: "text-amber-400" },
-                    { label: "Grasa", gen: totalGen.fat,     tgt: activeMacros.fat_g,     color: "text-blue-400" },
+                    { label: "Prot",  gen: totalGen.protein, tgt: activeMacros.protein_g, color: "text-white" },
+                    { label: "HC",    gen: totalGen.carbs,   tgt: activeMacros.carbs_g,   color: "text-white" },
+                    { label: "Grasa", gen: totalGen.fat,     tgt: activeMacros.fat_g,     color: "text-white" },
                   ].map(({ label, gen, tgt, color }) => (
                     <div key={label} className="rounded-lg py-2"
                       style={{ background: "#0A0A0A", border: "1px solid #1E1E1E" }}>
@@ -1988,7 +1996,8 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
               className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 active:opacity-70 transition-opacity"
               style={{ background: "#1A1A1A", border: "1px solid #333", color: "#E5E7EB" }}
             >
-              📄 Descargar PDF del plan completo
+              <i className="ti ti-file-download" style={{ fontSize: 16 }} />
+              Descargar PDF del plan completo
             </button>
 
             {/* Comidas */}
@@ -2047,9 +2056,9 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
                             const fm       = foodMacros(food);
                             const isFixed  = food.macro === "fixed";
                             const slotColor =
-                              food.macro === "protein" ? "#F87171" :
-                              food.macro === "carbs"   ? "#FBBF24" :
-                              food.macro === "fat"     ? "#60A5FA" : "#A78BFA";
+                              food.macro === "protein" ? "#aaa" :
+                              food.macro === "carbs"   ? "#aaa" :
+                              food.macro === "fat"     ? "#aaa" : "#aaa";
 
                             return (
                               <div key={food.slotId} className="rounded-lg p-3 space-y-2"
@@ -2061,12 +2070,12 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
                                     style={{ color: slotColor }}>
                                     {food.label}
                                   </span>
-                                  <span className={`text-xs font-mono ${food.grams > 350 ? "text-amber-400" : "text-neutral-400"}`}>
+                                  <span className={`text-xs font-mono ${food.grams > 350 ? "text-neutral-300" : "text-neutral-500"}`}>
                                     {food.grams} g{food.grams > 350 ? " ⚠" : ""}
                                   </span>
                                 </div>
                                 {food.grams > 350 && food.macro !== "fixed" && (
-                                  <p className="text-[10px] text-amber-600">
+                                  <p className="text-[10px]" style={{ color: "#555" }}>
                                     Porción grande — normal en alimentos de baja densidad (patata, boniato…)
                                   </p>
                                 )}

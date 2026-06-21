@@ -251,9 +251,9 @@ export default function FoodSearchModal({ onClose, onAddToShop, onSaved }: Props
             <div className="grid grid-cols-4 gap-2">
               {[
                 { label: "Kcal",     val: `${adj.kcal}`,          color: "#E5E5E5" },
-                { label: "Proteína", val: `${adj.protein}g`,       color: "#F87171" },
-                { label: "Hidratos", val: `${adj.carbs}g`,         color: "#FBBF24" },
-                { label: "Grasa",    val: `${adj.fat}g`,           color: "#60A5FA" },
+                { label: "Proteína", val: `${adj.protein}g`,       color: "#aaa" },
+                { label: "Hidratos", val: `${adj.carbs}g`,         color: "#aaa" },
+                { label: "Grasa",    val: `${adj.fat}g`,           color: "#aaa" },
               ].map(({ label, val, color }) => (
                 <div key={label} className="rounded-xl px-2 py-2 text-center"
                   style={{ background: "#111", border: "1px solid #1A1A1A" }}>

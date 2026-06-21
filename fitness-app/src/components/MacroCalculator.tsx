@@ -326,7 +326,7 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
                       {o.sublabel}
                     </p>
                   </div>
-                  {active && <span className="text-emerald-500 text-lg ml-2">✓</span>}
+                  {active && <i className="ti ti-check ml-2" style={{ fontSize: 16, color: "var(--mvp-red)" }} />}
                 </button>
               );
             })}
@@ -355,8 +355,10 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
 
           {showAdvanced && (
             <div className="space-y-3 mt-3">
-              <p className="text-[10px] text-amber-600 bg-amber-950/30 border border-amber-900/30 rounded-lg px-3 py-2">
-                ⚠ Estos valores se asignan automáticamente según el objetivo. Modifícalos solo si el entrenador te lo indica.
+              <p className="text-[10px] rounded-lg px-3 py-2 flex items-start gap-1.5"
+                style={{ color: "#666", background: "#141414", border: "1px solid #1e1e1e" }}>
+                <i className="ti ti-alert-triangle" style={{ fontSize: 11, marginTop: 1, flexShrink: 0 }} />
+                Estos valores se asignan automáticamente según el objetivo. Modifícalos solo si el entrenador te lo indica.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -428,7 +430,7 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
 
         {!canCalc
           ? <p className="text-neutral-600 text-xs text-center">Rellena todos los datos para ver los resultados</p>
-          : <p className="text-emerald-600 text-xs text-center flex items-center justify-center gap-1"><span>✓</span> Calculando automáticamente</p>
+          : <p className="text-xs text-center flex items-center justify-center gap-1" style={{ color: "#666" }}><i className="ti ti-check" style={{ fontSize: 11, color: "var(--mvp-red)" }} /> Calculando automáticamente</p>
         }
       </div>
 
@@ -454,21 +456,23 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
           </div>
 
           {/* Tabs ON / OFF */}
-          <div className="flex gap-1 p-1 bg-neutral-900 rounded-xl border border-neutral-800">
-            <button
-              onClick={() => setActiveDayTab("on")}
-              className={"flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors " +
-                (activeDayTab === "on" ? "bg-white text-black" : "text-neutral-400 active:bg-neutral-800")}>
-              💪 Día ON
-              <span className="block text-xs font-normal mt-0.5 text-neutral-500">{result.tdee} kcal</span>
-            </button>
-            <button
-              onClick={() => setActiveDayTab("off")}
-              className={"flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors " +
-                (activeDayTab === "off" ? "bg-white text-black" : "text-neutral-400 active:bg-neutral-800")}>
-              😴 Día OFF
-              <span className="block text-xs font-normal mt-0.5 text-neutral-500">{resultOff.tdee} kcal</span>
-            </button>
+          <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#111", border: "1px solid #1a1a1a" }}>
+            {([
+              { tab: "on"  as const, icon: "ti-dumbbell", label: "Día ON",  kcal: result.tdee },
+              { tab: "off" as const, icon: "ti-moon",     label: "Día OFF", kcal: resultOff.tdee },
+            ]).map(({ tab, icon, label, kcal }) => (
+              <button key={tab}
+                onClick={() => setActiveDayTab(tab)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                style={activeDayTab === tab
+                  ? { background: "var(--mvp-red)", color: "#fff", boxShadow: "0 2px 12px rgba(192,41,43,0.3)" }
+                  : { color: "#555" }}>
+                <span className="flex items-center justify-center gap-1.5">
+                  <i className={`ti ${icon}`} style={{ fontSize: 13 }} />{label}
+                </span>
+                <span className="block text-xs font-normal mt-0.5" style={{ color: activeDayTab === tab ? "rgba(255,255,255,0.7)" : "#333" }}>{kcal} kcal</span>
+              </button>
+            ))}
           </div>
 
           {/* Media semanal */}
@@ -516,14 +520,15 @@ export default function MacroCalculator({ clientName, clientId }: Props) {
 
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "Proteína", g: activeResult.protein_g, kcal: activeResult.protein_kcal, color: "text-blue-400",  bg: "bg-blue-900/20 border-blue-800/40" },
-                  { label: "Hidratos", g: activeResult.carbs_g,   kcal: activeResult.carbs_kcal,   color: "text-amber-400", bg: "bg-amber-900/20 border-amber-800/40" },
-                  { label: "Grasa",    g: activeResult.fat_g,     kcal: activeResult.fat_kcal,     color: "text-rose-400",  bg: "bg-rose-900/20 border-rose-800/40" },
+                  { label: "Proteína", g: activeResult.protein_g, kcal: activeResult.protein_kcal },
+                  { label: "Hidratos", g: activeResult.carbs_g,   kcal: activeResult.carbs_kcal },
+                  { label: "Grasa",    g: activeResult.fat_g,     kcal: activeResult.fat_kcal },
                 ].map(m => (
-                  <div key={m.label} className={`rounded-xl border p-3 text-center ${m.bg}`}>
-                    <p className={`text-xl font-bold ${m.color}`}>{m.g}<span className="text-xs font-normal ml-0.5">g</span></p>
-                    <p className="text-[10px] text-neutral-400 mt-0.5">{m.label}</p>
-                    <p className="text-[9px] text-neutral-600 mt-0.5">{m.kcal} kcal</p>
+                  <div key={m.label} className="rounded-xl p-3 text-center"
+                    style={{ background: "#141414", border: "1px solid #1e1e1e" }}>
+                    <p className="text-xl font-black text-white tabular-nums">{m.g}<span className="text-xs font-normal ml-0.5" style={{ color: "#555" }}>g</span></p>
+                    <p className="text-[10px] mt-0.5" style={{ color: "#555" }}>{m.label}</p>
+                    <p className="text-[9px] mt-0.5" style={{ color: "#333" }}>{m.kcal} kcal</p>
                   </div>
                 ))}
               </div>
