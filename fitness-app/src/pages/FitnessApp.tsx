@@ -1247,6 +1247,13 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
       {/* ── Panel global de estadísticas ── */}
       {showStats && program && (() => {
+        // Normaliza a Title Case para evitar duplicados por capitalización inconsistente en BD
+        const normMuscle = (s: string) => {
+          const t = (s ?? "").trim();
+          if (!t) return "Otros";
+          return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+        };
+
         // Extraer todos los ejercicios únicos con sus datos de logs
         type ExEntry = { name: string; muscle: string; dayId: string; exIdx: number; sparkPts: ChartPoint[]; latestLog: SetLog | null; trend: "↑"|"="|"↓"|null };
         const allEntries: ExEntry[] = [];
@@ -1269,7 +1276,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               ? sparkPts[sparkPts.length-1].value > sparkPts[sparkPts.length-2].value ? "↑"
                 : sparkPts[sparkPts.length-1].value < sparkPts[sparkPts.length-2].value ? "↓" : "="
               : null;
-            allEntries.push({ name: ex.name, muscle: ex.muscleGroup ?? "Otros", dayId: d.id, exIdx, sparkPts, latestLog, trend });
+            allEntries.push({ name: ex.name, muscle: normMuscle(ex.muscleGroup ?? ""), dayId: d.id, exIdx, sparkPts, latestLog, trend });
           });
         });
 
