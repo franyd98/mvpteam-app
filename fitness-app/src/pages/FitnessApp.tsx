@@ -448,7 +448,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       <div className="min-h-dvh flex items-center justify-center p-6"
         style={{ background: "linear-gradient(160deg, #0A0A0A 60%, #1A0810 100%)" }}>
         <div className="text-center">
-          <p className="text-4xl mb-4">💪</p>
+          <i className="ti ti-barbell mb-4 block" style={{ fontSize: 40, color: "#333" }} />
           <p className="text-white font-semibold mb-2">No tienes un programa asignado</p>
           <p className="text-neutral-400 text-sm">Dile a tu entrenador que te asigne uno.</p>
           <button
@@ -498,19 +498,22 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               <p className="text-white font-bold text-sm leading-snug">{exHistory.name}</p>
             </div>
             <button onClick={() => setExHistory(null)}
-              className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 active:text-white flex items-center justify-center text-sm shrink-0">✕</button>
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "#1a1a1a", border: "1px solid #222", color: "#666" }}>
+              <i className="ti ti-x" style={{ fontSize: 14 }} />
+            </button>
           </div>
 
           {weightPts.length >= 2 ? (
             <div className="space-y-4">
               <div className="rounded-xl p-3" style={{ background: "#0D0D0D", border: "1px solid #1E1E1E" }}>
-                <p className="text-xs text-neutral-500 mb-2">💪 Peso máximo por semana ({unit})</p>
+                <p className="text-[10px] uppercase tracking-widest text-neutral-600 mb-2">Peso máximo · {unit}</p>
                 <MiniChart data={weightPts} color="#C0394F" unit={` ${unit}`} height={90} />
               </div>
               {volPts.length >= 2 && (
                 <div className="rounded-xl p-3" style={{ background: "#0D0D0D", border: "1px solid #1E1E1E" }}>
-                  <p className="text-xs text-neutral-500 mb-2">📦 Volumen total por semana ({unit}×reps)</p>
-                  <MiniChart data={volPts} color="#3B82F6" unit="" height={90} />
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-600 mb-2">Volumen total · {unit}×reps</p>
+                  <MiniChart data={volPts} color="rgba(192,41,43,0.5)" unit="" height={90} />
                 </div>
               )}
             </div>
@@ -585,79 +588,103 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const overTrained = consecWithoutRest >= 4 && !todayIsManualRest;
 
     return (
-      <div className="mb-4 rounded-2xl p-3 space-y-2.5" style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
-        <div className="flex items-center justify-between px-0.5">
-          <p className="text-[10px] uppercase tracking-widest font-medium text-neutral-600">Esta semana</p>
-          {overTrained ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-              style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "#ef4444" }}>
-              ⚠️ Descansa hoy
-            </span>
-          ) : needsRest ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-              style={{ background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#94a3b8" }}>
-              💤 Descansa mañana
-            </span>
-          ) : todayIsManualRest ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-              style={{ background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.2)", color: "#60a5fa" }}>
-              🌙 Descanso
-            </span>
-          ) : streak > 0 ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-              style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)", color: "var(--mvp-red)" }}>
-              🔥 {streak} {streak === 1 ? "día" : "días"}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex gap-1.5">
-          {weekDays.map((ds, i) => {
-            const trained    = trainedDates.has(ds);
-            const isToday    = ds === todayStr;
-            const isPast     = ds <= todayStr;
-            const isManualRest = manualRestDays.has(ds);
-            const canToggle  = isPast;
+      <div className="mb-4 rounded-2xl overflow-hidden" style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
 
-            let bg = "#0d0d0d", border = "#161616", textColor = "#333", content = DAY_LABELS[i];
-            if (isManualRest) {
-              bg = "rgba(30,58,95,0.4)"; border = "rgba(96,165,250,0.2)"; textColor = "#4a8fd4"; content = "🌙";
+        {/* Top section: big streak number + status badge */}
+        <div className="flex items-end justify-between px-4 pt-4 pb-3">
+          <div>
+            <p className="text-[9px] uppercase tracking-[0.12em] font-black mb-1" style={{ color: "#252525" }}>
+              Racha
+            </p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-black leading-none tabular-nums"
+                style={{ fontSize: 52, color: streak > 0 ? "var(--mvp-red)" : "#1a1a1a", lineHeight: 1 }}>
+                {streak}
+              </span>
+              <span className="text-sm font-medium pb-1" style={{ color: "#333" }}>
+                {streak === 1 ? "día" : "días"}
+              </span>
+            </div>
+          </div>
+
+          <div className="pb-1">
+            {overTrained ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold"
+                style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)", color: "var(--mvp-red)" }}>
+                <i className="ti ti-alert-triangle" style={{ fontSize: 11 }} /> Descansa hoy
+              </span>
+            ) : needsRest ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#444" }}>
+                <i className="ti ti-moon" style={{ fontSize: 11 }} /> Descansa mañana
+              </span>
+            ) : todayIsManualRest ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#444" }}>
+                <i className="ti ti-moon" style={{ fontSize: 11 }} /> Descanso
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="divider-fade" />
+
+        {/* Week circles */}
+        <div className="flex gap-2 px-4 pt-3 pb-4">
+          {weekDays.map((ds, i) => {
+            const trained      = trainedDates.has(ds);
+            const isToday      = ds === todayStr;
+            const isPast       = ds <= todayStr;
+            const isManualRest = manualRestDays.has(ds);
+            const canToggle    = isPast;
+
+            let bg: string, borderStyle: string, color: string, shadow = "none";
+            if (trained && isToday) {
+              bg = "var(--mvp-red)"; borderStyle = "none"; color = "#fff";
+              shadow = "0 0 20px rgba(192,41,43,0.5)";
             } else if (trained) {
-              bg = "var(--mvp-green-soft)"; border = "var(--mvp-green-border)"; textColor = "var(--mvp-green)"; content = "✓";
+              bg = "var(--mvp-red)"; borderStyle = "none"; color = "#fff";
             } else if (isToday) {
-              bg = "var(--mvp-red)"; border = "transparent"; textColor = "#fff"; content = DAY_LABELS[i];
+              bg = "transparent"; borderStyle = "2px solid var(--mvp-red)"; color = "var(--mvp-red)";
+            } else if (isManualRest) {
+              bg = "rgba(255,255,255,0.03)"; borderStyle = "1px solid rgba(255,255,255,0.07)"; color = "#444";
             } else if (isPast) {
-              bg = "#111"; border = "#1a1a1a"; textColor = "#444";
+              bg = "#111"; borderStyle = "1px solid #161616"; color = "#2a2a2a";
+            } else {
+              bg = "#0a0a0a"; borderStyle = "1px solid #111"; color = "#1a1a1a";
             }
 
             return (
-              <div key={ds} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[9px] font-semibold tracking-wider" style={{ color: isToday ? "var(--mvp-red)" : "#444" }}>
+              <div key={ds} className="flex-1 flex flex-col items-center gap-1.5">
+                <span className="text-[9px] font-black tracking-wider"
+                  style={{ color: isToday ? "var(--mvp-red)" : "#2a2a2a" }}>
                   {DAY_LABELS[i]}
                 </span>
                 <button
                   onClick={() => canToggle && toggleManualRest(ds)}
-                  className="w-full rounded-xl flex items-center justify-center transition-all active:opacity-60"
+                  className="w-full flex items-center justify-center transition-all active:opacity-60"
                   style={{
-                    height: 30,
+                    aspectRatio: "1 / 1",
+                    borderRadius: "50%",
                     background: bg,
-                    border: `1px solid ${border}`,
+                    border: borderStyle,
                     cursor: canToggle ? "pointer" : "default",
-                    color: textColor,
-                    fontSize: isManualRest ? 14 : 11,
-                    fontWeight: 700,
-                    boxShadow: isToday ? "0 0 0 3px rgba(220,38,38,0.2)" : "none",
+                    color,
+                    boxShadow: shadow,
                   }}
-                  title={canToggle ? (isManualRest ? "Quitar descanso manual" : trained ? "Marcar como descanso" : "Marcar como descanso") : undefined}
+                  title={canToggle ? (isManualRest ? "Quitar descanso" : "Marcar descanso") : undefined}
                 >
-                  {content}
+                  {trained
+                    ? <i className="ti ti-check" style={{ fontSize: 12 }} />
+                    : isManualRest
+                      ? <i className="ti ti-moon" style={{ fontSize: 10 }} />
+                      : null}
                 </button>
               </div>
             );
           })}
         </div>
-        <p className="text-[9px] text-neutral-800 text-center tracking-wide">
-          Toca un día pasado para marcar descanso
-        </p>
       </div>
     );
   };
@@ -754,8 +781,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     >
                       {m.number}
                       {locked && (
-                        <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]"
-                          style={{ background: "#1a1208", border: "1px solid #5a4010", color: "#fbbf24" }}>🔒</span>
+                        <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                          style={{ background: "#161616", border: "1px solid #2a2a2a", color: "#555" }}>
+                          <i className="ti ti-lock" style={{ fontSize: 7 }} />
+                        </span>
                       )}
                     </button>
                   );
@@ -768,21 +797,22 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     disabled={lockingSaving}
                     className="ml-1 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 disabled:opacity-40"
                     style={isLocked(dayId, microcycleNumber)
-                      ? { background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24" }
+                      ? { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#777" }
                       : { background: "#111", border: "1px solid #1c1c1c", color: "#555" }}
                     title={isLocked(dayId, microcycleNumber) ? "Desbloquear semana" : "Bloquear semana completada"}
                   >
-                    {isLocked(dayId, microcycleNumber) ? "🔒 Bloqueada" : "🔓 Bloquear"}
+                    <i className={`ti ti-${isLocked(dayId, microcycleNumber) ? "lock" : "lock-open"}`} style={{ fontSize: 13 }} />
+                    {isLocked(dayId, microcycleNumber) ? " Bloqueada" : " Bloquear"}
                   </button>
                 )}
               </div>
 
               {/* Aviso visible cuando el microciclo actual está bloqueado */}
               {isLocked(dayId, microcycleNumber) && (
-                <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-950/40 border border-amber-800/30">
-                  <span className="text-amber-400 text-sm">🔒</span>
-                  <p className="text-amber-300 text-xs">
-                    Semana bloqueada — los registros están protegidos. Pulsa "Bloqueada" para editar.
+                <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <i className="ti ti-lock text-neutral-600" style={{ fontSize: 13 }} />
+                  <p className="text-neutral-600 text-xs">
+                    Semana bloqueada — registros protegidos. Pulsa para editar.
                   </p>
                 </div>
               )}
@@ -796,6 +826,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 const sub = substitutions[subKey(dayId, microcycleNumber, idx)];
                 const displayName = sub?.name ?? ex.name;
                 const displayGroup = sub?.muscleGroup ?? ex.muscleGroup;
+                {/* Progreso de series */}
+                const completedSets = ex.sets.filter(s =>
+                  findLatestLog(logs, dayId, microcycleNumber, idx, s.number)
+                ).length;
+                const totalSets = ex.sets.length;
+                const allDone = completedSets === totalSets;
                 return (
                 <article key={idx} className="rounded-2xl overflow-hidden"
                   style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
@@ -816,13 +852,18 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Progreso series */}
+                      <span className="tabular-nums text-[11px] font-semibold mr-1"
+                        style={{ color: allDone ? "var(--mvp-red)" : completedSets > 0 ? "#666" : "#333" }}>
+                        {completedSets}/{totalSets}
+                      </span>
                       {/* Botón cambiar ejercicio */}
                       <button
                         onClick={() => { setSwapTarget({ dayId, mcNum: microcycleNumber, exIdx: idx, origName: ex.name }); setSwapSearch(""); }}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center text-base transition-colors"
+                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
                         style={{ background: "#161616", border: "1px solid #222", color: "#555" }}
                         title="Cambiar ejercicio">
-                        🔄
+                        <i className="ti ti-refresh" style={{ fontSize: 16 }} />
                       </button>
                       {ex.videoRef && ex.videoRef !== "-" && (
                         ex.videoRef.startsWith("http") ? (
@@ -831,13 +872,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                             className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
                             style={{ background: "#161616", border: "1px solid #222", color: "#555" }}
                             title="Ver vídeo">
-                            📹
+                            <i className="ti ti-player-play" style={{ fontSize: 15 }} />
                           </button>
                         ) : (
                           <span className="w-9 h-9 rounded-xl flex items-center justify-center opacity-30"
-                            style={{ background: "#161616" }}
-                            title={ex.videoRef}>
-                            📹
+                            style={{ background: "#161616" }}>
+                            <i className="ti ti-player-play" style={{ fontSize: 15 }} />
                           </span>
                         )
                       )}
@@ -872,56 +912,71 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                         <div key={setKey(dayId, microcycleNumber, idx, s.number)}>
                           <button
                             onClick={() => !mcLocked && setEditing({ dayId, microcycleNumber, exerciseIndex: idx, setNumber: s.number })}
-                            className={"w-full flex items-center gap-3 text-sm rounded-xl px-3 py-2.5 text-left transition-all " +
-                              (mcLocked ? "cursor-default " : "active:scale-[0.98] ")}
-                            style={log
-                              ? { background: "var(--done-bg)", border: "1px solid var(--done-border)" }
-                              : mcLocked
-                                ? { background: "#0a0a0a", border: "1px solid #141414" }
-                                : { background: "#0f0f0f", border: "1px solid #1a1a1a" }}
-                          >
-                            {/* Círculo numerado */}
-                            <span className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold"
-                              style={log
-                                ? { background: "rgba(255,255,255,0.12)", color: "#ddd" }
+                            className={"w-full flex items-center gap-3 px-3 text-left transition-all " +
+                              (mcLocked ? "cursor-default" : "active:opacity-80")}
+                            style={{
+                              minHeight: 52,
+                              borderRadius: 14,
+                              ...(log
+                                ? { background: "rgba(192,41,43,0.06)", border: "1px solid rgba(192,41,43,0.12)" }
                                 : mcLocked
-                                  ? { background: "#141414", color: "#2a2a2a" }
-                                  : { background: "#181818", color: "#444" }}>
-                              {log ? "✓" : s.number}
-                            </span>
-                            <span className="text-neutral-700 text-xs flex-1 truncate">
+                                  ? { background: "#0a0a0a", border: "1px solid #111" }
+                                  : { background: "#0f0f0f", border: "1px solid #161616" }),
+                            }}
+                          >
+                            {/* Completion circle */}
+                            <div className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center transition-all"
+                              style={log
+                                ? { background: "var(--mvp-red)", boxShadow: "0 0 12px rgba(192,41,43,0.3)" }
+                                : mcLocked
+                                  ? { background: "#111", border: "1px solid #1a1a1a" }
+                                  : { background: "#141414", border: "1px solid #1e1e1e" }}>
+                              {log
+                                ? <i className="ti ti-check" style={{ fontSize: 14, color: "#fff" }} />
+                                : <span className="text-[11px] font-black" style={{ color: mcLocked ? "#222" : "#444" }}>
+                                    {s.number}
+                                  </span>
+                              }
+                            </div>
+
+                            {/* Target */}
+                            <span className="text-xs flex-1 truncate" style={{ color: log ? "#444" : "#2a2a2a" }}>
                               {s.targetReps ?? "—"}
-                              {s.targetRpe && !(s.targetReps ?? "").includes("(")
-                                ? ` · ${s.targetRpe}`
-                                : ""}
+                              {s.targetRpe && !(s.targetReps ?? "").includes("(") ? ` · ${s.targetRpe}` : ""}
                             </span>
+
+                            {/* Logged data */}
                             {log ? (
-                              <span className="font-semibold tabular-nums flex flex-wrap items-center gap-1.5 text-sm text-white">
-                                {log.weight} {log.unit} × {log.reps}
+                              <div className="flex items-baseline gap-1 tabular-nums shrink-0">
+                                <span className="font-black text-white" style={{ fontSize: 17, letterSpacing: "-0.02em" }}>
+                                  {log.weight}
+                                </span>
+                                <span className="text-xs font-medium" style={{ color: "#444" }}>{log.unit}</span>
+                                <span className="text-xs" style={{ color: "#333" }}>×</span>
+                                <span className="font-black text-white" style={{ fontSize: 17, letterSpacing: "-0.02em" }}>
+                                  {log.reps}
+                                </span>
                                 {log.rpe > 0 && (
-                                  <span className="font-normal text-[11px] px-1.5 py-0.5 rounded-md"
-                                    style={{ background: "rgba(255,255,255,0.07)", color: "#888" }}>RPE {log.rpe}</span>
+                                  <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                                    style={{ background: "#111", color: "#444" }}>RPE {log.rpe}</span>
                                 )}
                                 {log.rp_reps != null && (
-                                  <span className="font-normal text-[11px] px-1.5 py-0.5 rounded-md"
-                                    style={{ background: "rgba(255,255,255,0.07)", color: "#888" }}>+{log.rp_reps}r</span>
+                                  <span className="ml-1 text-[10px] font-medium" style={{ color: "#444" }}>+{log.rp_reps}r</span>
                                 )}
                                 {log.drop_weight != null && (
-                                  <span className="font-normal text-[11px] px-1.5 py-0.5 rounded-md"
-                                    style={{ background: "rgba(255,255,255,0.07)", color: "#888" }}>↓ {log.drop_weight}×{log.drop_reps ?? "?"}</span>
+                                  <span className="ml-1 text-[10px] font-medium" style={{ color: "#444" }}>↓{log.drop_weight}×{log.drop_reps ?? "?"}</span>
                                 )}
                                 {prog && (
-                                  <span className={"text-sm font-bold " +
-                                    (prog === "↑" ? "text-white" : prog === "=" ? "text-neutral-600" : "text-neutral-500")}>
+                                  <span className="ml-1 text-sm font-black"
+                                    style={{ color: prog === "↑" ? "var(--mvp-red)" : prog === "=" ? "#2a2a2a" : "#222" }}>
                                     {prog}
                                   </span>
                                 )}
-                                {mcLocked && <span className="text-neutral-600 text-xs ml-1">🔒</span>}
-                              </span>
+                                {mcLocked && <i className="ti ti-lock ml-1" style={{ fontSize: 10, color: "#333" }} />}
+                              </div>
                             ) : (
-                              <span className="text-xs" style={{ color: mcLocked ? "#2a2a2a" : "#444" }}>
-                                {mcLocked ? "🔒" : "→"}
-                              </span>
+                              <i className={`ti ti-${mcLocked ? "lock" : "chevron-right"}`}
+                                style={{ fontSize: 13, color: mcLocked ? "#1a1a1a" : "#333" }} />
                             )}
                           </button>
                           {!log && validPrevLog && (
@@ -936,7 +991,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                       );
                     })}
                   </div>
-                  {ex.note && <p className="mt-3 text-xs text-amber-400">{ex.note}</p>}
+                  {ex.note && (
+                    <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "#666" }}>
+                      <i className="ti ti-note mr-1" style={{ fontSize: 11 }} />{ex.note}
+                    </p>
+                  )}
                   </div>{/* flex-1 p-4 */}
                   </div>{/* flex */}
                 </article>
@@ -1161,7 +1220,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 <p className="text-white font-bold text-sm">Progresión de cargas</p>
               </div>
               <button onClick={() => setShowStats(false)}
-                className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 active:text-white flex items-center justify-center text-sm shrink-0">✕</button>
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "#1a1a1a", border: "1px solid #222", color: "#666" }}>
+                <i className="ti ti-x" style={{ fontSize: 14 }} />
+              </button>
             </div>
             {/* Lista de días y ejercicios con sparklines */}
             <div className="overflow-y-auto">
@@ -1278,8 +1340,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   <p className="text-white font-bold text-sm truncate">{swapTarget.origName}</p>
                 </div>
                 <button onClick={() => setSwapTarget(null)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-500 hover:text-white shrink-0"
-                  style={{ background: "#1A1A1A" }}>✕</button>
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "#1a1a1a", border: "1px solid #222", color: "#666" }}>
+                  <i className="ti ti-x" style={{ fontSize: 14 }} />
+                </button>
               </div>
 
               {/* Buscador */}
@@ -1304,10 +1368,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                       setSwapTarget(null);
                     }}
                     className="w-full flex items-center gap-3 px-4 py-3 border-b text-left active:bg-neutral-800"
-                    style={{ borderColor: "#1a1a1a", background: "#0F1A0F" }}>
-                    <span className="text-lg">↩</span>
+                    style={{ borderColor: "#1a1a1a", background: "#111" }}>
+                    <i className="ti ti-arrow-back-up" style={{ fontSize: 16, color: "#555" }} />
                     <div>
-                      <p className="text-xs text-emerald-400 font-semibold">Restablecer ejercicio original</p>
+                      <p className="text-xs font-semibold" style={{ color: "var(--mvp-red)" }}>Restablecer ejercicio original</p>
                       <p className="text-[11px] text-neutral-500">{swapTarget.origName}</p>
                     </div>
                   </button>
@@ -1343,14 +1407,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                               setSwapTarget(null);
                             }}
                             className="w-full flex items-center gap-3 px-4 py-3 border-b text-left active:bg-neutral-800 transition-colors"
-                            style={{ borderColor: "#1a1a1a", background: isCurrent ? "#1A2A1A" : "transparent" }}>
+                            style={{ borderColor: "#1a1a1a", background: isCurrent ? "var(--mvp-red-soft)" : "transparent" }}>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate" style={{ color: isUsedElsewhere ? "#888" : "#fff" }}>{e.name}</p>
+                              <p className="text-sm font-medium truncate" style={{ color: isUsedElsewhere ? "#555" : "#fff" }}>{e.name}</p>
                               {isUsedElsewhere && (
-                                <p className="text-[10px] mt-0.5" style={{ color: "#F59E0B" }}>⚠ ya asignado a otro ejercicio</p>
+                                <p className="text-[10px] mt-0.5 text-neutral-600">
+                                  <i className="ti ti-alert-triangle mr-0.5" style={{ fontSize: 9 }} />ya asignado a otro ejercicio
+                                </p>
                               )}
                             </div>
-                            {isCurrent && <span className="text-emerald-400 text-xs font-bold shrink-0">✓</span>}
+                            {isCurrent && <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />}
                           </button>
                         );
                       })}
@@ -1382,9 +1448,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               <p className="text-white text-sm font-medium">Vídeo del ejercicio</p>
               <button
                 onClick={() => setVideoUrl(null)}
-                className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 active:text-white active:bg-neutral-700 flex items-center justify-center text-sm"
-              >
-                ✕
+                className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ background: "#1a1a1a", border: "1px solid #222", color: "#666" }}>
+                <i className="ti ti-x" style={{ fontSize: 14 }} />
               </button>
             </div>
             <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>

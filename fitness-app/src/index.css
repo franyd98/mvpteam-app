@@ -177,6 +177,39 @@ input[type="range"]::-moz-range-thumb {
   width: 100%;
 }
 
+/* ── Global button micro-interaction ─────────────────────── */
+/* Active scale en todos los botones interactivos */
+button, [role="button"] {
+  transition: opacity 150ms ease, transform 150ms ease, box-shadow 200ms ease;
+}
+
+/* ── Streak widget divider ────────────────────────────────── */
+/* Línea separadora con fade lateral para el widget de racha */
+.divider-fade {
+  height: 1px;
+  margin: 0 16px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    #1c1c1c 20%,
+    #1c1c1c 80%,
+    transparent
+  );
+}
+
+/* ── Número hero (racha, SetLogger) ──────────────────────── */
+/* Asegura kerning perfecto en números grandes */
+.hero-number {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+/* ── Subtle card glow para elementos activos ──────────────── */
+.glow-red {
+  box-shadow: 0 0 20px rgba(192, 41, 43, 0.4);
+}
+
 /* ── Gradiente texto rojo ─────────────────────────────────── */
 .text-gradient-red {
   background: linear-gradient(135deg, #dc2626 0%, #f87171 100%);
