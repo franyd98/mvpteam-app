@@ -863,14 +863,14 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       {/* Progreso series */}
                       <span className="tabular-nums text-[11px] font-semibold mr-1"
-                        style={{ color: allDone ? "var(--mvp-red)" : completedSets > 0 ? "#666" : "#333" }}>
+                        style={{ color: allDone ? "var(--mvp-red)" : completedSets > 0 ? "#888" : "#666" }}>
                         {completedSets}/{totalSets}
                       </span>
                       {/* Botón cambiar ejercicio */}
                       <button
                         onClick={() => { setSwapTarget({ dayId, mcNum: microcycleNumber, exIdx: idx, origName: ex.name }); setSwapSearch(""); }}
                         className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
-                        style={{ background: "#161616", border: "1px solid #222", color: "#555" }}
+                        style={{ background: "#161616", border: "1px solid #222", color: "#888" }}
                         title="Cambiar ejercicio">
                         <i className="ti ti-refresh" style={{ fontSize: 16 }} />
                       </button>
@@ -879,7 +879,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                           <button
                             onClick={() => openVideo(ex.videoRef!)}
                             className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
-                            style={{ background: "#161616", border: "1px solid #222", color: "#555" }}
+                            style={{ background: "#161616", border: "1px solid #222", color: "#888" }}
                             title="Ver vídeo">
                             <i className="ti ti-player-play" style={{ fontSize: 15 }} />
                           </button>
@@ -942,14 +942,14 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                                   : { background: "#141414", border: "1px solid #1e1e1e" }}>
                               {log
                                 ? <i className="ti ti-check" style={{ fontSize: 14, color: "#fff" }} />
-                                : <span className="text-[11px] font-black" style={{ color: mcLocked ? "#222" : "#444" }}>
+                                : <span className="text-[11px] font-black" style={{ color: mcLocked ? "#333" : "#888" }}>
                                     {s.number}
                                   </span>
                               }
                             </div>
 
                             {/* Target */}
-                            <span className="text-xs flex-1 truncate" style={{ color: log ? "#444" : "#2a2a2a" }}>
+                            <span className="text-xs flex-1 truncate" style={{ color: log ? "#777" : "#666" }}>
                               {s.targetReps ?? "—"}
                               {s.targetRpe && !(s.targetReps ?? "").includes("(") ? ` · ${s.targetRpe}` : ""}
                             </span>
@@ -960,24 +960,24 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                                 <span className="font-black text-white" style={{ fontSize: 17, letterSpacing: "-0.02em" }}>
                                   {log.weight}
                                 </span>
-                                <span className="text-xs font-medium" style={{ color: "#444" }}>{log.unit}</span>
-                                <span className="text-xs" style={{ color: "#333" }}>×</span>
+                                <span className="text-xs font-medium" style={{ color: "#888" }}>{log.unit}</span>
+                                <span className="text-xs" style={{ color: "#666" }}>×</span>
                                 <span className="font-black text-white" style={{ fontSize: 17, letterSpacing: "-0.02em" }}>
                                   {log.reps}
                                 </span>
                                 {log.rpe > 0 && (
                                   <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                                    style={{ background: "#111", color: "#444" }}>RPE {log.rpe}</span>
+                                    style={{ background: "#141414", color: "#777" }}>RPE {log.rpe}</span>
                                 )}
                                 {log.rp_reps != null && (
-                                  <span className="ml-1 text-[10px] font-medium" style={{ color: "#444" }}>+{log.rp_reps}r</span>
+                                  <span className="ml-1 text-[10px] font-medium" style={{ color: "#777" }}>+{log.rp_reps}r</span>
                                 )}
                                 {log.drop_weight != null && (
-                                  <span className="ml-1 text-[10px] font-medium" style={{ color: "#444" }}>↓{log.drop_weight}×{log.drop_reps ?? "?"}</span>
+                                  <span className="ml-1 text-[10px] font-medium" style={{ color: "#777" }}>↓{log.drop_weight}×{log.drop_reps ?? "?"}</span>
                                 )}
                                 {prog && (
                                   <span className="ml-1 text-sm font-black"
-                                    style={{ color: prog === "↑" ? "var(--mvp-red)" : prog === "=" ? "#2a2a2a" : "#222" }}>
+                                    style={{ color: prog === "↑" ? "var(--mvp-red)" : prog === "=" ? "#555" : "#555" }}>
                                     {prog}
                                   </span>
                                 )}
@@ -985,11 +985,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                               </div>
                             ) : (
                               <i className={`ti ti-${mcLocked ? "lock" : "chevron-right"}`}
-                                style={{ fontSize: 13, color: mcLocked ? "#555" : "#333" }} />
+                                style={{ fontSize: 13, color: mcLocked ? "#777" : "#666" }} />
                             )}
                           </button>
                           {!log && validPrevLog && (
-                            <p className="text-[10px] text-neutral-600 px-3 pt-0.5 pb-1">
+                            <p className="text-[10px] text-neutral-400 px-3 pt-0.5 pb-1">
                               Mc{validPrevLog.microcycleNumber}: {validPrevLog.weight} {validPrevLog.unit} × {validPrevLog.reps}
                               {validPrevLog.rpe > 0 ? ` · RPE ${validPrevLog.rpe}` : ""}
                               {validPrevLog.rp_reps != null ? ` · +${validPrevLog.rp_reps}r` : ""}
