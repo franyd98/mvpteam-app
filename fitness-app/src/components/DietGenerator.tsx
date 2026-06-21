@@ -1932,16 +1932,16 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
         {/* ── Botón generar ── */}
         {!generated ? (
           <button onClick={handleGenerate}
-            className="w-full py-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg,#8B1A2F,#C0392B)" }}>
-            <i className="ti ti-bolt" style={{ fontSize: 16 }} />
+            className="w-full py-3 rounded-2xl text-white font-semibold text-sm flex items-center justify-center gap-2 transition-opacity active:opacity-75"
+            style={{ background: "var(--mvp-red)", boxShadow: "0 4px 20px rgba(192,41,43,0.3)" }}>
+            <i className="ti ti-bolt" style={{ fontSize: 14 }} />
             Generar plan automáticamente
           </button>
         ) : (
           <button onClick={handleGenerate}
-            className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#888" }}>
-            <i className="ti ti-refresh" style={{ fontSize: 15 }} />
+            className="w-full py-2.5 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-opacity active:opacity-75"
+            style={{ background: "#141414", border: "1px solid #202020", color: "#555" }}>
+            <i className="ti ti-refresh" style={{ fontSize: 14 }} />
             Regenerar desde cero
           </button>
         )}
