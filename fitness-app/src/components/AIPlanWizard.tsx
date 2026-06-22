@@ -3,6 +3,7 @@
 // El usuario solo actualiza el peso si ha cambiado y sube foto si quiere.
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "../lib/supabase";
 
 type Profile = { id: string; full_name: string; role: string };
@@ -74,11 +75,13 @@ const DEFAULT_DATA: ClientData = {
 const PREFS_KEY = "mvp_ai_prefs_v1";
 
 // ── Pequeño modal de edición inline ──────────────────────────────────────────
+// Usa createPortal para renderizar en document.body y escapar del scroll
+// container de FitnessApp, evitando el bug de iOS donde fixed queda confinado.
 function EditSheet({
   title, children, onClose,
 }: { title: string; children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.7)" }}
+  return createPortal(
+    <div className="fixed inset-0 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.75)", zIndex: 9999 }}
       onClick={onClose}>
       <div className="rounded-t-3xl flex flex-col overflow-hidden"
         style={{ background: "#0F0F0F", border: "1px solid #1e1e1e", maxHeight: "88dvh" }}
@@ -95,7 +98,8 @@ function EditSheet({
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
