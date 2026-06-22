@@ -608,11 +608,12 @@ DIETA:
       }
     }
 
-    // Auto-asignar dieta
-    await supabase.from("diet_assignments").upsert(
-      { client_id, plan_id: dietPlanId, active: true, assigned_at: new Date().toISOString() },
-      { onConflict: "client_id" },
-    );
+    // Auto-asignar dieta (desactivar existentes + insertar nueva para no machacar la del coach)
+    await supabase.from("diet_assignments").update({ active: false }).eq("client_id", client_id);
+    await supabase.from("diet_assignments").insert({
+      client_id, plan_id: dietPlanId, active: true, source: "ai",
+      assigned_at: new Date().toISOString(),
+    });
 
     // ── 10. Actualizar client_macros ────────────────────────────────────────
     await supabase.from("client_macros").upsert({

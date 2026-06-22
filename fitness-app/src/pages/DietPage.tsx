@@ -492,6 +492,10 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
   const [history,     setHistory]     = useState<HistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
+  // Todas las dietas asignadas (para el picker)
+  const [allDiets, setAllDiets] = useState<{ asgnId: string; planId: string; name: string; source: string; active: boolean }[]>([]);
+  const [showDietPicker, setShowDietPicker] = useState(false);
+
   // Visor de dieta del historial
   const [histPlan,       setHistPlan]       = useState<DietPlan | null>(null);
   const [histMeals,      setHistMeals]      = useState<DietMeal[]>([]);
@@ -556,13 +560,22 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
     setViewingHistEntry(null); setHistPlan(null); setHistMeals([]);
 
     // Todas las asignaciones del cliente, más recientes primero
-    const { data: allAsgn, error: asgnErr } = await supabase
+    const { data: allAsgn } = await supabase
       .from("diet_assignments")
-      .select("id, plan_id, source, active, assigned_at")
+      .select("id, plan_id, source, active, assigned_at, diet_plans(name)")
       .eq("client_id", profile.id)
       .order("assigned_at", { ascending: false });
 
     if (!allAsgn?.length) { setLoading(false); return; }
+
+    // Poblar picker de dietas
+    setAllDiets(allAsgn.map((a: any) => ({
+      asgnId: a.id,
+      planId: a.plan_id,
+      name:   a.diet_plans?.name ?? "Dieta",
+      source: a.source ?? "manual",
+      active: a.active,
+    })));
 
     const activeAsgn   = allAsgn.find(a => a.active);
     const inactiveAsgn = allAsgn.filter(a => !a.active);
@@ -622,6 +635,27 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
       setViewingHistEntry(entry);
       setShowHistory(false);
     }
+  };
+
+  // ── Switcher de dietas ────────────────────────────────────────────────────
+  const switchDiet = async (asgnId: string) => {
+    setShowDietPicker(false);
+    setLoading(true);
+    await supabase.from("diet_assignments").update({ active: false }).eq("client_id", profile.id);
+    await supabase.from("diet_assignments").update({ active: true }).eq("id", asgnId);
+    await loadDiet();
+  };
+
+  const deleteAIDiet = async (asgnId: string, planId: string) => {
+    setShowDietPicker(false);
+    setLoading(true);
+    await supabase.from("diet_assignments").delete().eq("id", asgnId);
+    await supabase.from("diet_plans").delete().eq("id", planId);
+    const remaining = allDiets.filter(d => d.asgnId !== asgnId);
+    if (remaining.length > 0) {
+      await supabase.from("diet_assignments").update({ active: true }).eq("id", remaining[0].asgnId);
+    }
+    await loadDiet();
   };
 
   // ── Lista de la compra ────────────────────────────────────────────────────
@@ -710,7 +744,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
       )}
 
       {/* ── Header ── */}
-      <header className="header-safe shrink-0 px-4 pb-3"
+      <header className="header-safe shrink-0 px-4 pb-3 relative"
         style={{ background: "#0a0a0a", borderBottom: "1px solid #1a1a1a" }}>
         <div className="flex items-center gap-3 pb-0">
           <button onClick={onBack}
@@ -720,7 +754,18 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-white font-bold text-base">Dieta</h1>
-            <p className="text-neutral-600 text-xs truncate">{profile.full_name}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-neutral-600 text-xs truncate">{profile.full_name}</p>
+              {allDiets.length > 1 && (
+                <button
+                  onClick={() => setShowDietPicker(p => !p)}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 active:opacity-60"
+                  style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)", color: "var(--mvp-red)" }}>
+                  <i className="ti ti-switch-horizontal" style={{ fontSize: 10 }} />
+                  {allDiets.find(d => d.active)?.source === "ai" ? "IA" : "Coach"}
+                </button>
+              )}
+            </div>
           </div>
           {/* Botón descargar PDF */}
           {dietTab === "plan" && plan && !viewingHistEntry && (
@@ -745,6 +790,44 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             )}
           </button>
         </div>
+
+        {/* Picker de dietas */}
+        {showDietPicker && allDiets.length > 1 && (
+          <div className="absolute left-4 right-4 top-full mt-1 rounded-2xl overflow-hidden z-50 shadow-2xl"
+            style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 px-4 pt-3 pb-2">
+              Cambiar dieta
+            </p>
+            {allDiets.map(d => (
+              <div key={d.asgnId} className="flex items-center border-t" style={{ borderColor: "#222" }}>
+                <button
+                  onClick={() => switchDiet(d.asgnId)}
+                  className="flex-1 flex items-center gap-3 px-4 py-3 active:opacity-60">
+                  <i className={`ti ${d.source === "ai" ? "ti-sparkles" : "ti-salad"}`}
+                    style={{ fontSize: 16, color: d.source === "ai" ? "var(--mvp-red)" : "#555" }} />
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{d.name}</p>
+                    <p className="text-[10px] text-neutral-500">{d.source === "ai" ? "Generada por IA" : "Asignada por coach"}</p>
+                  </div>
+                  {d.active && <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />}
+                </button>
+                {d.source === "ai" && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`¿Borrar "${d.name}"? Esta acción no se puede deshacer.`)) {
+                        deleteAIDiet(d.asgnId, d.planId);
+                      }
+                    }}
+                    className="px-4 py-3 active:opacity-60 shrink-0"
+                    style={{ color: "#555", borderLeft: "1px solid #222" }}>
+                    <i className="ti ti-trash" style={{ fontSize: 16 }} />
+                  </button>
+                )}
+              </div>
+            ))}
+            <div className="h-2" />
+          </div>
+        )}
 
         {/* Tabs — ocultas en modo Generar nueva */}
         {dietTab !== "generate" && (
