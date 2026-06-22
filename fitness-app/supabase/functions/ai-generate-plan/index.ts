@@ -302,7 +302,7 @@ Genera este JSON:
     "name": "Plan IA - [tipo] ${days_per_week} días",
     "days": [
       {
-        "name": "Día A - [músculos]",
+        "name": "[Músculo/Músculo]",
         "exercises": [
           {"name": "<nombre EXACTO>", "sets": 4, "reps": "8-10", "rir": 2, "note": "técnica o foco opcional"}
         ]
@@ -334,6 +334,7 @@ Genera este JSON:
 REGLAS CRÍTICAS:
 PROGRAMA (diseña los ejercicios BASE — el servidor aplicará automáticamente 8 semanas de sobrecarga progresiva):
 - Exactamente ${days_per_week} días de entrenamiento${leanKg ? ` para ${leanKg}kg masa magra` : ""}
+- Nombre de día: MÁXIMO 15 caracteres, sin "Día X -", solo músculos separados por "/" (ej: "Pecho/Tríceps", "Tirón", "Piernas", "Hombros", "Espalda/Bíceps", "Glúteos/Core")
 - 4-6 ejercicios/día con rango base semana 1
 - Nivel ${experience}: ${experience === "beginner" ? "sets: 3, reps: '12-15', rir: 3" : experience === "intermediate" ? "sets: 4, reps: '8-12', rir: 2" : "sets: 5, reps: '6-10', rir: 2"}
 - ${fatPct && fatPct > 25 ? "Incluir ejercicio cardiovascular o circuitos metabólicos — % grasa elevado" : "Priorizar fuerza e hipertrofia con ejercicios básicos (sentadilla, peso muerto, press, remo)"}

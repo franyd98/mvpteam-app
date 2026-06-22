@@ -845,11 +845,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 <button
                   key={d.id}
                   onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
-                  className={"px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 " +
+                  className={"px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 max-w-[160px] truncate " +
                     (d.id === dayId ? "text-white" : "text-neutral-500")}
                   style={d.id === dayId
                     ? { background: "var(--mvp-red)", border: "1px solid rgba(220,38,38,0.5)" }
                     : { background: "#111", border: "1px solid #1c1c1c" }}
+                  title={d.name}
                 >
                   {d.name}{d.optional && <span className="ml-1 text-[10px] opacity-50">(opc.)</span>}
                 </button>
