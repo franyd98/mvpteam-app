@@ -612,7 +612,7 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
               <div className="grid grid-cols-3 gap-2">
                 {([
                   { slot: "front" as const, ref: fileRefFront, label: "Frente",  required: true  },
-                  { slot: "side"  as const, ref: fileRefSide,  label: "Lateral", required: true  },
+                  { slot: "side"  as const, ref: fileRefSide,  label: "Lateral", required: false },
                   { slot: "back"  as const, ref: fileRefBack,  label: "Espalda", required: false },
                 ]).map(({ slot, ref, label, required }) => {
                   const p = photos[slot];
@@ -652,9 +652,16 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
               </div>
 
               {/* Hint */}
-              <p className="text-[10px] text-neutral-600 text-center">
+              <p className="text-[10px] text-neutral-500 text-center leading-relaxed">
                 De pie · ropa ajustada · buena iluminación
               </p>
+              {(!photos.side || !photos.back) && photos.front && (
+                <p className="text-[10px] text-center leading-relaxed px-2"
+                  style={{ color: "var(--mvp-red)" }}>
+                  <i className="ti ti-info-circle" style={{ fontSize: 11, marginRight: 3 }} />
+                  Añadir foto lateral y de espalda mejora mucho la precisión del análisis
+                </p>
+              )}
             </div>
 
             {/* Error */}
