@@ -80,17 +80,20 @@ function EditSheet({
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.7)" }}
       onClick={onClose}>
-      <div className="rounded-t-3xl overflow-hidden max-h-[80dvh] overflow-y-auto"
-        style={{ background: "#0F0F0F", border: "1px solid #1e1e1e" }}
+      <div className="rounded-t-3xl flex flex-col"
+        style={{ background: "#0F0F0F", border: "1px solid #1e1e1e", maxHeight: "92dvh" }}
         onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
+        <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-neutral-800">
           <p className="text-white font-bold text-sm">{title}</p>
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center"
             style={{ background: "#1a1a1a", color: "#777" }}>
             <i className="ti ti-x" style={{ fontSize: 14 }} />
           </button>
         </div>
-        <div className="px-5 py-4 pb-8">{children}</div>
+        <div className="flex-1 overflow-y-auto px-5 py-4 pb-safe"
+          style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -501,10 +504,10 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Días/semana</p>
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                       {[3, 4, 5, 6].map(d => (
                         <button key={d} onClick={() => upd({ days_per_week: d })}
-                          className="flex-1 py-2 rounded-lg text-xs font-bold"
+                          className="w-10 h-10 rounded-full text-xs font-bold flex items-center justify-center shrink-0"
                           style={{
                             background: data.days_per_week === d ? "var(--mvp-red)" : "#141414",
                             border: `1px solid ${data.days_per_week === d ? "transparent" : "#222"}`,
@@ -759,7 +762,7 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
               <div className="flex gap-2">
                 {[2, 3, 4, 5, 6].map(d => (
                   <button key={d} onClick={() => upd({ days_per_week: d })}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                    className="w-11 h-11 rounded-full text-sm font-bold flex items-center justify-center shrink-0"
                     style={{
                       background: data.days_per_week === d ? "var(--mvp-red)" : "#1a1a1a",
                       border: `1px solid ${data.days_per_week === d ? "transparent" : "#2a2a2a"}`,
@@ -771,10 +774,10 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
             {/* Equipamiento */}
             <div className="space-y-2">
               <p className="text-[10px] uppercase tracking-wider text-neutral-500">Equipamiento</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-wrap gap-2">
                 {Object.entries(EQUIP_LABELS).map(([v, l]) => (
                   <button key={v} onClick={() => upd({ equipment: v })}
-                    className="py-2.5 rounded-xl text-xs font-semibold"
+                    className="px-4 py-2 rounded-full text-xs font-semibold"
                     style={{
                       background: data.equipment === v ? "var(--mvp-red-soft)" : "#1a1a1a",
                       border: `1px solid ${data.equipment === v ? "var(--mvp-red-border)" : "#2a2a2a"}`,
