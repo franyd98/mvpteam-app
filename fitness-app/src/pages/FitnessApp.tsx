@@ -41,6 +41,9 @@ type SetIdEntry = {
 export default function FitnessApp({ profile }: { profile: Profile }) {
   const [program, setProgram] = useState<Program | null>(null);
   const [loadingProgram, setLoadingProgram] = useState(true);
+  // Todos los programas asignados (activo + anteriores)
+  const [allPrograms, setAllPrograms] = useState<{ programId: number; name: string; source: string }[]>([]);
+  const [showProgramPicker, setShowProgramPicker] = useState(false);
   const [dayId, setDayId] = useState<string>("");
   const [microcycleNumber, setMicrocycleNumber] = useState<number>(1);
   const [editing, setEditing] = useState<EditingTarget>(null);
@@ -177,6 +180,29 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   };
 
   const loadAssignedProgram = async () => {
+    // Cargar todos los programas asignados (para el selector)
+    const { data: allAssign } = await supabase
+      .from("program_assignments")
+      .select("program_id, programs(id, name, source)")
+      .eq("client_id", profile.id)
+      .order("program_id", { ascending: false });
+
+    if (allAssign) {
+      const seen = new Set<number>();
+      const list = allAssign
+        .filter((a: any) => {
+          if (seen.has(a.program_id)) return false;
+          seen.add(a.program_id);
+          return true;
+        })
+        .map((a: any) => ({
+          programId: a.program_id,
+          name:      a.programs?.name   ?? `Programa ${a.program_id}`,
+          source:    a.programs?.source ?? "manual",
+        }));
+      setAllPrograms(list);
+    }
+
     const { data, error } = await supabase
       .from("program_assignments")
       .select(`
@@ -291,6 +317,23 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     }
 
     setLoadingProgram(false);
+  };
+
+  // Cambiar entre programa del coach y programa IA
+  const switchToProgram = async (programId: number) => {
+    setShowProgramPicker(false);
+    setLoadingProgram(true);
+    // Desactivar todos, activar el elegido
+    await supabase
+      .from("program_assignments")
+      .update({ active: false })
+      .eq("client_id", profile.id);
+    await supabase
+      .from("program_assignments")
+      .update({ active: true })
+      .eq("client_id", profile.id)
+      .eq("program_id", programId);
+    await loadAssignedProgram();
   };
 
   const day = useMemo(
@@ -712,16 +755,59 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
           {/* Header sticky con safe area */}
           <header
-            className="header-safe sticky top-0 z-10 flex items-center justify-between gap-3 pb-3 mb-2"
+            className="header-safe sticky top-0 z-10 flex items-center justify-between gap-3 pb-3 mb-2 relative"
             style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}
           >
             <div className="min-w-0 flex-1">
               <MVPWordmark className="mb-0.5" />
-              <p className="text-xs text-neutral-500 pl-1 truncate">
-                <span className="font-medium text-neutral-300">{profile.full_name}</span>
-                <span className="hidden xs:inline"> · {program.programName}</span>
-              </p>
+              <div className="flex items-center gap-1 pl-1">
+                <span className="text-xs font-medium text-neutral-300 truncate">{profile.full_name}</span>
+                {allPrograms.length > 1 ? (
+                  <button
+                    onClick={() => setShowProgramPicker(p => !p)}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 active:opacity-60"
+                    style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)", color: "var(--mvp-red)" }}
+                  >
+                    <i className="ti ti-switch-horizontal" style={{ fontSize: 10 }} />
+                    <span className="max-w-[90px] truncate">{program.programName}</span>
+                  </button>
+                ) : (
+                  <span className="text-xs text-neutral-500 truncate hidden xs:inline"> · {program.programName}</span>
+                )}
+              </div>
             </div>
+
+            {/* Picker de programas */}
+            {showProgramPicker && allPrograms.length > 1 && (
+              <div className="absolute left-4 right-4 top-full mt-1 rounded-2xl overflow-hidden z-50 shadow-2xl"
+                style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}>
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 px-4 pt-3 pb-2">
+                  Cambiar programa
+                </p>
+                {allPrograms.map(p => (
+                  <button key={p.programId}
+                    onClick={() => switchToProgram(p.programId)}
+                    className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60 border-t"
+                    style={{ borderColor: "#222" }}>
+                    <i className={`ti ${p.source === "ai" ? "ti-sparkles" : "ti-barbell"}`}
+                      style={{ fontSize: 16, color: p.source === "ai" ? "var(--mvp-red)" : "#555" }} />
+                    <div className="flex-1 text-left">
+                      <p className="text-sm text-white font-medium truncate">{p.name}</p>
+                      <p className="text-[10px] text-neutral-500">
+                        {p.source === "ai" ? "Generado con IA" : "Asignado por coach"}
+                      </p>
+                    </div>
+                    {program.programName === p.name && (
+                      <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
+                    )}
+                  </button>
+                ))}
+                <button onClick={() => setShowProgramPicker(false)}
+                  className="w-full py-3 text-xs text-neutral-600 border-t" style={{ borderColor: "#222" }}>
+                  Cancelar
+                </button>
+              </div>
+            )}
 
             {/* Acciones del header */}
             <div className="flex gap-1.5 shrink-0">

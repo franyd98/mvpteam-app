@@ -103,6 +103,7 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
   // Estado principal
   const [data, setData] = useState<ClientData>(DEFAULT_DATA);
   const [loadingData, setLoadingData] = useState(true);
+  const [isNewClient, setIsNewClient] = useState(false); // true si no hay datos previos
 
   // Foto
   const [photoBase64,  setPhotoBase64]  = useState<string | null>(null);
@@ -145,6 +146,9 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
         .order("date", { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      const hasMacros = !!(macros?.weight_kg && macros?.age && macros?.height_cm);
+      setIsNewClient(!hasMacros);
 
       setData(prev => ({
         ...prev,
@@ -245,7 +249,9 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
     setError(null);
   };
 
-  const canGenerate = data.weight.trim() !== "" && Number(data.weight) > 0;
+  const canGenerate = isNewClient
+    ? Number(data.weight) > 0 && Number(data.age) > 0 && Number(data.height) > 0
+    : Number(data.weight) > 0;
 
   // ── Render: Loading ───────────────────────────────────────────────────────
   if (generating) {
@@ -425,94 +431,153 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
           </div>
         ) : (
           <>
-            {/* ── Peso (el único campo que el usuario toca siempre) ── */}
-            <div className="rounded-2xl overflow-hidden"
-              style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
-              <div className="flex">
-                <div className="w-[3px] shrink-0" style={{ background: "var(--mvp-red)" }} />
-                <div className="flex-1 px-4 py-4">
-                  <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 mb-3">
-                    Tu peso actual
+            {/* ── Cliente nuevo: formulario expandido ── */}
+            {isNewClient ? (
+              <div className="space-y-4">
+                <div className="rounded-xl px-4 py-3 flex items-start gap-2"
+                  style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }}>
+                  <i className="ti ti-info-circle shrink-0 mt-0.5" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--mvp-red)" }}>
+                    Primera vez · rellena tus datos básicos para generar tu plan personalizado
                   </p>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      value={data.weight}
-                      onChange={e => upd({ weight: e.target.value })}
-                      placeholder="75"
-                      className="w-28 text-3xl font-bold text-white bg-transparent focus:outline-none tabular-nums"
-                    />
-                    <span className="text-neutral-500 text-lg">kg</span>
+                </div>
+
+                {/* Sexo */}
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Sexo</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[{ v: "male", l: "Hombre", icon: "ti-mars" }, { v: "female", l: "Mujer", icon: "ti-venus" }].map(({ v, l, icon }) => (
+                      <button key={v} onClick={() => upd({ sex: v as "male" | "female" })}
+                        className="flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm"
+                        style={{
+                          background: data.sex === v ? "var(--mvp-red-soft)" : "#141414",
+                          border: `1px solid ${data.sex === v ? "var(--mvp-red-border)" : "#222"}`,
+                          color: data.sex === v ? "var(--mvp-red)" : "#666",
+                        }}>
+                        <i className={`ti ${icon}`} style={{ fontSize: 16 }} />{l}
+                      </button>
+                    ))}
                   </div>
-                  {!data.weight && (
-                    <p className="text-[11px] mt-1" style={{ color: "var(--mvp-red)" }}>
-                      Introduce tu peso para continuar
-                    </p>
-                  )}
+                </div>
+
+                {/* Edad / Altura / Peso */}
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { f: "age",    l: "Edad",   u: "años", ph: "30" },
+                    { f: "height", l: "Altura", u: "cm",   ph: "175" },
+                    { f: "weight", l: "Peso",   u: "kg",   ph: "75" },
+                  ] as const).map(({ f, l, u, ph }) => (
+                    <div key={f} className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-wider text-neutral-500 text-center">{l}</p>
+                      <div className="rounded-xl overflow-hidden"
+                        style={{ background: "#141414", border: `1px solid ${!data[f] ? "var(--mvp-red-border)" : "#222"}` }}>
+                        <input type="number" value={data[f]}
+                          onChange={e => upd({ [f]: e.target.value } as Partial<ClientData>)}
+                          placeholder={ph}
+                          className="w-full px-2 py-3 text-white font-bold text-sm text-center bg-transparent focus:outline-none" />
+                      </div>
+                      <p className="text-[9px] text-neutral-600 text-center">{u}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Objetivo */}
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Objetivo</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(GOAL_LABELS).map(([v, l]) => (
+                      <button key={v} onClick={() => upd({ goal: v })}
+                        className="py-2.5 px-3 rounded-xl text-xs font-semibold text-left"
+                        style={{
+                          background: data.goal === v ? "var(--mvp-red-soft)" : "#141414",
+                          border: `1px solid ${data.goal === v ? "var(--mvp-red-border)" : "#222"}`,
+                          color: data.goal === v ? "var(--mvp-red)" : "#777",
+                        }}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Días y equipamiento */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Días/semana</p>
+                    <div className="flex gap-1">
+                      {[3, 4, 5, 6].map(d => (
+                        <button key={d} onClick={() => upd({ days_per_week: d })}
+                          className="flex-1 py-2 rounded-lg text-xs font-bold"
+                          style={{
+                            background: data.days_per_week === d ? "var(--mvp-red)" : "#141414",
+                            border: `1px solid ${data.days_per_week === d ? "transparent" : "#222"}`,
+                            color: data.days_per_week === d ? "#fff" : "#555",
+                          }}>{d}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Equipamiento</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {Object.entries(EQUIP_LABELS).map(([v, l]) => (
+                        <button key={v} onClick={() => upd({ equipment: v })}
+                          className="py-1.5 rounded-lg text-[10px] font-semibold leading-tight"
+                          style={{
+                            background: data.equipment === v ? "var(--mvp-red-soft)" : "#141414",
+                            border: `1px solid ${data.equipment === v ? "var(--mvp-red-border)" : "#222"}`,
+                            color: data.equipment === v ? "var(--mvp-red)" : "#555",
+                          }}>{l}</button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* ── Resumen de datos (toca para editar) ── */}
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
-                Tus datos · toca para editar
-              </p>
+            ) : (
+              /* ── Cliente con datos: peso + resumen colapsado ── */
+              <>
+                {/* Peso */}
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+                  <div className="flex">
+                    <div className="w-[3px] shrink-0" style={{ background: "var(--mvp-red)" }} />
+                    <div className="flex-1 px-4 py-4">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 mb-2">
+                        Tu peso actual
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <input type="number" value={data.weight}
+                          onChange={e => upd({ weight: e.target.value })}
+                          placeholder="75"
+                          className="w-28 text-3xl font-bold text-white bg-transparent focus:outline-none tabular-nums" />
+                        <span className="text-neutral-500 text-lg">kg</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-              {/* Fila: cuerpo */}
-              <button onClick={() => setEditPanel("datos")}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
-                style={{ background: "#141414", border: "1px solid #222" }}>
-                <i className="ti ti-user" style={{ fontSize: 18, color: "#555" }} />
-                <div className="flex-1 text-left">
-                  <p className="text-xs text-neutral-500">Cuerpo</p>
-                  <p className="text-sm text-white font-medium">
-                    {data.sex === "male" ? "Hombre" : "Mujer"} · {data.age || "—"} años · {data.height || "—"} cm
+                {/* Resumen colapsado */}
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
+                    Tus datos · toca para editar
                   </p>
+                  {[
+                    { panel: "datos" as const,     icon: "ti-user",    label: "Cuerpo",          val: `${data.sex === "male" ? "Hombre" : "Mujer"} · ${data.age || "—"} años · ${data.height || "—"} cm` },
+                    { panel: "objetivo" as const,  icon: "ti-target",  label: "Objetivo",         val: GOAL_LABELS[data.goal] ?? data.goal },
+                    { panel: "actividad" as const, icon: "ti-flame",   label: "Actividad diaria", val: ACT_LABELS[data.activity_factor] ?? `×${data.activity_factor}` },
+                    { panel: "entreno" as const,   icon: "ti-barbell", label: "Entrenamiento",    val: `${data.days_per_week} días/sem · ${EQUIP_LABELS[data.equipment] ?? data.equipment}` },
+                  ].map(({ panel, icon, label, val }) => (
+                    <button key={panel} onClick={() => setEditPanel(panel)}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
+                      style={{ background: "#141414", border: "1px solid #222" }}>
+                      <i className={`ti ${icon}`} style={{ fontSize: 18, color: "#555" }} />
+                      <div className="flex-1 text-left">
+                        <p className="text-xs text-neutral-500">{label}</p>
+                        <p className="text-sm text-white font-medium">{val}</p>
+                      </div>
+                      <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#444" }} />
+                    </button>
+                  ))}
                 </div>
-                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#444" }} />
-              </button>
-
-              {/* Fila: objetivo */}
-              <button onClick={() => setEditPanel("objetivo")}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
-                style={{ background: "#141414", border: "1px solid #222" }}>
-                <i className="ti ti-target" style={{ fontSize: 18, color: "#555" }} />
-                <div className="flex-1 text-left">
-                  <p className="text-xs text-neutral-500">Objetivo</p>
-                  <p className="text-sm text-white font-medium">{GOAL_LABELS[data.goal] ?? data.goal}</p>
-                </div>
-                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#444" }} />
-              </button>
-
-              {/* Fila: actividad */}
-              <button onClick={() => setEditPanel("actividad")}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
-                style={{ background: "#141414", border: "1px solid #222" }}>
-                <i className="ti ti-flame" style={{ fontSize: 18, color: "#555" }} />
-                <div className="flex-1 text-left">
-                  <p className="text-xs text-neutral-500">Actividad diaria</p>
-                  <p className="text-sm text-white font-medium">
-                    {ACT_LABELS[data.activity_factor] ?? `×${data.activity_factor}`}
-                  </p>
-                </div>
-                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#444" }} />
-              </button>
-
-              {/* Fila: entreno */}
-              <button onClick={() => setEditPanel("entreno")}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
-                style={{ background: "#141414", border: "1px solid #222" }}>
-                <i className="ti ti-barbell" style={{ fontSize: 18, color: "#555" }} />
-                <div className="flex-1 text-left">
-                  <p className="text-xs text-neutral-500">Entrenamiento</p>
-                  <p className="text-sm text-white font-medium">
-                    {data.days_per_week} días/sem · {EQUIP_LABELS[data.equipment] ?? data.equipment}
-                  </p>
-                </div>
-                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#444" }} />
-              </button>
-            </div>
+              </>
+            )}
 
             {/* ── Foto ── */}
             <div className="space-y-2">
@@ -595,7 +660,9 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
         </button>
         {!canGenerate && !loadingData && (
           <p className="text-[10px] text-neutral-600 text-center mt-2">
-            Introduce tu peso para continuar
+            {isNewClient
+              ? "Rellena edad, altura y peso para continuar"
+              : "Introduce tu peso para continuar"}
           </p>
         )}
       </div>
