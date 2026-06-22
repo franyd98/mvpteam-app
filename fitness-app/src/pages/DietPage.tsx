@@ -157,11 +157,21 @@ function exportAssignedPlanPDF(
 
   const html = `<!DOCTYPE html><html lang="es"><head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(plan.name)}${clientName ? " — " + esc(clientName) : ""}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;
      background:#f5f5f5;font-size:13px;line-height:1.55}
+.close-bar{position:fixed;top:0;left:0;right:0;z-index:999;display:flex;
+  align-items:center;justify-content:space-between;padding:10px 16px;
+  background:#0d0d0d;color:#fff;gap:12px}
+.close-bar span{font-size:12px;font-weight:600;opacity:.7}
+.close-btn{background:#C0394F;color:#fff;border:none;padding:8px 18px;
+  border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.print-btn{background:#333;color:#fff;border:none;padding:8px 18px;
+  border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+body.has-bar{padding-top:50px}
 
 /* ── Cabecera ── */
 .hdr{background:linear-gradient(135deg,#0d0d0d 0%,#1e0a10 55%,#090d1e 100%);
@@ -253,14 +263,23 @@ footer{margin-top:24px;padding:12px 0;border-top:1px solid #e8e8e8;
 
 @media print{
   @page{size:A4 portrait;margin:12mm 10mm}
-  body{background:#fff !important;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff !important;padding:0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .close-bar{display:none !important}
   .meal{box-shadow:none;page-break-inside:avoid;break-inside:avoid}
   .mbox{box-shadow:none;page-break-inside:avoid;break-inside:avoid}
   .opt{page-break-inside:avoid;break-inside:avoid}
   footer{page-break-before:avoid}
 }
 </style>
-</head><body>
+</head>
+<body class="has-bar">
+<div class="close-bar">
+  <span>${esc(plan.name)}${clientName ? " — " + esc(clientName) : ""}</span>
+  <div style="display:flex;gap:8px">
+    <button class="print-btn" onclick="window.print()">Guardar PDF</button>
+    <button class="close-btn" onclick="window.close()">Cerrar</button>
+  </div>
+</div>
 
 <div class="hdr">
   <div>

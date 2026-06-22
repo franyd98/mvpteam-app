@@ -329,15 +329,24 @@ Genera este JSON:
     "meals": [
       {
         "name": "Desayuno",
+        "emoji": "☀️",
         "day_type": "both",
         "options": [
           {
-            "name": "Opción A - [descripción]",
+            "name": "Opción A - [nombre evocador, ej: Avena con fruta]",
             "groups": [
-              {"label": "BASE",    "isChoice": false, "items": ["Xg Alimento"], "note": null},
-              {"label": "HIDRATO", "isChoice": true,  "items": ["Xg opción 1", "Xg opción 2"], "note": null},
-              {"label": "GRASA",   "isChoice": false, "items": ["Xg Alimento"], "note": null}
+              {"label": "PROTEÍNA", "isChoice": false, "items": ["Xg Alimento proteico"], "note": null},
+              {"label": "HIDRATO",  "isChoice": true,  "items": ["Xg opción 1", "Xg opción 2", "Xg opción 3"], "note": null},
+              {"label": "GRASA",    "isChoice": false, "items": ["Xg Alimento graso"], "note": null}
             ]
+          },
+          {
+            "name": "Opción B - [nombre diferente]",
+            "groups": [...]
+          },
+          {
+            "name": "Opción C - [nombre diferente]",
+            "groups": [...]
           }
         ]
       }
@@ -355,14 +364,17 @@ PROGRAMA (diseña los ejercicios BASE — el servidor aplicará automáticamente
 - Si hay historial de entrenamiento úsalo para elegir ejercicios donde ya tiene base de fuerza
 - Equilibrar grupos musculares antagonistas; si hay desequilibrio en perímetros, priorizar el lado débil
 
-DIETA:
+DIETA — MUY IMPORTANTE:
 - Las comidas deben sumar EXACTAMENTE: P=${macros.protein_g}g, G=${macros.fat_g}g, H=${macros.carbs_on_g}g para día ON
 - 4-5 comidas según calorías totales (${macros.kcal_on}kcal)
-- 2 opciones por comida mínimo
-- Porciones realistas (pollo 150-200g, arroz 60-80g crudo, huevos 2-3 unidades)
+- MÍNIMO 3 opciones por comida (Opción A, B, C) con fuentes de proteína DIFERENTES en cada una (ej: A=pollo, B=ternera, C=atún)
+- Dentro de cada opción usa "isChoice: true" en grupos donde hay alternativas (ej: HIDRATO con arroz / patata / pasta)
+- El nombre de cada opción debe ser descriptivo y apetecible (ej: "Opción A - Pollo con arroz", "Opción B - Ternera con patata")
+- Porciones realistas: pollo/pavo 150-200g, ternera 150g, pescado 150-180g, arroz/pasta 60-80g crudo, patata 200-250g, huevos 2-3 uds, avena 60-80g
 - Distribuir proteína uniformemente en todas las comidas (${Math.round(macros.protein_g / 4)}-${Math.round(macros.protein_g / 4) + 10}g por comida)
 - La grasa total NO debe superar ${macros.fat_g}g — distribuye con precisión
-- Sin emojis, alimentos en español, gramajes en enteros
+- Pon el emoji correcto para cada comida: desayuno ☀️, media mañana 🍎, comida 🍽️, merienda 🥤, cena 🌙
+- Alimentos en español, gramajes en enteros, sin emojis en los alimentos
 `.trim();
 
     // ── 6. Llamar a Anthropic ───────────────────────────────────────────────
@@ -589,7 +601,7 @@ DIETA:
       const meal = plan.diet.meals[mi];
       const { data: mealRow } = await supabase
         .from("diet_meals")
-        .insert({ plan_id: dietPlanId, name: meal.name, day_type: meal.day_type ?? "both", sort_order: mi })
+        .insert({ plan_id: dietPlanId, name: meal.name, emoji: meal.emoji ?? "🍽️", day_type: meal.day_type ?? "both", sort_order: mi })
         .select("id").single();
 
       for (let oi = 0; oi < (meal.options ?? []).length; oi++) {
