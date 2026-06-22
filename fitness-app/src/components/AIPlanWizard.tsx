@@ -108,11 +108,14 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
   const [loadingData, setLoadingData] = useState(true);
   const [isNewClient, setIsNewClient] = useState(false); // true si no hay datos previos
 
-  // Foto
-  const [photoBase64,  setPhotoBase64]  = useState<string | null>(null);
-  const [photoMime,    setPhotoMime]    = useState("image/jpeg");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  // Fotos (frente, lateral, espalda)
+  type PhotoSlot = { base64: string; mime: string; preview: string } | null;
+  const [photos, setPhotos] = useState<{ front: PhotoSlot; side: PhotoSlot; back: PhotoSlot }>({
+    front: null, side: null, back: null,
+  });
+  const fileRefFront = useRef<HTMLInputElement>(null);
+  const fileRefSide  = useRef<HTMLInputElement>(null);
+  const fileRefBack  = useRef<HTMLInputElement>(null);
 
   // Estado de generación
   const [generating,   setGenerating]   = useState(false);
@@ -179,17 +182,19 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
     return () => clearInterval(iv);
   }, [generating]);
 
-  // ── Foto ─────────────────────────────────────────────────────────────────
-  const handlePhoto = (file: File) => {
-    setPhotoMime(file.type || "image/jpeg");
+  // ── Fotos ────────────────────────────────────────────────────────────────
+  const handlePhoto = (file: File, slot: "front" | "side" | "back") => {
+    const mime = file.type || "image/jpeg";
     const reader = new FileReader();
     reader.onload = e => {
       const url = e.target?.result as string;
-      setPhotoPreview(url);
-      setPhotoBase64(url.split(",")[1]);
+      setPhotos(prev => ({ ...prev, [slot]: { base64: url.split(",")[1], mime, preview: url } }));
     };
     reader.readAsDataURL(file);
   };
+
+  const clearPhoto = (slot: "front" | "side" | "back") =>
+    setPhotos(prev => ({ ...prev, [slot]: null }));
 
   // ── Guardar prefs en localStorage ────────────────────────────────────────
   const savePrefs = (d: ClientData) => {
@@ -228,8 +233,11 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
             experience:    data.experience,
             injuries:      data.injuries || "",
           },
-          photo_base64: photoBase64 ?? undefined,
-          photo_mime:   photoBase64 ? photoMime : undefined,
+          photos: {
+            front: photos.front ? { base64: photos.front.base64, mime: photos.front.mime } : null,
+            side:  photos.side  ? { base64: photos.side.base64,  mime: photos.side.mime  } : null,
+            back:  photos.back  ? { base64: photos.back.base64,  mime: photos.back.mime  } : null,
+          },
         },
       });
       if (fnErr || res?.error) throw new Error(fnErr?.message ?? res?.error);
@@ -247,8 +255,7 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
   const resetResult = () => {
     try { localStorage.removeItem(RESULT_KEY); } catch {}
     setResult(null);
-    setPhotoBase64(null);
-    setPhotoPreview(null);
+    setPhotos({ front: null, side: null, back: null });
     setError(null);
   };
 
@@ -582,53 +589,72 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
               </>
             )}
 
-            {/* ── Foto ── */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
+            {/* ── Fotos corporales ── */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
-                  Foto corporal
+                  Fotos corporales
                 </p>
-                <span className="text-[10px] text-neutral-600 font-medium px-1.5 py-0.5 rounded"
-                  style={{ background: "#1a1a1a" }}>
-                  opcional pero recomendada
+                <span className="text-[10px] text-neutral-600">
+                  mejoran mucho el análisis
                 </span>
               </div>
 
-              <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f); }} />
+              {/* Inputs ocultos */}
+              <input ref={fileRefFront} type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f, "front"); }} />
+              <input ref={fileRefSide}  type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f, "side");  }} />
+              <input ref={fileRefBack}  type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f, "back");  }} />
 
-              {photoPreview ? (
-                <div className="relative rounded-2xl overflow-hidden"
-                  style={{ border: "1px solid var(--mvp-red-border)" }}>
-                  <img src={photoPreview} alt="foto" className="w-full object-cover" style={{ maxHeight: 220 }} />
-                  <button onClick={() => { setPhotoBase64(null); setPhotoPreview(null); }}
-                    className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(0,0,0,0.75)", color: "#fff", border: "1px solid #333" }}>
-                    <i className="ti ti-x" style={{ fontSize: 14 }} />
-                  </button>
-                  <div className="absolute bottom-0 inset-x-0 px-3 py-2"
-                    style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
-                    <p className="text-[11px] text-neutral-300">
-                      La IA analizará tu composición corporal
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <button onClick={() => fileRef.current?.click()}
-                  className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl active:opacity-70 transition-all"
-                  style={{ background: "#141414", border: "2px dashed #2a2a2a" }}>
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }}>
-                    <i className="ti ti-camera" style={{ fontSize: 24, color: "var(--mvp-red)" }} />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-white font-semibold text-sm">Subir foto</p>
-                    <p className="text-neutral-500 text-xs mt-0.5">
-                      De pie, ropa ajustada · mejora mucho el análisis
-                    </p>
-                  </div>
-                </button>
-              )}
+              {/* Grid de slots */}
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { slot: "front" as const, ref: fileRefFront, label: "Frente",  required: true  },
+                  { slot: "side"  as const, ref: fileRefSide,  label: "Lateral", required: true  },
+                  { slot: "back"  as const, ref: fileRefBack,  label: "Espalda", required: false },
+                ]).map(({ slot, ref, label, required }) => {
+                  const p = photos[slot];
+                  return (
+                    <div key={slot} className="space-y-1">
+                      <p className="text-[10px] text-center font-semibold"
+                        style={{ color: required ? "var(--mvp-red)" : "#555" }}>
+                        {label}{!required && <span className="text-neutral-600"> (opc)</span>}
+                      </p>
+                      {p ? (
+                        <div className="relative rounded-xl overflow-hidden aspect-[3/4]">
+                          <img src={p.preview} alt={label} className="w-full h-full object-cover" />
+                          <button onClick={() => clearPhoto(slot)}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center"
+                            style={{ background: "rgba(0,0,0,0.8)", color: "#fff" }}>
+                            <i className="ti ti-x" style={{ fontSize: 11 }} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => ref.current?.click()}
+                          className="w-full aspect-[3/4] rounded-xl flex flex-col items-center justify-center gap-1 active:opacity-70"
+                          style={{
+                            background: "#141414",
+                            border: `2px dashed ${required ? "var(--mvp-red-border)" : "#2a2a2a"}`,
+                          }}>
+                          <i className="ti ti-camera"
+                            style={{ fontSize: 22, color: required ? "var(--mvp-red)" : "#444" }} />
+                          <span className="text-[9px] font-medium"
+                            style={{ color: required ? "var(--mvp-red)" : "#444" }}>
+                            {required ? "Requerida" : "Opcional"}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Hint */}
+              <p className="text-[10px] text-neutral-600 text-center">
+                De pie · ropa ajustada · buena iluminación
+              </p>
             </div>
 
             {/* Error */}

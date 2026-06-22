@@ -164,9 +164,17 @@ serve(async (req) => {
       client_id,
       personal_data,   // { sex, age, height, weight, activity_factor, goal }
       training_prefs,  // { days_per_week, equipment, experience, injuries }
+      photos,          // { front, side, back } — cada uno { base64, mime } | null
+      // legacy compat
       photo_base64,
       photo_mime,
     } = await req.json();
+
+    // Normalizar: soporte tanto el nuevo formato (photos) como el legado (photo_base64)
+    const photoFront = photos?.front ?? (photo_base64 ? { base64: photo_base64, mime: photo_mime ?? "image/jpeg" } : null);
+    const photoSide  = photos?.side  ?? null;
+    const photoBack  = photos?.back  ?? null;
+    const anyPhoto   = photoFront ?? photoSide ?? photoBack;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -240,24 +248,30 @@ serve(async (req) => {
     const fatPct = lastFold?.fat_pct_real ?? null;
     const leanKg = fatPct != null ? Math.round((weight * (1 - fatPct / 100)) * 10) / 10 : null;
 
-    // ── Instrucción de foto según disponibilidad de datos corporales ───────
+    // ── Instrucción de fotos según disponibilidad ─────────────────────────
+    const photoLabels = [
+      photoFront ? "FRENTE" : null,
+      photoSide  ? "LATERAL" : null,
+      photoBack  ? "ESPALDA" : null,
+    ].filter(Boolean).join(", ");
+
     let photoInstruction = "";
-    if (photo_base64 && !hasBodyData) {
+    if (anyPhoto && !hasBodyData) {
       photoInstruction =
-        "IMPORTANTE — No hay pliegues ni perímetros registrados. " +
-        "Analiza la foto adjunta para ESTIMAR visualmente: % grasa aproximado, " +
-        "distribución de grasa (abdominal, periférica), desarrollo muscular visible por zona " +
-        "(hombros, pecho, brazos, piernas), y postura. Usa esa estimación para personalizar " +
+        `IMPORTANTE — Se adjuntan fotos corporales (${photoLabels}). No hay pliegues ni perímetros registrados. ` +
+        "Analiza las fotos para ESTIMAR visualmente: % grasa aproximado, distribución de grasa " +
+        "(abdominal, periférica), desarrollo muscular visible por zona (hombros, pecho, brazos, piernas, " +
+        "glúteos, femorales), simetría entre lados y postura. Usa esa estimación para personalizar " +
         "el entreno y el análisis. Sé específico en el campo 'analysis'.";
-    } else if (photo_base64 && hasBodyData) {
+    } else if (anyPhoto && hasBodyData) {
       photoInstruction =
-        "Se adjunta foto corporal como referencia visual adicional a los datos medidos. " +
-        "Úsala para confirmar o matizar los datos de composición corporal.";
-    } else if (!photo_base64 && !hasBodyData) {
+        `Se adjuntan fotos corporales (${photoLabels}) como referencia visual adicional a los datos medidos. ` +
+        "Úsalas para confirmar o matizar los datos de composición corporal y detectar asimetrías o puntos débiles visuales.";
+    } else if (!anyPhoto && !hasBodyData) {
       photoInstruction =
-        "No hay foto ni mediciones corporales. Basa el análisis en los datos básicos " +
+        "No hay fotos ni mediciones corporales. Basa el análisis en los datos básicos " +
         "(peso, altura, edad, objetivo, actividad) y sé conservador en las estimaciones. " +
-        "En 'analysis' indica que sería útil registrar pliegues o subir una foto para personalizar más.";
+        "En 'analysis' indica que sería útil subir fotos de frente y lateral para personalizar más.";
     }
 
     // ── 5. Construir prompt ────────────────────────────────────────────────
@@ -357,11 +371,17 @@ DIETA:
       | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
 
     const content: ContentBlock[] = [];
-    if (photo_base64) {
-      content.push({
-        type: "image",
-        source: { type: "base64", media_type: photo_mime ?? "image/jpeg", data: photo_base64 },
-      });
+    // Insertar fotos antes del texto, etiquetadas con su plano
+    const photoSlots = [
+      { p: photoFront, label: "FOTO FRENTE" },
+      { p: photoSide,  label: "FOTO LATERAL" },
+      { p: photoBack,  label: "FOTO ESPALDA" },
+    ];
+    for (const { p, label } of photoSlots) {
+      if (p) {
+        content.push({ type: "text", text: `[${label}]` });
+        content.push({ type: "image", source: { type: "base64", media_type: p.mime, data: p.base64 } });
+      }
     }
     content.push({ type: "text", text: userText });
 
@@ -620,7 +640,7 @@ DIETA:
       program_id:   programId,
       diet_plan_id: dietPlanId,
       analysis:     plan.analysis,
-      photo_used:   !!photo_base64,
+      photo_used:   !!anyPhoto,
     });
 
     return new Response(
