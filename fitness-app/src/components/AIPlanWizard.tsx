@@ -80,8 +80,8 @@ function EditSheet({
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.7)" }}
       onClick={onClose}>
-      <div className="rounded-t-3xl flex flex-col"
-        style={{ background: "#0F0F0F", border: "1px solid #1e1e1e", maxHeight: "92dvh" }}
+      <div className="rounded-t-3xl flex flex-col overflow-hidden"
+        style={{ background: "#0F0F0F", border: "1px solid #1e1e1e", maxHeight: "88dvh" }}
         onClick={e => e.stopPropagation()}>
         <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-neutral-800">
           <p className="text-white font-bold text-sm">{title}</p>
@@ -90,8 +90,8 @@ function EditSheet({
             <i className="ti ti-x" style={{ fontSize: 14 }} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4 pb-safe"
-          style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
+        <div className="flex-1 overflow-y-auto px-5 py-5"
+          style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
           {children}
         </div>
       </div>
