@@ -323,16 +323,24 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const switchToProgram = async (programId: number) => {
     setShowProgramPicker(false);
     setLoadingProgram(true);
-    // Desactivar todos, activar el elegido
-    await supabase
-      .from("program_assignments")
-      .update({ active: false })
-      .eq("client_id", profile.id);
-    await supabase
-      .from("program_assignments")
-      .update({ active: true })
-      .eq("client_id", profile.id)
-      .eq("program_id", programId);
+    await supabase.from("program_assignments").update({ active: false }).eq("client_id", profile.id);
+    await supabase.from("program_assignments").update({ active: true }).eq("client_id", profile.id).eq("program_id", programId);
+    await loadAssignedProgram();
+  };
+
+  // Borrar programa IA (solo programas con source = 'ai')
+  const deleteAIProgram = async (programId: number) => {
+    setShowProgramPicker(false);
+    setLoadingProgram(true);
+    // Eliminar assignment
+    await supabase.from("program_assignments").delete().eq("client_id", profile.id).eq("program_id", programId);
+    // Eliminar el programa (cascade borra días, microciclos, ejercicios, series)
+    await supabase.from("programs").delete().eq("id", programId);
+    // Si era el activo, activar el primero que quede
+    const remaining = allPrograms.filter(p => p.programId !== programId);
+    if (remaining.length > 0) {
+      await supabase.from("program_assignments").update({ active: true }).eq("client_id", profile.id).eq("program_id", remaining[0].programId);
+    }
     await loadAssignedProgram();
   };
 
@@ -785,22 +793,35 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   Cambiar programa
                 </p>
                 {allPrograms.map(p => (
-                  <button key={p.programId}
-                    onClick={() => switchToProgram(p.programId)}
-                    className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60 border-t"
-                    style={{ borderColor: "#222" }}>
-                    <i className={`ti ${p.source === "ai" ? "ti-sparkles" : "ti-barbell"}`}
-                      style={{ fontSize: 16, color: p.source === "ai" ? "var(--mvp-red)" : "#555" }} />
-                    <div className="flex-1 text-left">
-                      <p className="text-sm text-white font-medium truncate">{p.name}</p>
-                      <p className="text-[10px] text-neutral-500">
-                        {p.source === "ai" ? "Generado con IA" : "Asignado por coach"}
-                      </p>
-                    </div>
-                    {program.programName === p.name && (
-                      <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
+                  <div key={p.programId} className="flex items-center border-t" style={{ borderColor: "#222" }}>
+                    <button
+                      onClick={() => switchToProgram(p.programId)}
+                      className="flex-1 flex items-center gap-3 px-4 py-3 active:opacity-60">
+                      <i className={`ti ${p.source === "ai" ? "ti-sparkles" : "ti-barbell"}`}
+                        style={{ fontSize: 16, color: p.source === "ai" ? "var(--mvp-red)" : "#555" }} />
+                      <div className="flex-1 text-left min-w-0">
+                        <p className="text-sm text-white font-medium truncate">{p.name}</p>
+                        <p className="text-[10px] text-neutral-500">
+                          {p.source === "ai" ? "Generado con IA" : "Asignado por coach"}
+                        </p>
+                      </div>
+                      {program.programName === p.name && (
+                        <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
+                      )}
+                    </button>
+                    {p.source === "ai" && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`¿Borrar "${p.name}"? Esta acción no se puede deshacer.`)) {
+                            deleteAIProgram(p.programId);
+                          }
+                        }}
+                        className="px-4 py-3 active:opacity-60 shrink-0"
+                        title="Borrar plan IA">
+                        <i className="ti ti-trash" style={{ fontSize: 16, color: "#555" }} />
+                      </button>
                     )}
-                  </button>
+                  </div>
                 ))}
                 <button onClick={() => setShowProgramPicker(false)}
                   className="w-full py-3 text-xs text-neutral-600 border-t" style={{ borderColor: "#222" }}>
