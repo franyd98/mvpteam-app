@@ -11,13 +11,14 @@ import SettingsPanel from "../components/SettingsPanel";
 import RestTimer from "../components/RestTimer";
 import CheckInPage from "./CheckInPage";
 import DietPage from "./DietPage";
+import AIPlanWizard from "../components/AIPlanWizard";
 import { MVPWordmark } from "../components/MVPLogo";
 import MiniChart from "../components/MiniChart";
 import type { ChartPoint } from "../components/MiniChart";
 
 type Profile = { id: string; full_name: string; role: string };
 
-type ActiveTab = "workout" | "diet" | "checkin";
+type ActiveTab = "workout" | "diet" | "checkin" | "aiplan";
 
 const lockKey = (dId: string, mcNum: number) => `${dId}:${mcNum}`;
 
@@ -1025,6 +1026,15 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         <CheckInPage profile={profile} onBack={() => setActiveTab("workout")} />
       )}
 
+      {/* ── Tab: Tu Plan (IA) ── */}
+      {activeTab === "aiplan" && (
+        <AIPlanWizard
+          profile={profile}
+          onGoToWorkout={() => setActiveTab("workout")}
+          onGoToDiet={() => setActiveTab("diet")}
+        />
+      )}
+
       </div>{/* fin scroll container */}
 
       {/* ── Barra de navegación inferior (in-flow, no fixed) ── */}
@@ -1034,9 +1044,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       >
         <div className="flex items-stretch max-w-2xl mx-auto">
           {[
-            { tab: "workout" as const, tiIcon: "barbell",       label: "Entreno" },
-            { tab: "diet"    as const, tiIcon: "salad",        label: "Dieta" },
-            { tab: "checkin" as const, tiIcon: "heartbeat",    label: "Check-in" },
+            { tab: "workout" as const, tiIcon: "barbell",    label: "Entreno" },
+            { tab: "diet"    as const, tiIcon: "salad",      label: "Dieta" },
+            { tab: "aiplan"  as const, tiIcon: "sparkles",   label: "Tu Plan" },
+            { tab: "checkin" as const, tiIcon: "heartbeat",  label: "Check-in" },
           ].map(({ tab, tiIcon, label }) => {
             const active = activeTab === tab;
             return (
