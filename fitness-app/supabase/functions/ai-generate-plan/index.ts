@@ -377,6 +377,8 @@ ${exerciseBlock}
   }
 }
 
+⚠️ IMPORTANTE: Tu respuesta debe ser JSON válido y completo. NUNCA uses "[...]" o "..." como placeholders — genera contenido real para TODOS los campos. Cada opción B y C debe tener sus grupos completos igual que la A.
+
 ━━━ REGLAS CRÍTICAS ━━━
 
 PROGRAMA:
@@ -446,7 +448,14 @@ DIETA:
     rawText = rawText
       .replace(/^```json\s*/m, "").replace(/^```\s*/m, "").replace(/```\s*$/m, "").trim();
 
-    const plan = JSON.parse(rawText);
+    let plan: any;
+    try {
+      plan = JSON.parse(rawText);
+    } catch (parseErr) {
+      // Log the raw response so we can debug it
+      console.error("JSON parse error. Raw response (first 2000 chars):", rawText.slice(0, 2000));
+      throw new Error(`JSON inválido de la IA: ${String(parseErr)}. Ver logs para el texto completo.`);
+    }
 
     // ── 7. Mapa ejercicio → id ──────────────────────────────────────────────
     const exMap = new Map<string, number>();
