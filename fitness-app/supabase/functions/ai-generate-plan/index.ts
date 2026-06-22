@@ -349,19 +349,29 @@ isChoice:true = usuario elige 1 item · isChoice:false = todos fijos · MAX 3 it
 MEAL 1 — Desayuno, day_type:"both", emoji:"☀️", 3 opciones:
   OpcA "Elaborada · Tortitas/Bizcocho": BASE(false,["125ml Claras","60g Huevo"],note:"bate, tortitas en sartén o bizcocho micro 8min"), HIDRATO(true,["80g Avena","100g Pan Centeno","70g Pan Tostado Integral"]), GRASA(true,["5g Aceite Oliva VE","10g Chocolate Negro 85%","30g Aguacate"]), FRUTA(false,["150g Fruta temporada"])
   OpcB "Lácteo + Cereal": BASE(false,["60g Huevo"],note:"cocido o revuelto"), LÁCTEO(true,["200g Yogur Proteico","200g Mousse Proteico","200g Yogur Griego Ligero"]), CEREAL(true,["80g Copos Avena","75g Avena Crunchy","60g Corn Flakes s/azúcar"]), GRASA(true,["5g Aceite Oliva VE","10g Chocolate Negro 85%","30g Aguacate"]), FRUTA(false,["150g Fruta temporada"])
-  OpcC "Pan + Proteína fría": PAN(true,["100g Pan Centeno","70g Pan Tostado Integral","50g Tortas Arroz"]), PROTEÍNA(true,["60g Huevo + 35g Lomo embuchado","150g Queso Fresco Burgos + 30g Pavo fiambre","1 lata Atún + 60g Huevo"]), GRASA(true,["5g Aceite Oliva VE","30g Aguacate"]), FRUTA(false,["150g Fruta temporada"])
+  OpcC "Pan + Proteína fría": PAN(true,["100g Pan Centeno","70g Pan Tostado Integral","50g Tortas Arroz"]), PROTEÍNA(true,["60g Huevo + 35g Lomo embuchado","150g Queso Burgos + 30g Pavo","1 lata Atún + 60g Huevo"]), GRASA(true,["5g Aceite Oliva VE","30g Aguacate"]), FRUTA(false,["150g Fruta temporada"])
 
-MEAL 2 — Comida, day_type:"on", emoji:"🍽️", 3 opciones (A=pollo/pavo, B=ternera/cerdo, C=pescado):
-  Cada opción: PROTEÍNA(false,["Xg proteína específica"],note:"prep breve"), HIDRATO(true,3 opciones con gramos ON: arroz/pasta/patata), VERDURA(true,["Ensalada libre","200g Brócoli vapor","200g Judías verdes"]), GRASA(true,["10g Aceite Oliva VE","30g Aguacate"])
+MEAL 2 — Media mañana, day_type:"both", emoji:"🍎", 3 opciones COMPACTAS (1 solo grupo "SNACK", isChoice:false, 2-3 items cortos):
+  OpcA "Fruta + Lácteo": SNACK(false,["200g Yogur Proteico","1 pieza fruta (150g)"])
+  OpcB "Frutos secos + Fruta": SNACK(false,["30g Nueces o almendras","1 pieza fruta (150g)"])
+  OpcC "Proteína fría": SNACK(false,["2 lonchas Pavo fiambre","80g Queso Fresco Burgos","1 pieza fruta (150g)"])
 
-MEAL 3 — Comida, day_type:"off", emoji:"🍽️", MISMO nombre "Comida":
-  Mismas 3 opciones que MEAL 2 pero hidratos −25% (ej 70g arroz ON → 50g arroz OFF). Proteína, verdura y grasa idénticas.
+MEAL 3 — Comida, day_type:"on", emoji:"🍽️", 3 opciones (A=pollo/pavo, B=ternera/cerdo, C=pescado):
+  Cada opción: PROTEÍNA(false,["Xg proteína"],note:"prep breve"), HIDRATO(true,3 opciones gramos ON: arroz/pasta/patata), VERDURA(true,["Ensalada libre","200g Brócoli vapor","200g Judías verdes"]), GRASA(true,["10g Aceite Oliva VE","30g Aguacate"])
 
-MEAL 4 — Cena, day_type:"on", emoji:"🌙", 3 opciones con proteína distinta al mediodía (A=huevos, B=pescado, C=carne magra):
-  Cada opción: PROTEÍNA(false,["Xg específico"]), HIDRATO(true,3 opciones cena ON menores que comida), VERDURA(true,2-3 opciones), GRASA(true,2 opciones)
+MEAL 4 — Comida, day_type:"off", emoji:"🍽️", MISMO nombre "Comida":
+  Mismas 3 opciones que MEAL 3 pero hidratos −25% (ej 70g arroz → 50g). Proteína, verdura y grasa idénticas.
 
-MEAL 5 — Cena, day_type:"off", emoji:"🌙", MISMO nombre "Cena":
-  Mismas 3 opciones que MEAL 4 pero hidratos −25% o sin hidrato si déficit agresivo.
+MEAL 5 — Merienda, day_type:"both", emoji:"🥤", 3 opciones COMPACTAS (1 grupo "MERIENDA", isChoice:false, 2-3 items):
+  OpcA "Lácteo proteico": MERIENDA(false,["200g Yogur Proteico o Mousse","30g Frutos rojos"])
+  OpcB "Batido proteico": MERIENDA(false,["30g Proteína en polvo + 250ml Leche","1 pieza fruta (120g)"])
+  OpcC "Snack sólido": MERIENDA(false,["2 tortitas de arroz","30g Jamón serrano","30g Queso Burgos"])
+
+MEAL 6 — Cena, day_type:"on", emoji:"🌙", 3 opciones proteína distinta al mediodía (A=huevos, B=pescado, C=carne magra):
+  Cada opción: PROTEÍNA(false,["Xg específico"]), HIDRATO(true,3 opciones cena ON menores que comida), VERDURA(true,["Ensalada libre","200g Verdura vapor"]), GRASA(true,["10g Aceite Oliva VE","30g Aguacate"])
+
+MEAL 7 — Cena, day_type:"off", emoji:"🌙", MISMO nombre "Cena":
+  Mismas 3 opciones que MEAL 6 pero hidratos −25% o sin hidrato si déficit agresivo.
 
 Porciones: pollo 160-180g, ternera 150g, pescado 160g, arroz/pasta ON 65-75g crudo, patata ON 220g, avena 80g, pan 80-100g.
 Items: texto corto máx 40 chars · alimentos en español · sin emojis en alimentos.
