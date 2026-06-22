@@ -336,7 +336,7 @@ PROGRAMA (diseña los ejercicios BASE — el servidor aplicará automáticamente
 - Exactamente ${days_per_week} días de entrenamiento${leanKg ? ` para ${leanKg}kg masa magra` : ""}
 - Nombre de día: MÁXIMO 15 caracteres, sin "Día X -", solo músculos separados por "/" (ej: "Pecho/Tríceps", "Tirón", "Piernas", "Hombros", "Espalda/Bíceps", "Glúteos/Core")
 - 4-6 ejercicios/día con rango base semana 1
-- Nivel ${experience}: ${experience === "beginner" ? "sets: 3, reps: '12-15', rir: 3" : experience === "intermediate" ? "sets: 4, reps: '8-12', rir: 2" : "sets: 5, reps: '6-10', rir: 2"}
+- Nivel ${experience}: ${experience === "beginner" ? "sets: 3, reps: '12-15', rir: 3 (sin técnicas avanzadas)" : experience === "intermediate" ? "sets: 3, reps: '10-12', rir: 2 (última serie puede ser drop set o rest-pause)" : "sets: 4, reps: '6-10', rir: 2 (última serie con técnica de alta intensidad: drop set, rest-pause o myo-reps — indicarlo en note)"}
 - ${fatPct && fatPct > 25 ? "Incluir ejercicio cardiovascular o circuitos metabólicos — % grasa elevado" : "Priorizar fuerza e hipertrofia con ejercicios básicos (sentadilla, peso muerto, press, remo)"}
 - Si hay historial de entrenamiento úsalo para elegir ejercicios donde ya tiene base de fuerza
 - Equilibrar grupos musculares antagonistas; si hay desequilibrio en perímetros, priorizar el lado débil
@@ -506,21 +506,23 @@ DIETA:
 
         if (!meRows?.length) continue;
 
-        // Batch insert exercise_sets para todos los ejercicios de esta semana
+        // Batch insert exercise_sets para todos los ejercicios de esta semana.
+        // RIR = 10 - RPE (ej: RPE 8 → RIR 2). Se guarda en target_reps: "8-10 (2)"
+        // igual que en los programas del coach. target_rpe = null (el usuario lo marca al registrar).
         const setInserts: Array<{
           microcycle_exercise_id: string;
           set_number: number;
           target_reps: string;
           target_weight: null;
-          target_rpe: number;
+          target_rpe: null;
         }> = [];
 
         for (let ei = 0; ei < meRows.length; ei++) {
           const meId = meRows[ei].id;
           const inp  = meInputs[ei];
-          const repsStr = inp._minR === inp._maxR
-            ? String(inp._minR)
-            : `${inp._minR}-${inp._maxR}`;
+          const rir  = Math.max(0, 10 - inp._rpe);
+          const base = inp._minR === inp._maxR ? String(inp._minR) : `${inp._minR}-${inp._maxR}`;
+          const repsStr = `${base} (${rir})`;
 
           for (let sn = 1; sn <= inp.total_sets; sn++) {
             setInserts.push({
@@ -528,7 +530,7 @@ DIETA:
               set_number:    sn,
               target_reps:   repsStr,
               target_weight: null,
-              target_rpe:    inp._rpe,
+              target_rpe:    null,
             });
           }
         }
