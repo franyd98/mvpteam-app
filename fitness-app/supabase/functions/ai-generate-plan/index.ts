@@ -313,94 +313,73 @@ MACROS CALCULADOS — DEBES RESPETARLOS (Mifflin-St Jeor):
 EJERCICIOS DISPONIBLES (usa SOLO estos nombres exactos):
 ${exerciseBlock}
 
-━━━ JSON A GENERAR ━━━
+GENERA ESTE JSON (sin texto antes ni después, sin markdown):
 {
-  "analysis": "3-4 frases específicas: % grasa si disponible, puntos débiles en perímetros, nivel de fuerza del historial, cómo el plan los aborda.",
+  "analysis": "<3-4 frases: % grasa si disponible, puntos débiles, nivel de fuerza, cómo el plan los aborda>",
   "program": {
-    "name": "Plan IA - [tipo] ${days_per_week} días",
+    "name": "Plan IA - <tipo> ${days_per_week} días",
     "days": [
-      {
-        "name": "[Músculo/Músculo]",
-        "exercises": [
-          {"name": "<nombre EXACTO de la lista>", "sets": 4, "reps": "8-10", "rir": 2, "note": "opcional"}
-        ]
-      }
+      {"name":"<MÁXIMO 15 chars, ej: Pecho/Tríceps>","exercises":[
+        {"name":"<nombre EXACTO de la lista>","sets":4,"reps":"8-10","rir":2,"note":null}
+      ]}
     ]
   },
   "diet": {
     "name": "Dieta IA - ${macros.kcal_on}kcal",
-    "notes": "Pesa los alimentos en crudo/seco. Agua mínima ${Math.round(weight * 35 / 100) / 10}L/día. Grasas intercambiables: 5g AOVE ≈ 5g aceite coco ≈ 30g aguacate ≈ 10g chocolate negro 85%.",
+    "notes": "Pesa los alimentos en crudo/seco. Agua mínima ${Math.round(weight * 35) / 100}L/día. Grasas intercambiables: 5g AOVE ≈ 5g aceite coco ≈ 30g aguacate ≈ 10g choco negro 85%.",
     "meals": [
-      DESAYUNO (day_type "both", 3 opciones):
-      {"name":"Desayuno","emoji":"☀️","day_type":"both","options":[
-        {"name":"Opción A · Elaborada — Tortitas / Bizcocho","groups":[
-          {"label":"BASE","isChoice":false,"items":["125ml Claras de huevo","60g Huevo entero"],"note":"Tortitas: bate y cocina en sartén antiadherente. Bizcocho: añade levadura, 6-10 min micro."},
-          {"label":"HIDRATO — elige uno","isChoice":true,"items":["80g Harina de Avena","80g Copos de Avena","100g Pan de Centeno o Espelta","70g Pan Tostado 100% Integral","70g Pan de Fibra y Sésamo"],"note":null},
-          {"label":"GRASA — elige una","isChoice":true,"items":["5g Aceite de Oliva Virgen Extra","5g Aceite de Coco","10g Chocolate Negro 85%","30g Aguacate"],"note":null},
-          {"label":"FRUTA","isChoice":false,"items":["150g Fruta (fresas, kiwi, arándanos, manzana, pera o melocotón)"],"note":null}
-        ]},
-        {"name":"Opción B · Lácteo + Cereal","groups":[
-          {"label":"BASE","isChoice":false,"items":["60g Huevo entero (cocido, revuelto o tortilla)"],"note":null},
-          {"label":"LÁCTEO — elige uno","isChoice":true,"items":["200g Yogur Proteico Hacendado","200g Mousse Proteico Hacendado","200g Yogur Griego Ligero Natural","200g Queso Fresco Batido Desnatado + 5g ISO","200ml Leche +Proteínas Hacendado + 10g ISO"],"note":null},
-          {"label":"CEREAL — elige uno","isChoice":true,"items":["80g Copos de Avena","75g Avena Crunchy Hacendado","60g Corn Flakes sin azúcar","75g Muesli sin azúcar","75g Weetabix 95% integral"],"note":"Puedes combinar la mitad de dos cereales."},
-          {"label":"GRASA — elige una","isChoice":true,"items":["5g Aceite de Oliva Virgen Extra","5g Aceite de Coco","10g Chocolate Negro 85%","30g Aguacate"],"note":null},
-          {"label":"FRUTA","isChoice":false,"items":["150g Fruta de temporada"],"note":null}
-        ]},
-        {"name":"Opción C · Pan + Proteína fría","groups":[
-          {"label":"PAN — elige uno","isChoice":true,"items":["100g Pan de Centeno o Espelta","70g Pan Tostado 100% Integral","50g Tortas de Arroz / Maíz"],"note":null},
-          {"label":"PROTEÍNA — elige una","isChoice":true,"items":["60g Huevo entero + 35g Lomo embuchado","150g Queso Fresco Burgos + 30g Pavo fiambre","1 lata Atún natural + 60g Huevo entero","60g Jamón serrano sin grasa + 60g Huevo entero"],"note":null},
-          {"label":"GRASA — elige una","isChoice":true,"items":["5g Aceite de Oliva Virgen Extra","5g Aceite de Coco","30g Aguacate","10g Chocolate Negro 85%"],"note":null},
-          {"label":"FRUTA","isChoice":false,"items":["150g Fruta de temporada"],"note":null}
-        ]}
-      ]},
-
-      MEDIA MAÑANA si kcal ≥ 2000 (day_type "both", 3 opciones sencillas con snack proteico),
-
-      COMIDA (genera DOS entradas con el MISMO nombre "Comida" — una day_type "on", otra day_type "off" con menos hidratos):
-      ON ejemplo: {"name":"Comida","emoji":"🍽️","day_type":"on","options":[
-        {"name":"Opción A · Pollo con arroz y verdura","groups":[
-          {"label":"PROTEÍNA","isChoice":false,"items":["180g Pechuga de pollo a la plancha"],"note":"Sazona con especias al gusto."},
-          {"label":"HIDRATO — elige uno","isChoice":true,"items":["70g Arroz integral (crudo)","75g Arroz blanco (crudo)","70g Pasta integral (cruda)","250g Patata cocida"],"note":null},
-          {"label":"VERDURA — elige una","isChoice":true,"items":["Ensalada libre: lechuga, tomate, pepino, zanahoria","200g Brócoli o coliflor al vapor","200g Judías verdes salteadas","200g Espinacas con ajo"],"note":null},
-          {"label":"GRASA — elige una","isChoice":true,"items":["10g Aceite de Oliva Virgen Extra","30g Aguacate"],"note":null}
-        ]},
-        {"name":"Opción B · Ternera con patata y verdura","groups":[...]},
-        {"name":"Opción C · Salmón con arroz y verdura","groups":[...]}
-      ]},
-      OFF ejemplo: misma estructura pero hidratos −25% (ej: 50g arroz en vez de 70g),
-
-      MERIENDA si kcal ≥ 1800 (day_type "both", 3 opciones),
-
-      CENA (igual que Comida: DOS entradas "on"/"off" con diferente cantidad de hidrato):
-      ON: más hidrato, OFF: menos hidrato o sin hidrato si déficit agresivo
+      <MEALS — ver instrucciones abajo>
     ]
   }
 }
 
-⚠️ IMPORTANTE: Tu respuesta debe ser JSON válido y completo. NUNCA uses "[...]" o "..." como placeholders — genera contenido real para TODOS los campos. Cada opción B y C debe tener sus grupos completos igual que la A.
+━━━ REGLAS PROGRAMA ━━━
+- Exactamente ${days_per_week} días${leanKg ? ` (masa magra: ${leanKg}kg)` : ""}
+- Nombre de día: MÁXIMO 15 chars, sin "Día X", solo músculos (ej: "Pecho/Tríceps", "Tirón", "Piernas")
+- 4-6 ejercicios/día, solo nombres de la lista de ejercicios disponibles
+- ${experience === "beginner" ? "Principiante: sets 3, reps '12-15', rir 3" : experience === "intermediate" ? "Intermedio: sets 3-4, reps '10-12', rir 2" : "Avanzado: sets 4, reps '6-10', rir 2, última serie drop/rest-pause en note"}
+- ${fatPct && fatPct > 25 ? "INCLUIR cardio/circuito metabólico — grasa elevada" : "Priorizar fuerza: sentadilla, peso muerto, press, remo"}
 
-━━━ REGLAS CRÍTICAS ━━━
+━━━ REGLAS DIETA — ESTILO COACH PROFESIONAL ━━━
 
-PROGRAMA:
-- Exactamente ${days_per_week} días de entrenamiento${leanKg ? ` para ${leanKg}kg masa magra` : ""}
-- Nombre de día: MÁXIMO 15 caracteres, solo músculos separados por "/" (ej: "Pecho/Tríceps", "Tirón", "Piernas", "Hombros", "Espalda/Bíceps", "Glúteos/Core")
-- 4-6 ejercicios/día
-- Nivel ${experience}: ${experience === "beginner" ? "sets: 3, reps: '12-15', rir: 3" : experience === "intermediate" ? "sets: 3-4, reps: '10-12', rir: 2" : "sets: 4, reps: '6-10', rir: 2 (última serie drop/rest-pause en note)"}
-- ${fatPct && fatPct > 25 ? "Incluir cardio o circuitos metabólicos — % grasa elevado" : "Priorizar fuerza: sentadilla, peso muerto, press, remo"}
-- Aprovecha el historial de entrenamiento para elegir ejercicios con base de fuerza
+MACROS OBJETIVO:
+- DÍA ON:  ${macros.kcal_on}kcal · P${macros.protein_g}g · HC${macros.carbs_on_g}g · G${macros.fat_g}g
+- DÍA OFF: ${macros.kcal_off}kcal · P${macros.protein_g}g · HC${carbsOffAdj}g · G${macros.fat_g}g
+- Diferencia ON vs OFF = solo hidratos (−25% aprox). Proteína y grasa iguales.
 
-DIETA:
-- Macros ON totales: P≈${macros.protein_g}g, HC≈${macros.carbs_on_g}g, G≈${macros.fat_g}g (${macros.kcal_on} kcal)
-- Macros OFF totales: P≈${macros.protein_g}g, HC≈${carbsOffAdj}g, G≈${macros.fat_g}g (${macros.kcal_off} kcal)
-- La diferencia ON vs OFF está en los hidratos (−25% aprox.) — NO cambiar proteína ni grasa
-- SIEMPRE 3 opciones por comida con nombres descriptivos como los ejemplos
-- Grupos con "isChoice: true" para HIDRATO, CEREAL, LÁCTEO, VERDURA, GRASA (elige uno)
-- Grupos con "isChoice: false" para BASE o items fijos
-- 4-6 items por grupo isChoice (variedad real de supermercado español)
-- Porciones: pollo/pavo 150-200g, ternera/cerdo 150g, pescado 150-180g, arroz/pasta 60-80g crudo, patata 200-250g, avena 70-90g, pan 70-100g
-- Emojis: desayuno ☀️, media mañana 🍎, comida 🍽️, merienda 🥤, cena 🌙
-- Alimentos en español, gramajes en enteros, sin emojis en los alimentos
-- El campo "note" en grupos: instrucciones de preparación breves cuando sean útiles
+ESTRUCTURA DE CADA COMIDA:
+Cada comida tiene 3 opciones (A, B, C) con esta forma:
+{"name":"Opción A · Nombre descriptivo","groups":[
+  {"label":"NOMBRE GRUPO","isChoice":true,"items":["Xg Alimento","Xg Alternativa","..."],"note":"prep o null"},
+  ...
+]}
+- isChoice:true → el usuario elige UN item de la lista (pon 4-6 opciones)
+- isChoice:false → todos los items son fijos
+- note: instrucción de preparación breve cuando sea útil, sino null
+
+COMIDAS QUE DEBES INCLUIR EN meals[]:
+
+1. Desayuno — day_type:"both", 3 opciones:
+   Opción A "Elaborada · Tortitas/Bizcocho": grupos BASE(isChoice:false,["125ml Claras","60g Huevo entero"],note:"bate todo, tortitas en sartén o bizcocho al micro 6-8min"), HIDRATO(isChoice:true,5 opciones: avena/pan centeno/pan integral/tostadas/pan fibra con gramos ON), GRASA(isChoice:true,["5g Aceite Oliva VE","5g Aceite Coco","10g Chocolate Negro 85%","30g Aguacate"]), FRUTA(isChoice:false,["150g Fruta temporada (fresas/kiwi/arándanos/manzana/pera)"])
+   Opción B "Lácteo + Cereal": BASE(isChoice:false,["60g Huevo entero"],note:"cocido, revuelto o tortilla"), LÁCTEO(isChoice:true,5 opciones: yogur proteico/mousse proteico/yogur griego/queso batido+ISO/leche+proteínas), CEREAL(isChoice:true,5 opciones: avena/avena crunchy/corn flakes s/azúcar/muesli/weetabix), GRASA(isChoice:true,4 opciones), FRUTA(isChoice:false,["150g Fruta temporada"])
+   Opción C "Pan + Proteína fría": PAN(isChoice:true,3 opciones: pan centeno/pan tostado/tortas arroz), PROTEÍNA(isChoice:true,4 opciones: huevo+lomo/queso burgos+pavo/atún+huevo/jamón+huevo), GRASA(isChoice:true,4 opciones), FRUTA(isChoice:false,["150g Fruta temporada"])
+
+2. Media mañana — SOLO si kcal_on ≥ 2000, day_type:"both", 3 opciones sencillas (fruta+proteína, lácteo, frutos secos+proteína)
+
+3. Comida — day_type:"on", 3 opciones (A=pollo/pavo, B=ternera/cerdo, C=pescado/marisco):
+   Cada opción: PROTEÍNA(isChoice:false, 1 item fijo 170-200g, note:preparación), HIDRATO(isChoice:true,4 opciones con cantidades DÍA ON: arroz/pasta/patata/pan), VERDURA(isChoice:true,3-4 opciones libres o pesadas), GRASA(isChoice:true,2-3 opciones: AOVE/aguacate)
+
+4. Comida — day_type:"off" (MISMO nombre "Comida"), mismas 3 opciones que el ON pero con hidratos −25% (misma proteína, misma verdura, misma grasa)
+
+5. Merienda — SOLO si kcal_on ≥ 1800, day_type:"both", 3 opciones ligeras proteicas
+
+6. Cena — day_type:"on", 3 opciones con proteína diferente al mediodía (A=huevos/tortilla, B=pescado/marisco, C=carne magra):
+   Cada opción: PROTEÍNA fija, HIDRATO(isChoice:true, cantidades cena ON menores que comida), VERDURA(isChoice:true), GRASA(isChoice:true)
+
+7. Cena — day_type:"off" (MISMO nombre "Cena"), mismas 3 opciones pero hidratos recortados vs cena ON. Si objetivo es déficit agresivo la cena OFF puede ir sin hidrato.
+
+PORCIONES REALISTAS: pollo/pavo 150-200g, ternera/cerdo 150g, pescado 150-180g, arroz/pasta 60-80g crudo ON (45-60g OFF), patata 200-250g ON (150-180g OFF), avena 75-90g, pan 70-100g.
+Alimentos en español · gramajes en enteros · sin emojis en los alimentos.
 `.trim();
 
     // ── 6. Llamar a Anthropic ───────────────────────────────────────────────
