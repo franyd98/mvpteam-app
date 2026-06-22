@@ -1030,8 +1030,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       {activeTab === "aiplan" && (
         <AIPlanWizard
           profile={profile}
-          onGoToWorkout={() => setActiveTab("workout")}
+          onGoToWorkout={() => { loadAssignedProgram(); setActiveTab("workout"); }}
           onGoToDiet={() => setActiveTab("diet")}
+          onPlanGenerated={loadAssignedProgram}
         />
       )}
 

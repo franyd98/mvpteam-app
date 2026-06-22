@@ -9,9 +9,10 @@ import { supabase } from "../lib/supabase";
 type Profile = { id: string; full_name: string; role: string };
 
 interface Props {
-  profile: Profile;
-  onGoToWorkout: () => void;
-  onGoToDiet:    () => void;
+  profile:         Profile;
+  onGoToWorkout:   () => void;
+  onGoToDiet:      () => void;
+  onPlanGenerated: () => void; // recarga el programa en FitnessApp
 }
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -88,8 +89,17 @@ const LOADING_STEPS = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet }: Props) {
-  const [step, setStep] = useState<Step>(1);
+export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPlanGenerated }: Props) {
+  const STORAGE_KEY = `mvp_aiplan_result_${profile.id}`;
+
+  const [step, setStep] = useState<Step>(() => {
+    // Si hay resultado guardado, ir directo a paso 5
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return 5;
+    } catch {}
+    return 1;
+  });
 
   // Step 1 — datos personales
   const [personal, setPersonal] = useState<PersonalData>({
@@ -119,8 +129,13 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet }: Pro
   const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 5 — resultado
-  const [result, setResult] = useState<GenerationResult | null>(null);
+  // Step 5 — resultado (se restaura desde localStorage)
+  const [result, setResult] = useState<GenerationResult | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
 
   // Pre-fill desde client_macros
   useEffect(() => {
@@ -199,7 +214,12 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet }: Pro
         throw new Error(fnErr?.message ?? data?.error ?? "Error desconocido");
       }
 
-      setResult(data as GenerationResult);
+      const generationResult = data as GenerationResult;
+      setResult(generationResult);
+      // Persistir en localStorage para sobrevivir cambios de pestaña
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(generationResult)); } catch {}
+      // Recargar el programa asignado en FitnessApp
+      onPlanGenerated();
       setStep(5);
     } catch (err) {
       setError(String(err));
@@ -236,8 +256,24 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet }: Pro
         {step > 1 && step < 4 && (
           <button onClick={() => setStep((step - 1) as Step)}
             className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ background: "#1a1a1a", color: "#777" }}>
-            <i className="ti ti-chevron-left" style={{ fontSize: 16 }} />
+            style={{ background: "#1a1a1a", color: "#aaa", border: "1px solid #2a2a2a" }}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 16 }} />
+          </button>
+        )}
+        {step === 5 && (
+          <button
+            onClick={() => {
+              try { localStorage.removeItem(STORAGE_KEY); } catch {}
+              setResult(null);
+              setPhotoBase64(null);
+              setPhotoPreview(null);
+              setError(null);
+              setLoadingStep(0);
+              setStep(1);
+            }}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg"
+            style={{ background: "#1a1a1a", color: "#777", border: "1px solid #2a2a2a" }}>
+            Nuevo plan
           </button>
         )}
       </div>
@@ -711,6 +747,7 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet }: Pro
 
               <button
                 onClick={() => {
+                  try { localStorage.removeItem(STORAGE_KEY); } catch {}
                   setStep(1);
                   setResult(null);
                   setPhotoBase64(null);
