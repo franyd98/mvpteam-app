@@ -607,11 +607,11 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
               </div>
 
               {/* Inputs ocultos */}
-              <input ref={fileRefFront} type="file" accept="image/*" capture="environment" className="hidden"
+              <input ref={fileRefFront} type="file" accept="image/*" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f, "front"); }} />
-              <input ref={fileRefSide}  type="file" accept="image/*" capture="environment" className="hidden"
+              <input ref={fileRefSide}  type="file" accept="image/*" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f, "side");  }} />
-              <input ref={fileRefBack}  type="file" accept="image/*" capture="environment" className="hidden"
+              <input ref={fileRefBack}  type="file" accept="image/*" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f, "back");  }} />
 
               {/* Grid de slots */}

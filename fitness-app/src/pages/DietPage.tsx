@@ -252,10 +252,12 @@ footer{margin-top:24px;padding:12px 0;border-top:1px solid #e8e8e8;
        font-size:9px;color:#ccc;text-align:center;letter-spacing:.04em}
 
 @media print{
-  body{background:#fff;padding:0}
-  .meal{box-shadow:none}
-  .mbox{box-shadow:none}
-  @page{size:A4 portrait;margin:10mm 10mm}
+  @page{size:A4 portrait;margin:12mm 10mm}
+  body{background:#fff !important;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .meal{box-shadow:none;page-break-inside:avoid;break-inside:avoid}
+  .mbox{box-shadow:none;page-break-inside:avoid;break-inside:avoid}
+  .opt{page-break-inside:avoid;break-inside:avoid}
+  footer{page-break-before:avoid}
 }
 </style>
 </head><body>
@@ -292,23 +294,13 @@ ${mealsHtml}
 <footer>Plan nutricional · MVP Team · ${today} · Pesa los alimentos en crudo y en seco salvo indicación contraria</footer>
 </body></html>`;
 
-  try {
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    const safe = clientName
-      ? clientName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
-      : "plan";
-    a.href     = url;
-    a.download = `plan-nutricional-${safe}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  } catch {
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    window.open(URL.createObjectURL(blob));
-  }
+  // Abrir en ventana nueva y disparar impresión → en iOS = "Guardar como PDF"
+  const win = window.open("", "_blank");
+  if (!win) return;
+  win.document.write(html);
+  win.document.close();
+  // Pequeño delay para que el navegador pinte el contenido antes de imprimir
+  setTimeout(() => { win.focus(); win.print(); }, 400);
 }
 
 // ── ShopBtn ───────────────────────────────────────────────────────────────────
