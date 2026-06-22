@@ -681,9 +681,11 @@ Alimentos en español · gramajes en enteros · sin emojis en los alimentos.
 
   } catch (err) {
     console.error("ai-generate-plan error:", err);
+    // Devolver 200 con { error } para que el mensaje real llegue a la app
+    // (status 500 hace que Supabase JS muestre un mensaje genérico)
     return new Response(
       JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
