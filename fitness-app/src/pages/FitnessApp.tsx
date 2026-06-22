@@ -861,22 +861,35 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           {/* Selector de día */}
           <section className="mb-4">
             <label className="text-xs uppercase tracking-wider text-neutral-500 mb-2 block">Día</label>
-            <div className="flex flex-wrap gap-2">
-              {program.days.map((d) => (
-                <button
-                  key={d.id}
-                  onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
-                  className={"px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 max-w-[160px] truncate " +
-                    (d.id === dayId ? "text-white" : "text-neutral-500")}
-                  style={d.id === dayId
-                    ? { background: "var(--mvp-red)", border: "1px solid rgba(220,38,38,0.5)" }
-                    : { background: "#111", border: "1px solid #1c1c1c" }}
-                  title={d.name}
-                >
-                  {d.name}{d.optional && <span className="ml-1 text-[10px] opacity-50">(opc.)</span>}
-                </button>
-              ))}
+            <div className="flex gap-2 flex-wrap">
+              {program.days.map((d, i) => {
+                const letter = String.fromCharCode(65 + i); // A, B, C…
+                const isActive = d.id === dayId;
+                return (
+                  <button
+                    key={d.id}
+                    onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
+                    className="w-10 h-10 rounded-xl text-sm font-black transition-all active:scale-95 flex items-center justify-center shrink-0"
+                    style={isActive
+                      ? { background: "var(--mvp-red)", color: "#fff", border: "1px solid rgba(192,41,43,0.6)", boxShadow: "0 2px 12px rgba(192,41,43,0.3)" }
+                      : { background: "#111", color: "#555", border: "1px solid #1c1c1c" }}
+                    title={d.name}
+                  >
+                    {letter}
+                  </button>
+                );
+              })}
             </div>
+            {/* Nombre del día seleccionado */}
+            {day && (
+              <p className="text-xs font-semibold mt-2 pl-0.5 truncate" style={{ color: "var(--mvp-red)" }}>
+                {day.name
+                  .replace(/^día\s+[a-z]\s*[-–]\s*/i, "")   /* quita "Día A - " si lo generó la IA */
+                  .replace(/^[a-z]\s*[-–]\s*/i, "")           /* quita "A - " residual */
+                  .trim() || day.name}
+                {day.optional && <span className="ml-1 text-neutral-600 font-normal">(opcional)</span>}
+              </p>
+            )}
           </section>
 
           {/* Selector de microciclo + botón de bloqueo */}
