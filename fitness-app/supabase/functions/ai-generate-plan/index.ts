@@ -332,12 +332,13 @@ Genera este JSON:
 }
 
 REGLAS CRÍTICAS:
-PROGRAMA:
+PROGRAMA (diseña los ejercicios BASE — el servidor aplicará automáticamente 8 semanas de sobrecarga progresiva):
 - Exactamente ${days_per_week} días de entrenamiento${leanKg ? ` para ${leanKg}kg masa magra` : ""}
-- 4-6 ejercicios/día, ${experience === "beginner" ? "3 series, 12-15 reps, RIR 3-4" : experience === "intermediate" ? "4 series, 8-12 reps, RIR 2-3" : "4-5 series, 6-10 reps, RIR 1-2"}
-- ${fatPct && fatPct > 25 ? "Incluir ejercicio cardiovascular o circuitos metabólicos — % grasa elevado" : "Priorizar fuerza e hipertrofia"}
-- Si hay historial, progresa sobre los pesos registrados (+2.5-5% o misma carga con mejor técnica)
-- Equilibrar grupos musculares según perímetros si disponibles
+- 4-6 ejercicios/día con rango base semana 1
+- Nivel ${experience}: ${experience === "beginner" ? "sets: 3, reps: '12-15', rir: 3" : experience === "intermediate" ? "sets: 4, reps: '8-12', rir: 2" : "sets: 5, reps: '6-10', rir: 2"}
+- ${fatPct && fatPct > 25 ? "Incluir ejercicio cardiovascular o circuitos metabólicos — % grasa elevado" : "Priorizar fuerza e hipertrofia con ejercicios básicos (sentadilla, peso muerto, press, remo)"}
+- Si hay historial de entrenamiento úsalo para elegir ejercicios donde ya tiene base de fuerza
+- Equilibrar grupos musculares antagonistas; si hay desequilibrio en perímetros, priorizar el lado débil
 
 DIETA:
 - Las comidas deben sumar EXACTAMENTE: P=${macros.protein_g}g, G=${macros.fat_g}g, H=${macros.carbs_on_g}g para día ON
@@ -372,7 +373,7 @@ DIETA:
       },
       body: JSON.stringify({
         model:      "claude-haiku-4-5-20251001",
-        max_tokens: 4096,
+        max_tokens: 6000,
         system:     systemPrompt,
         messages:   [{ role: "user", content }],
       }),
@@ -403,12 +404,34 @@ DIETA:
       return null;
     };
 
-    // ── 8. Guardar programa ─────────────────────────────────────────────────
+    // ── Helpers de sobrecarga progresiva ───────────────────────────────────
+    function parseRepRange(s: string): [number, number] {
+      const clean = String(s).replace(/\s*\([^)]*\)/g, "").trim();
+      const m = clean.match(/(\d+)\s*[-–]\s*(\d+)/);
+      if (m) return [parseInt(m[1]), parseInt(m[2])];
+      const n = parseInt(clean);
+      return isNaN(n) ? [8, 10] : [n, n];
+    }
+
+    // 8 semanas: 2 bloques (hipertrofia → fuerza) con descarga en S4 y S8.
+    // repMod: ajuste sobre el rango base de Claude (+reps = más ligero, −reps = más pesado)
+    const PROG_MATRIX = [
+      { rpe: 7, repMod:  0, setsMod:  0, label: "S1 · Adaptación"     }, // bloque 1 – acumulación
+      { rpe: 8, repMod:  0, setsMod:  0, label: "S2 · Progresión"      },
+      { rpe: 9, repMod:  0, setsMod:  0, label: "S3 · Sobrecarga"      },
+      { rpe: 6, repMod:  2, setsMod: -1, label: "S4 · Descarga"        }, // deload
+      { rpe: 8, repMod: -2, setsMod:  0, label: "S5 · Bloque fuerza"   }, // bloque 2 – intensificación
+      { rpe: 9, repMod: -2, setsMod:  0, label: "S6 · Sobrecarga II"   },
+      { rpe: 10,repMod: -3, setsMod:  0, label: "S7 · Semana de PR"    }, // pico de intensidad
+      { rpe: 6, repMod:  2, setsMod: -1, label: "S8 · Descarga final"  }, // deload
+    ] as const;
+
+    // ── 8. Guardar programa con 8 microciclos por día ──────────────────────
     const { data: programRow, error: progErr } = await supabase
       .from("programs")
       .insert({
         name:            plan.program.name,
-        description:     `IA · ${new Date().toLocaleDateString("es-ES")} · ${macros.kcal_on}kcal`,
+        description:     `IA · ${new Date().toLocaleDateString("es-ES")} · ${macros.kcal_on}kcal · 8 semanas prog.`,
         owner_client_id: client_id,
         source:          "ai",
       })
@@ -424,36 +447,92 @@ DIETA:
         .insert({ program_id: programId, name: day.name, order_index: di + 1, optional: false })
         .select("id").single();
 
-      const { data: mcRow } = await supabase
+      // Insertar los 8 microciclos del día de golpe
+      const { data: mcRows } = await supabase
         .from("microcycles")
-        .insert({ day_id: dayRow!.id, number: 1 })
-        .select("id").single();
+        .insert(PROG_MATRIX.map((_, i) => ({ day_id: dayRow!.id, number: i + 1 })))
+        .select("id");
 
-      for (let ei = 0; ei < day.exercises.length; ei++) {
-        const ex = day.exercises[ei];
-        const exId = findExId(ex.name);
-        if (!exId) continue;
+      if (!mcRows?.length) continue;
 
-        const { data: meRow } = await supabase
-          .from("microcycle_exercises")
-          .insert({
-            microcycle_id: mcRow!.id,
+      // Para cada semana, insertar ejercicios + series en batch
+      for (let mc = 0; mc < 8; mc++) {
+        const prog  = PROG_MATRIX[mc];
+        const mcId  = mcRows[mc].id;
+
+        // Construir los ejercicios con sus valores semanales ya calculados
+        type MeInput = {
+          microcycle_id: string;
+          exercise_id:   number;
+          order_index:   number;
+          total_sets:    number;
+          note:          string | null;
+          _minR:         number;
+          _maxR:         number;
+          _rpe:          number;
+        };
+
+        const meInputs: MeInput[] = [];
+        for (let ei = 0; ei < day.exercises.length; ei++) {
+          const ex   = day.exercises[ei];
+          const exId = findExId(ex.name);
+          if (!exId) continue;
+
+          const [minR, maxR]  = parseRepRange(ex.reps);
+          const adjMin        = Math.max(1, minR + prog.repMod);
+          const adjMax        = Math.max(1, maxR + prog.repMod);
+          const targetSets    = Math.max(2, (ex.sets ?? 4) + prog.setsMod);
+          const weekNote      = [ex.note, prog.label].filter(Boolean).join(" · ") || null;
+
+          meInputs.push({
+            microcycle_id: mcId,
             exercise_id:   exId,
             order_index:   ei + 1,
-            total_sets:    ex.sets,
-            note:          ex.note ?? null,
-          })
-          .select("id").single();
-
-        const repsStr = ex.rir !== undefined ? `${ex.reps} (${ex.rir})` : ex.reps;
-        for (let sn = 1; sn <= ex.sets; sn++) {
-          await supabase.from("exercise_sets").insert({
-            microcycle_exercise_id: meRow!.id,
-            set_number:    sn,
-            target_reps:   repsStr,
-            target_weight: null,
-            target_rpe:    null,
+            total_sets:    targetSets,
+            note:          weekNote,
+            _minR:         adjMin,
+            _maxR:         adjMax,
+            _rpe:          prog.rpe,
           });
+        }
+        if (!meInputs.length) continue;
+
+        // Batch insert microcycle_exercises (sin los campos internos _)
+        const { data: meRows } = await supabase
+          .from("microcycle_exercises")
+          .insert(meInputs.map(({ _minR: _a, _maxR: _b, _rpe: _c, ...row }) => row))
+          .select("id");
+
+        if (!meRows?.length) continue;
+
+        // Batch insert exercise_sets para todos los ejercicios de esta semana
+        const setInserts: Array<{
+          microcycle_exercise_id: string;
+          set_number: number;
+          target_reps: string;
+          target_weight: null;
+          target_rpe: number;
+        }> = [];
+
+        for (let ei = 0; ei < meRows.length; ei++) {
+          const meId = meRows[ei].id;
+          const inp  = meInputs[ei];
+          const repsStr = inp._minR === inp._maxR
+            ? String(inp._minR)
+            : `${inp._minR}-${inp._maxR}`;
+
+          for (let sn = 1; sn <= inp.total_sets; sn++) {
+            setInserts.push({
+              microcycle_exercise_id: meId,
+              set_number:    sn,
+              target_reps:   repsStr,
+              target_weight: null,
+              target_rpe:    inp._rpe,
+            });
+          }
+        }
+        if (setInserts.length) {
+          await supabase.from("exercise_sets").insert(setInserts);
         }
       }
     }
