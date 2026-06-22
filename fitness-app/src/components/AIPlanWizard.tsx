@@ -90,7 +90,7 @@ function EditSheet({
             <i className="ti ti-x" style={{ fontSize: 14 }} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-5"
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5"
           style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
           {children}
         </div>
