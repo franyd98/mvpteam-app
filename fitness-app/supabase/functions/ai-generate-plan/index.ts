@@ -1,81 +1,225 @@
-// ai-generate-plan — Supabase Edge Function
-// Genera macros + dieta + entrenamiento personalizado usando Claude Haiku.
-// Variables de entorno requeridas:
-//   ANTHROPIC_API_KEY
-//   SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY
+// ai-generate-plan — Supabase Edge Function v2
+// Macros pre-calculados con Mifflin-St Jeor (igual que MacroCalculator).
+// Claude recibe datos reales del cuerpo y solo diseña comidas + entreno.
+//
+// Env vars requeridas: ANTHROPIC_API_KEY · SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Fórmula Mifflin-St Jeor (idéntica a MacroCalculator.tsx) ─────────────────
+function calcBMR(sex: string, weight: number, height: number, age: number): number {
+  if (sex === "female") return 10 * weight + 6.25 * height - 5 * age - 161;
+  return 10 * weight + 6.25 * height - 5 * age + 5;
+}
 
-const GOAL_MAP: Record<string, string> = {
-  lose_fat_aggressive: "Pérdida de grasa agresiva (−20% déficit)",
-  lose_fat:            "Pérdida de grasa (−15% déficit)",
-  lose_fat_soft:       "Pérdida de grasa suave (−10% déficit)",
-  maintain:            "Mantenimiento (0%)",
-  gain_muscle:         "Ganancia muscular (+5% superávit)",
-  bulk:                "Volumen (+10% superávit)",
+const GOAL_ADJUSTMENT: Record<string, number> = {
+  lose_fat_aggressive: -0.20,
+  lose_fat:            -0.15,
+  lose_fat_soft:       -0.10,
+  maintain:             0.00,
+  gain_muscle:         +0.05,
+  bulk:                +0.10,
 };
 
-const EQUIPMENT_MAP: Record<string, string> = {
-  gym_full:     "Gimnasio completo (máquinas, cables, barras, mancuernas)",
-  dumbbells:    "Sala de pesas libres (barras y mancuernas, sin máquinas de cable)",
-  home:         "Entrenamiento en casa (mancuernas ligeras, bandas elásticas)",
-  calisthenics: "Calistenia (peso corporal, barra de dominadas, anillas)",
+// Proteína más alta en déficit (preservar músculo)
+const PROTEIN_PER_KG: Record<string, number> = {
+  lose_fat_aggressive: 2.4,
+  lose_fat:            2.2,
+  lose_fat_soft:       2.1,
+  maintain:            2.0,
+  gain_muscle:         1.9,
+  bulk:                1.8,
 };
 
-const EXPERIENCE_MAP: Record<string, string> = {
-  beginner:     "Principiante (< 1 año)",
-  intermediate: "Intermedio (1–3 años)",
-  advanced:     "Avanzado (> 3 años)",
+// Grasa conservadora según objetivo
+const FAT_PER_KG: Record<string, number> = {
+  lose_fat_aggressive: 0.65,
+  lose_fat:            0.70,
+  lose_fat_soft:       0.80,
+  maintain:            0.90,
+  gain_muscle:         1.00,
+  bulk:                1.10,
 };
 
-// ── Main handler ─────────────────────────────────────────────────────────────
+interface Macros {
+  bmr: number; tdee: number;
+  kcal_on: number; kcal_off: number;
+  protein_g: number; fat_g: number;
+  carbs_on_g: number; carbs_off_g: number;
+}
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+function calcMacros(
+  sex: string, weight: number, height: number,
+  age: number, activityFactor: number, goal: string
+): Macros {
+  const bmr  = Math.round(calcBMR(sex, weight, height, age));
+  const tdee = Math.round(bmr * activityFactor);
+  const adj  = GOAL_ADJUSTMENT[goal] ?? 0;
+
+  const kcal_on  = Math.round(tdee * (1 + adj));
+  const kcal_off = Math.round(kcal_on * 0.87); // días descanso: −13%
+
+  const protein_g = Math.round(weight * (PROTEIN_PER_KG[goal] ?? 2.0));
+  const fat_g     = Math.round(weight * (FAT_PER_KG[goal]     ?? 0.8));
+
+  const carbs_on_g  = Math.max(20, Math.round((kcal_on  - protein_g * 4 - fat_g * 9) / 4));
+  const carbs_off_g = Math.max(20, Math.round((kcal_off - protein_g * 4 - fat_g * 9) / 4));
+
+  return { bmr, tdee, kcal_on, kcal_off, protein_g, fat_g, carbs_on_g, carbs_off_g };
+}
+
+// ── Formatear datos de composición corporal ───────────────────────────────────
+function formatBodyComposition(fold: any, perim: any, weight: number): string {
+  const lines: string[] = [];
+
+  if (fold) {
+    const fatPct = fold.fat_pct_real ?? null;
+    if (fatPct != null) {
+      const fatMass  = Math.round(weight * fatPct / 100 * 10) / 10;
+      const leanMass = Math.round((weight - fatMass) * 10) / 10;
+      lines.push(`  % Grasa: ${fatPct}% | Masa grasa: ${fatMass}kg | Masa magra: ${leanMass}kg`);
+    }
+    const folds = [
+      ["Gemelo", fold.calf], ["Cuádriceps", fold.quad], ["Abd. Baja", fold.navel],
+      ["Abd. Alta", fold.abd_upper], ["Pecho", fold.chest], ["Hombro", fold.shoulder],
+      ["Bíceps", fold.bicep], ["Tríceps", fold.tricep],
+      ["Subescapular", fold.subscapular], ["Lumbar", fold.lumbar],
+    ].filter(([, v]) => v != null).map(([n, v]) => `${n}:${v}mm`);
+    if (folds.length) lines.push(`  Pliegues: ${folds.join(" | ")}`);
+    if (fold.critical_abdomen) lines.push(`  Pliegue crítico abdomen: ${fold.critical_abdomen}mm`);
   }
+
+  if (perim) {
+    const perims = [
+      ["Bíceps D", perim.bicep_r_r], ["Bíceps I", perim.bicep_l_r],
+      ["Pecho",    perim.chest_r],   ["Espalda",  perim.back_r],
+      ["Abd.",     perim.abd_navel_r],["Cadera",  perim.hip_r],
+      ["Cuád. D",  perim.quad_r_r],  ["Cuád. I", perim.quad_l_r],
+      ["Gemelo D", perim.calf_r_r],  ["Gemelo I", perim.calf_l_r],
+    ].filter(([, v]) => v != null).map(([n, v]) => `${n}:${v}cm`);
+    if (perims.length) lines.push(`  Perímetros: ${perims.join(" | ")}`);
+  }
+
+  return lines.length ? lines.join("\n") : "  Sin datos de composición corporal registrados";
+}
+
+// ── Formatear historial de entrenamiento ──────────────────────────────────────
+function formatTrainingHistory(logs: any[]): string {
+  if (!logs?.length) return "  Sin historial de entrenamientos registrado";
+
+  // Agrupar por nombre de ejercicio → máx peso reciente
+  const byEx: Record<string, { maxWeight: number; count: number; muscle: string }> = {};
+  for (const log of logs) {
+    const exName = log.exercise_sets?.microcycle_exercises?.exercises?.name;
+    const muscle = log.exercise_sets?.microcycle_exercises?.exercises?.muscle_group ?? "";
+    if (!exName) continue;
+    if (!byEx[exName]) byEx[exName] = { maxWeight: 0, count: 0, muscle };
+    byEx[exName].count++;
+    if ((log.actual_weight ?? 0) > byEx[exName].maxWeight) {
+      byEx[exName].maxWeight = log.actual_weight ?? 0;
+    }
+  }
+
+  const entries = Object.entries(byEx).slice(0, 12);
+  if (!entries.length) return "  Historial disponible pero sin nombres de ejercicio";
+
+  return entries
+    .map(([name, d]) => `  ${name} (${d.muscle}): ${d.maxWeight > 0 ? d.maxWeight + "kg max" : "peso corporal"} · ${d.count} sets`)
+    .join("\n");
+}
+
+// ── Constantes de texto para el prompt ───────────────────────────────────────
+const GOAL_ES: Record<string, string> = {
+  lose_fat_aggressive: "Pérdida de grasa agresiva (−20%)",
+  lose_fat:            "Pérdida de grasa (−15%)",
+  lose_fat_soft:       "Pérdida de grasa suave (−10%)",
+  maintain:            "Mantenimiento",
+  gain_muscle:         "Ganancia muscular (+5%)",
+  bulk:                "Volumen (+10%)",
+};
+const EQUIP_ES: Record<string, string> = {
+  gym_full:     "Gimnasio completo",
+  dumbbells:    "Pesas libres",
+  home:         "Casa",
+  calisthenics: "Calistenia",
+};
+const EXP_ES: Record<string, string> = {
+  beginner:     "Principiante (<1 año)",
+  intermediate: "Intermedio (1–3 años)",
+  advanced:     "Avanzado (>3 años)",
+};
+
+// ── Main handler ──────────────────────────────────────────────────────────────
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const {
       client_id,
-      personal_data,  // { sex, age, height, weight, activity_factor, goal }
-      training_prefs, // { days_per_week, equipment, experience, injuries }
-      photo_base64,   // optional: base64 sin prefijo data:
-      photo_mime,     // "image/jpeg" | "image/png"
+      personal_data,   // { sex, age, height, weight, activity_factor, goal }
+      training_prefs,  // { days_per_week, equipment, experience, injuries }
+      photo_base64,
+      photo_mime,
     } = await req.json();
 
-    // ── Supabase admin client ─────────────────────────────────────────────────
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // ── Fetch data from DB ────────────────────────────────────────────────────
+    const { sex, age, height, weight, activity_factor, goal } = personal_data;
+    const { days_per_week, equipment, experience, injuries } = training_prefs;
 
-    const [{ data: profile }, { data: exercises }, { data: lastCheckin }] =
-      await Promise.all([
-        supabase.from("profiles").select("full_name").eq("id", client_id).single(),
-        supabase.from("exercises").select("id, name, muscle_group").order("muscle_group"),
-        supabase
-          .from("check_in_records")
-          .select("weight_kg, body_fat_pct")
-          .eq("client_id", client_id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+    // ── 1. Calcular macros matemáticamente ─────────────────────────────────
+    const macros = calcMacros(sex, weight, height, age, activity_factor, goal);
 
-    // ── Build exercise list (grouped, max 8 per muscle) ──────────────────────
+    // ── 2. Fetch datos del cliente en paralelo ──────────────────────────────
+    const [
+      { data: profile },
+      { data: exercises },
+      { data: lastFold },
+      { data: lastPerim },
+      { data: recentLogs },
+    ] = await Promise.all([
+      supabase.from("profiles").select("full_name").eq("id", client_id).single(),
+
+      supabase.from("exercises").select("id, name, muscle_group").order("muscle_group"),
+
+      supabase.from("fold_logs")
+        .select("fat_pct_real, critical_abdomen, critical_lumbar, calf, quad, navel, abd_upper, chest, shoulder, bicep, tricep, subscapular, lumbar")
+        .eq("client_id", client_id)
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+
+      supabase.from("perimeter_logs")
+        .select("bicep_r_r, bicep_l_r, chest_r, back_r, abd_navel_r, hip_r, quad_r_r, quad_l_r, calf_r_r, calf_l_r")
+        .eq("client_id", client_id)
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+
+      supabase.from("set_logs")
+        .select(`
+          actual_weight, actual_reps, logged_at,
+          exercise_sets (
+            microcycle_exercises (
+              exercises ( name, muscle_group )
+            )
+          )
+        `)
+        .eq("client_id", client_id)
+        .order("logged_at", { ascending: false })
+        .limit(150),
+    ]);
+
+    // ── 3. Agrupar ejercicios por músculo (máx 10 por grupo) ───────────────
     const byMuscle: Record<string, string[]> = {};
     for (const ex of exercises ?? []) {
       const mg = (ex.muscle_group ?? "OTROS").toUpperCase();
@@ -86,62 +230,88 @@ serve(async (req) => {
       .map(([mg, names]) => `  ${mg}: ${names.join(" | ")}`)
       .join("\n");
 
-    // ── Build prompt ─────────────────────────────────────────────────────────
-    const { sex, age, height, weight, activity_factor, goal } = personal_data;
-    const { days_per_week, equipment, experience, injuries } = training_prefs;
+    // ── 4. Contexto corporal e historial ───────────────────────────────────
+    const bodyContext  = formatBodyComposition(lastFold, lastPerim, weight);
+    const trainingHist = formatTrainingHistory(recentLogs ?? []);
+    const hasBodyData  = !!(lastFold?.fat_pct_real || lastPerim?.bicep_r_r || lastPerim?.chest_r);
+    const hasTrainHist = (recentLogs?.length ?? 0) > 5;
 
-    const extraContext = lastCheckin?.body_fat_pct
-      ? `Último % grasa registrado: ${lastCheckin.body_fat_pct}%`
-      : "";
+    // Lean mass para personalizar el entreno (solo si hay % grasa medido)
+    const fatPct = lastFold?.fat_pct_real ?? null;
+    const leanKg = fatPct != null ? Math.round((weight * (1 - fatPct / 100)) * 10) / 10 : null;
 
-    const photoNote = photo_base64
-      ? "NOTA: Se adjunta foto corporal del cliente. Analiza su composición corporal para personalizar las recomendaciones."
-      : "";
+    // ── Instrucción de foto según disponibilidad de datos corporales ───────
+    let photoInstruction = "";
+    if (photo_base64 && !hasBodyData) {
+      photoInstruction =
+        "IMPORTANTE — No hay pliegues ni perímetros registrados. " +
+        "Analiza la foto adjunta para ESTIMAR visualmente: % grasa aproximado, " +
+        "distribución de grasa (abdominal, periférica), desarrollo muscular visible por zona " +
+        "(hombros, pecho, brazos, piernas), y postura. Usa esa estimación para personalizar " +
+        "el entreno y el análisis. Sé específico en el campo 'analysis'.";
+    } else if (photo_base64 && hasBodyData) {
+      photoInstruction =
+        "Se adjunta foto corporal como referencia visual adicional a los datos medidos. " +
+        "Úsala para confirmar o matizar los datos de composición corporal.";
+    } else if (!photo_base64 && !hasBodyData) {
+      photoInstruction =
+        "No hay foto ni mediciones corporales. Basa el análisis en los datos básicos " +
+        "(peso, altura, edad, objetivo, actividad) y sé conservador en las estimaciones. " +
+        "En 'analysis' indica que sería útil registrar pliegues o subir una foto para personalizar más.";
+    }
 
+    // ── 5. Construir prompt ────────────────────────────────────────────────
     const systemPrompt =
-      `Eres un entrenador personal y nutricionista deportivo experto. ` +
-      `Responde ÚNICAMENTE con JSON válido y compacto, sin texto antes ni después, sin bloques markdown.`;
+      "Eres un entrenador personal y nutricionista deportivo de élite. " +
+      "Responde ÚNICAMENTE con JSON válido y compacto, sin texto antes ni después, sin bloques markdown.";
+
+    const macroSummary =
+      `Calorías ON: ${macros.kcal_on} kcal | OFF: ${macros.kcal_off} kcal\n` +
+      `  Proteína: ${macros.protein_g}g (exacto) | Grasa: ${macros.fat_g}g (exacto)\n` +
+      `  Hidratos ON: ${macros.carbs_on_g}g | Hidratos OFF: ${macros.carbs_off_g}g`;
 
     const userText = `
-DATOS DEL CLIENTE: ${profile?.full_name ?? "Cliente"}
-  Sexo: ${sex === "female" ? "Mujer" : "Hombre"} | Edad: ${age} años | Peso: ${weight} kg | Altura: ${height} cm
-  Factor de actividad: ${activity_factor}x | Objetivo: ${GOAL_MAP[goal] ?? goal}
-  ${extraContext}
-  ${photoNote}
+CLIENTE: ${profile?.full_name ?? "Cliente"}
+DATOS: ${sex === "female" ? "Mujer" : "Hombre"} | ${age} años | ${weight}kg | ${height}cm
+OBJETIVO: ${GOAL_ES[goal] ?? goal} | Actividad: ×${activity_factor}
 
-PREFERENCIAS DE ENTRENAMIENTO:
-  Días/semana: ${days_per_week} | Equipamiento: ${EQUIPMENT_MAP[equipment] ?? equipment}
-  Experiencia: ${EXPERIENCE_MAP[experience] ?? experience}
-  Lesiones/Limitaciones: ${injuries || "Ninguna"}
+${photoInstruction}
 
-EJERCICIOS DISPONIBLES (usa SOLO estos nombres exactos, sin modificarlos):
+COMPOSICIÓN CORPORAL (datos reales del cliente):
+${bodyContext}
+${leanKg ? `  → Masa magra estimada: ${leanKg}kg` : ""}
+
+HISTORIAL DE ENTRENAMIENTO (últimas sesiones):
+${trainingHist}
+
+PREFERENCIAS:
+  Días/semana: ${days_per_week} | Equipamiento: ${EQUIP_ES[equipment] ?? equipment}
+  Experiencia: ${EXP_ES[experience] ?? experience}
+  Lesiones: ${injuries || "Ninguna"}
+
+MACROS CALCULADOS — DEBES RESPETARLOS EXACTAMENTE (calculados con Mifflin-St Jeor):
+  ${macroSummary}
+
+EJERCICIOS DISPONIBLES (usa SOLO estos nombres exactos):
 ${exerciseBlock}
 
-Genera exactamente este JSON:
+Genera este JSON:
 {
-  "analysis": "2-3 frases de análisis personalizado del cliente",
-  "macros": {
-    "kcal_on": <entero>,
-    "protein_g": <entero, 1.8-2.2g por kg de peso>,
-    "carbs_on_g": <entero>,
-    "fat_g": <entero, 0.8-1.2g por kg>,
-    "kcal_off": <entero, 10-15% menos que kcal_on>,
-    "carbs_off_g": <entero, 15-20% menos que carbs_on_g>
-  },
+  "analysis": "3-4 frases de análisis detallado basado en la composición corporal real del cliente. Menciona % grasa si disponible, puntos débiles en perímetros, nivel de fuerza del historial, y cómo el plan aborda esas necesidades específicas.",
   "program": {
     "name": "Plan IA - [tipo] ${days_per_week} días",
     "days": [
       {
-        "name": "Día A - [músculos principales]",
+        "name": "Día A - [músculos]",
         "exercises": [
-          {"name": "<nombre EXACTO del ejercicio>", "sets": 4, "reps": "8-10", "rir": 2}
+          {"name": "<nombre EXACTO>", "sets": 4, "reps": "8-10", "rir": 2, "note": "técnica o foco opcional"}
         ]
       }
     ]
   },
   "diet": {
-    "name": "Dieta IA - [objetivo corto]",
-    "notes": "Pesa los alimentos en crudo. Hidratación mínima 2.5L/día.",
+    "name": "Dieta IA - ${macros.kcal_on}kcal",
+    "notes": "Pesa todos los alimentos en crudo/seco. Hidratación mínima 35ml/kg peso = ${Math.round(weight * 35 / 100) / 10}L/día.",
     "meals": [
       {
         "name": "Desayuno",
@@ -151,7 +321,7 @@ Genera exactamente este JSON:
             "name": "Opción A - [descripción]",
             "groups": [
               {"label": "BASE",    "isChoice": false, "items": ["Xg Alimento"], "note": null},
-              {"label": "HIDRATO", "isChoice": true,  "items": ["Xg Opción 1", "Xg Opción 2"], "note": null},
+              {"label": "HIDRATO", "isChoice": true,  "items": ["Xg opción 1", "Xg opción 2"], "note": null},
               {"label": "GRASA",   "isChoice": false, "items": ["Xg Alimento"], "note": null}
             ]
           }
@@ -161,46 +331,50 @@ Genera exactamente este JSON:
   }
 }
 
-REGLAS IMPORTANTES:
-- Programa: exactamente ${days_per_week} días, 4-6 ejercicios/día, 3-5 series, formato reps "8-10 (2)" donde el número entre paréntesis es RIR
-- Macros: usa fórmula Mifflin-St Jeor × ${activity_factor} ajustado al objetivo
-- Dieta: 4-5 comidas, 2-3 opciones por comida, porciones realistas en gramos
-- Gramaje: porciones coherentes (pollo 150-200g, arroz 60-80g crudo, etc.)
-- Alimentos en español, sin emojis, sin texto fuera del JSON
+REGLAS CRÍTICAS:
+PROGRAMA:
+- Exactamente ${days_per_week} días de entrenamiento${leanKg ? ` para ${leanKg}kg masa magra` : ""}
+- 4-6 ejercicios/día, ${experience === "beginner" ? "3 series, 12-15 reps, RIR 3-4" : experience === "intermediate" ? "4 series, 8-12 reps, RIR 2-3" : "4-5 series, 6-10 reps, RIR 1-2"}
+- ${fatPct && fatPct > 25 ? "Incluir ejercicio cardiovascular o circuitos metabólicos — % grasa elevado" : "Priorizar fuerza e hipertrofia"}
+- Si hay historial, progresa sobre los pesos registrados (+2.5-5% o misma carga con mejor técnica)
+- Equilibrar grupos musculares según perímetros si disponibles
+
+DIETA:
+- Las comidas deben sumar EXACTAMENTE: P=${macros.protein_g}g, G=${macros.fat_g}g, H=${macros.carbs_on_g}g para día ON
+- 4-5 comidas según calorías totales (${macros.kcal_on}kcal)
+- 2 opciones por comida mínimo
+- Porciones realistas (pollo 150-200g, arroz 60-80g crudo, huevos 2-3 unidades)
+- Distribuir proteína uniformemente en todas las comidas (${Math.round(macros.protein_g / 4)}-${Math.round(macros.protein_g / 4) + 10}g por comida)
+- La grasa total NO debe superar ${macros.fat_g}g — distribuye con precisión
+- Sin emojis, alimentos en español, gramajes en enteros
 `.trim();
 
-    // ── Build message content ─────────────────────────────────────────────────
+    // ── 6. Llamar a Anthropic ───────────────────────────────────────────────
     type ContentBlock =
       | { type: "text"; text: string }
       | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
 
-    const contentBlocks: ContentBlock[] = [];
-
+    const content: ContentBlock[] = [];
     if (photo_base64) {
-      contentBlocks.push({
+      content.push({
         type: "image",
-        source: {
-          type: "base64",
-          media_type: (photo_mime ?? "image/jpeg") as string,
-          data: photo_base64 as string,
-        },
+        source: { type: "base64", media_type: photo_mime ?? "image/jpeg", data: photo_base64 },
       });
     }
-    contentBlocks.push({ type: "text", text: userText });
+    content.push({ type: "text", text: userText });
 
-    // ── Call Anthropic ────────────────────────────────────────────────────────
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+        "x-api-key":          Deno.env.get("ANTHROPIC_API_KEY")!,
+        "anthropic-version":  "2023-06-01",
+        "content-type":       "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model:      "claude-haiku-4-5-20251001",
         max_tokens: 4096,
-        system: systemPrompt,
-        messages: [{ role: "user", content: contentBlocks }],
+        system:     systemPrompt,
+        messages:   [{ role: "user", content }],
       }),
     });
 
@@ -211,61 +385,49 @@ REGLAS IMPORTANTES:
 
     const anthropicData = await anthropicRes.json();
     let rawText: string = anthropicData.content[0].text;
-
-    // Strip optional markdown fences
     rawText = rawText
-      .replace(/^```json\s*/m, "")
-      .replace(/^```\s*/m, "")
-      .replace(/```\s*$/m, "")
-      .trim();
+      .replace(/^```json\s*/m, "").replace(/^```\s*/m, "").replace(/```\s*$/m, "").trim();
 
     const plan = JSON.parse(rawText);
 
-    // ── Exercise name → id map ────────────────────────────────────────────────
+    // ── 7. Mapa ejercicio → id ──────────────────────────────────────────────
     const exMap = new Map<string, number>();
-    for (const ex of exercises ?? []) {
-      exMap.set(ex.name.toLowerCase().trim(), ex.id);
-    }
+    for (const ex of exercises ?? []) exMap.set(ex.name.toLowerCase().trim(), ex.id);
 
     const findExId = (name: string): number | null => {
       const lower = name.toLowerCase().trim();
       if (exMap.has(lower)) return exMap.get(lower)!;
-      // Substring fallback
       for (const [key, id] of exMap) {
         if (key.includes(lower) || lower.includes(key)) return id;
       }
       return null;
     };
 
-    // ── Save program ──────────────────────────────────────────────────────────
+    // ── 8. Guardar programa ─────────────────────────────────────────────────
     const { data: programRow, error: progErr } = await supabase
       .from("programs")
       .insert({
-        name: plan.program.name,
-        description: `Generado por IA el ${new Date().toLocaleDateString("es-ES")} · MVP Team`,
+        name:            plan.program.name,
+        description:     `IA · ${new Date().toLocaleDateString("es-ES")} · ${macros.kcal_on}kcal`,
         owner_client_id: client_id,
-        source: "ai",
+        source:          "ai",
       })
-      .select("id")
-      .single();
+      .select("id").single();
 
-    if (progErr) throw new Error(`programs insert: ${progErr.message}`);
+    if (progErr) throw new Error(`programs: ${progErr.message}`);
     const programId = programRow.id;
 
     for (let di = 0; di < plan.program.days.length; di++) {
       const day = plan.program.days[di];
-
       const { data: dayRow } = await supabase
         .from("program_days")
         .insert({ program_id: programId, name: day.name, order_index: di + 1, optional: false })
-        .select("id")
-        .single();
+        .select("id").single();
 
       const { data: mcRow } = await supabase
         .from("microcycles")
         .insert({ day_id: dayRow!.id, number: 1 })
-        .select("id")
-        .single();
+        .select("id").single();
 
       for (let ei = 0; ei < day.exercises.length; ei++) {
         const ex = day.exercises[ei];
@@ -276,75 +438,57 @@ REGLAS IMPORTANTES:
           .from("microcycle_exercises")
           .insert({
             microcycle_id: mcRow!.id,
-            exercise_id: exId,
-            order_index: ei + 1,
-            total_sets: ex.sets,
+            exercise_id:   exId,
+            order_index:   ei + 1,
+            total_sets:    ex.sets,
+            note:          ex.note ?? null,
           })
-          .select("id")
-          .single();
+          .select("id").single();
 
-        // Target reps with RIR in parentheses: "8-10 (2)"
         const repsStr = ex.rir !== undefined ? `${ex.reps} (${ex.rir})` : ex.reps;
-
         for (let sn = 1; sn <= ex.sets; sn++) {
           await supabase.from("exercise_sets").insert({
             microcycle_exercise_id: meRow!.id,
-            set_number: sn,
-            target_reps: repsStr,
+            set_number:    sn,
+            target_reps:   repsStr,
             target_weight: null,
-            target_rpe: null,
+            target_rpe:    null,
           });
         }
       }
     }
 
-    // Auto-assign: deactivate previous, insert new
-    await supabase
-      .from("program_assignments")
-      .update({ active: false })
-      .eq("client_id", client_id);
+    // Auto-asignar programa
+    await supabase.from("program_assignments").update({ active: false }).eq("client_id", client_id);
+    await supabase.from("program_assignments").insert({ client_id, program_id: programId, active: true });
 
-    await supabase.from("program_assignments").insert({
-      client_id,
-      program_id: programId,
-      active: true,
-    });
-
-    // ── Save diet ─────────────────────────────────────────────────────────────
-    const { data: dietPlanRow, error: dietErr } = await supabase
+    // ── 9. Guardar dieta ────────────────────────────────────────────────────
+    const { data: dietRow, error: dietErr } = await supabase
       .from("diet_plans")
       .insert({
-        name: plan.diet.name,
-        kcal_on:     plan.macros.kcal_on,
-        kcal_off:    plan.macros.kcal_off,
-        protein_on:  plan.macros.protein_g,
-        protein_off: plan.macros.protein_g,
-        carbs_on:    plan.macros.carbs_on_g,
-        carbs_off:   plan.macros.carbs_off_g,
-        fat_on:      plan.macros.fat_g,
-        fat_off:     plan.macros.fat_g,
+        name:        plan.diet.name,
+        kcal_on:     macros.kcal_on,
+        kcal_off:    macros.kcal_off,
+        protein_on:  macros.protein_g,
+        protein_off: macros.protein_g,
+        carbs_on:    macros.carbs_on_g,
+        carbs_off:   macros.carbs_off_g,
+        fat_on:      macros.fat_g,
+        fat_off:     macros.fat_g,
         notes:       plan.diet.notes,
         source:      "ai",
       })
-      .select("id")
-      .single();
+      .select("id").single();
 
-    if (dietErr) throw new Error(`diet_plans insert: ${dietErr.message}`);
-    const dietPlanId = dietPlanRow.id;
+    if (dietErr) throw new Error(`diet_plans: ${dietErr.message}`);
+    const dietPlanId = dietRow.id;
 
     for (let mi = 0; mi < plan.diet.meals.length; mi++) {
       const meal = plan.diet.meals[mi];
-
       const { data: mealRow } = await supabase
         .from("diet_meals")
-        .insert({
-          plan_id:    dietPlanId,
-          name:       meal.name,
-          day_type:   meal.day_type ?? "both",
-          sort_order: mi,
-        })
-        .select("id")
-        .single();
+        .insert({ plan_id: dietPlanId, name: meal.name, day_type: meal.day_type ?? "both", sort_order: mi })
+        .select("id").single();
 
       for (let oi = 0; oi < (meal.options ?? []).length; oi++) {
         const opt = meal.options[oi];
@@ -356,49 +500,39 @@ REGLAS IMPORTANTES:
           items:    g.items    ?? [],
           note:     g.note     ?? null,
         }));
-
         await supabase.from("diet_options").insert({
-          meal_id:    mealRow!.id,
-          name:       opt.name,
-          content,
-          sort_order: oi,
+          meal_id: mealRow!.id, name: opt.name, content, sort_order: oi,
         });
       }
     }
 
-    // Auto-assign diet (upsert on client_id unique constraint)
+    // Auto-asignar dieta
     await supabase.from("diet_assignments").upsert(
       { client_id, plan_id: dietPlanId, active: true, assigned_at: new Date().toISOString() },
       { onConflict: "client_id" },
     );
 
-    // ── Update client_macros ──────────────────────────────────────────────────
-    const proteinMult = parseFloat((plan.macros.protein_g / weight).toFixed(2));
-    const fatMult     = parseFloat((plan.macros.fat_g     / weight).toFixed(2));
+    // ── 10. Actualizar client_macros ────────────────────────────────────────
+    await supabase.from("client_macros").upsert({
+      client_id,
+      sex,
+      age:             Number(age),
+      height_cm:       Number(height),
+      weight_kg:       Number(weight),
+      activity_factor: Number(activity_factor),
+      protein_mult:    parseFloat((macros.protein_g / weight).toFixed(2)),
+      fat_mult:        parseFloat((macros.fat_g     / weight).toFixed(2)),
+      bmr:             macros.bmr,
+      tdee:            macros.tdee,
+      protein_g:       macros.protein_g,
+      carbs_g:         macros.carbs_on_g,
+      fat_g:           macros.fat_g,
+      goal,
+      days_on:         days_per_week,
+      updated_at:      new Date().toISOString(),
+    }, { onConflict: "client_id" });
 
-    await supabase.from("client_macros").upsert(
-      {
-        client_id,
-        sex,
-        age:             Number(age),
-        height_cm:       Number(height),
-        weight_kg:       Number(weight),
-        activity_factor: Number(activity_factor),
-        protein_mult:    proteinMult,
-        fat_mult:        fatMult,
-        bmr:             Math.round(plan.macros.kcal_on / Number(activity_factor)),
-        tdee:            plan.macros.kcal_on,
-        protein_g:       plan.macros.protein_g,
-        carbs_g:         plan.macros.carbs_on_g,
-        fat_g:           plan.macros.fat_g,
-        goal,
-        days_on:         days_per_week,
-        updated_at:      new Date().toISOString(),
-      },
-      { onConflict: "client_id" },
-    );
-
-    // ── Track generation ──────────────────────────────────────────────────────
+    // ── 11. Tracking ────────────────────────────────────────────────────────
     await supabase.from("ai_plan_generations").insert({
       client_id,
       program_id:   programId,
@@ -411,12 +545,13 @@ REGLAS IMPORTANTES:
       JSON.stringify({
         success:      true,
         analysis:     plan.analysis,
-        macros:       plan.macros,
+        macros,
         program_id:   programId,
         diet_plan_id: dietPlanId,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
   } catch (err) {
     console.error("ai-generate-plan error:", err);
     return new Response(
