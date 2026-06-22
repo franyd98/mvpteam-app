@@ -1,7 +1,6 @@
-// AIPlanWizard.tsx
-// Wizard de 5 pasos para generar un plan personalizado con IA:
-// Paso 1: Datos personales | 2: Preferencias entreno | 3: Foto (opcional)
-// 4: Generando... | 5: Resultados (análisis + macros + links)
+// AIPlanWizard.tsx — v3
+// UX simplificado: una pantalla con datos pre-cargados, foto opcional, genera.
+// El usuario solo actualiza el peso si ha cambiado y sube foto si quiere.
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -12,234 +11,395 @@ interface Props {
   profile:         Profile;
   onGoToWorkout:   () => void;
   onGoToDiet:      () => void;
-  onPlanGenerated: () => void; // recarga el programa en FitnessApp
+  onPlanGenerated: () => void;
 }
 
-type Step = 1 | 2 | 3 | 4 | 5;
-
-interface PersonalData {
+interface ClientData {
   sex:             "male" | "female";
   age:             string;
   height:          string;
   weight:          string;
   activity_factor: string;
   goal:            string;
-}
-
-interface TrainingPrefs {
-  days_per_week: number;
-  equipment:     string;
-  experience:    string;
-  injuries:      string;
+  days_per_week:   number;
+  equipment:       string;
+  experience:      string;
+  injuries:        string;
 }
 
 interface GenerationResult {
-  analysis:     string;
+  analysis: string;
   macros: {
-    kcal_on:     number;
-    protein_g:   number;
-    carbs_on_g:  number;
-    fat_g:       number;
-    kcal_off:    number;
-    carbs_off_g: number;
+    kcal_on: number; protein_g: number;
+    carbs_on_g: number; fat_g: number;
+    kcal_off: number; carbs_off_g: number;
   };
   program_id:   number;
   diet_plan_id: string;
 }
 
-// ── Constantes de opciones ────────────────────────────────────────────────────
-
-const ACTIVITY_OPTIONS = [
-  { value: "1.2",   label: "Sedentario",         desc: "Sin ejercicio o muy poco" },
-  { value: "1.375", label: "Ligero",              desc: "1–3 días/semana" },
-  { value: "1.55",  label: "Moderado",            desc: "3–5 días/semana" },
-  { value: "1.725", label: "Activo",              desc: "6–7 días/semana" },
-  { value: "1.9",   label: "Muy activo",          desc: "Entreno intenso + trabajo físico" },
-];
-
-const GOAL_OPTIONS = [
-  { value: "lose_fat_aggressive", label: "Bajar grasa (rápido)", desc: "−20% calorías" },
-  { value: "lose_fat",            label: "Bajar grasa",          desc: "−15% calorías" },
-  { value: "lose_fat_soft",       label: "Bajar grasa (suave)",  desc: "−10% calorías" },
-  { value: "maintain",            label: "Mantenimiento",        desc: "0% ajuste" },
-  { value: "gain_muscle",         label: "Ganar músculo",        desc: "+5% calorías" },
-  { value: "bulk",                label: "Volumen",              desc: "+10% calorías" },
-];
-
-const EQUIPMENT_OPTIONS = [
-  { value: "gym_full",     label: "Gimnasio completo", icon: "ti-building-store" },
-  { value: "dumbbells",    label: "Pesas libres",       icon: "ti-barbell" },
-  { value: "home",         label: "Casa",               icon: "ti-home" },
-  { value: "calisthenics", label: "Calistenia",         icon: "ti-accessible" },
-];
-
-const EXPERIENCE_OPTIONS = [
-  { value: "beginner",     label: "Principiante",  desc: "< 1 año" },
-  { value: "intermediate", label: "Intermedio",    desc: "1–3 años" },
-  { value: "advanced",     label: "Avanzado",      desc: "> 3 años" },
-];
+// ── Opciones ──────────────────────────────────────────────────────────────────
+const GOAL_LABELS: Record<string, string> = {
+  lose_fat_aggressive: "Bajar grasa (rápido)",
+  lose_fat:            "Bajar grasa",
+  lose_fat_soft:       "Bajar grasa (suave)",
+  maintain:            "Mantenimiento",
+  gain_muscle:         "Ganar músculo",
+  bulk:                "Volumen",
+};
+const EQUIP_LABELS: Record<string, string> = {
+  gym_full: "Gimnasio completo", dumbbells: "Pesas libres",
+  home: "Casa", calisthenics: "Calistenia",
+};
+const ACT_LABELS: Record<string, string> = {
+  "1.2": "Sedentario", "1.375": "Ligero", "1.55": "Moderado",
+  "1.725": "Activo", "1.9": "Muy activo",
+};
 
 const LOADING_STEPS = [
-  { icon: "ti-brain",    text: "Analizando tus datos corporales…" },
-  { icon: "ti-chart-bar",text: "Calculando macros personalizados…" },
+  { icon: "ti-brain",    text: "Analizando tus datos…" },
+  { icon: "ti-chart-bar",text: "Calculando macros exactos…" },
   { icon: "ti-barbell",  text: "Diseñando tu entrenamiento…" },
-  { icon: "ti-salad",    text: "Creando tu plan de dieta…" },
+  { icon: "ti-salad",    text: "Creando tu dieta personalizada…" },
   { icon: "ti-database", text: "Guardando tu plan completo…" },
 ];
 
-// ── Component ─────────────────────────────────────────────────────────────────
+const DEFAULT_DATA: ClientData = {
+  sex: "male", age: "", height: "", weight: "",
+  activity_factor: "1.55", goal: "lose_fat",
+  days_per_week: 4, equipment: "gym_full",
+  experience: "intermediate", injuries: "",
+};
 
+const PREFS_KEY = "mvp_ai_prefs_v1";
+
+// ── Pequeño modal de edición inline ──────────────────────────────────────────
+function EditSheet({
+  title, children, onClose,
+}: { title: string; children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={onClose}>
+      <div className="rounded-t-3xl overflow-hidden max-h-[80dvh] overflow-y-auto"
+        style={{ background: "#0F0F0F", border: "1px solid #1e1e1e" }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
+          <p className="text-white font-bold text-sm">{title}</p>
+          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center"
+            style={{ background: "#1a1a1a", color: "#777" }}>
+            <i className="ti ti-x" style={{ fontSize: 14 }} />
+          </button>
+        </div>
+        <div className="px-5 py-4 pb-8">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPlanGenerated }: Props) {
-  const STORAGE_KEY = `mvp_aiplan_result_${profile.id}`;
+  const RESULT_KEY = `mvp_aiplan_result_${profile.id}`;
 
-  const [step, setStep] = useState<Step>(() => {
-    // Si hay resultado guardado, ir directo a paso 5
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return 5;
-    } catch {}
-    return 1;
-  });
+  // Estado principal
+  const [data, setData] = useState<ClientData>(DEFAULT_DATA);
+  const [loadingData, setLoadingData] = useState(true);
 
-  // Step 1 — datos personales
-  const [personal, setPersonal] = useState<PersonalData>({
-    sex:             "male",
-    age:             "",
-    height:          "",
-    weight:          "",
-    activity_factor: "1.55",
-    goal:            "lose_fat",
-  });
-
-  // Step 2 — preferencias entreno
-  const [prefs, setPrefs] = useState<TrainingPrefs>({
-    days_per_week: 4,
-    equipment:     "gym_full",
-    experience:    "intermediate",
-    injuries:      "",
-  });
-
-  // Step 3 — foto
-  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
-  const [photoMime,   setPhotoMime]   = useState<string>("image/jpeg");
+  // Foto
+  const [photoBase64,  setPhotoBase64]  = useState<string | null>(null);
+  const [photoMime,    setPhotoMime]    = useState("image/jpeg");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  // Step 4 — loading
-  const [loadingStep, setLoadingStep] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-
-  // Step 5 — resultado (se restaura desde localStorage)
-  const [result, setResult] = useState<GenerationResult | null>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
+  // Estado de generación
+  const [generating,   setGenerating]   = useState(false);
+  const [loadingStep,  setLoadingStep]  = useState(0);
+  const [error,        setError]        = useState<string | null>(null);
+  const [result,       setResult]       = useState<GenerationResult | null>(() => {
+    try { const s = localStorage.getItem(RESULT_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
   });
 
-  // Pre-fill desde client_macros
+  // Modales de edición
+  const [editPanel, setEditPanel] = useState<
+    "datos" | "objetivo" | "actividad" | "entreno" | null
+  >(null);
+
+  // ── Cargar datos del cliente al montar ──────────────────────────────────
   useEffect(() => {
-    supabase
-      .from("client_macros")
-      .select("sex, age, height_cm, weight_kg, activity_factor, goal")
-      .eq("client_id", profile.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        setPersonal(prev => ({
-          ...prev,
-          sex:             (data.sex as "male" | "female") ?? prev.sex,
-          age:             data.age             ? String(data.age)             : prev.age,
-          height:          data.height_cm       ? String(data.height_cm)       : prev.height,
-          weight:          data.weight_kg       ? String(data.weight_kg)       : prev.weight,
-          activity_factor: data.activity_factor ? String(data.activity_factor) : prev.activity_factor,
-          goal:            data.goal            ? String(data.goal)            : prev.goal,
-        }));
-      });
+    const loadAll = async () => {
+      // Preferencias guardadas localmente (días, equipamiento, etc.)
+      let savedPrefs: Partial<ClientData> = {};
+      try { const s = localStorage.getItem(PREFS_KEY); if (s) savedPrefs = JSON.parse(s); } catch {}
+
+      // client_macros desde Supabase
+      const { data: macros } = await supabase
+        .from("client_macros")
+        .select("sex, age, height_cm, weight_kg, activity_factor, goal")
+        .eq("client_id", profile.id)
+        .maybeSingle();
+
+      // Último peso del check-in (puede ser más reciente)
+      const { data: lastCheckin } = await supabase
+        .from("fold_logs")
+        .select("date")
+        .eq("client_id", profile.id)
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      setData(prev => ({
+        ...prev,
+        sex:             (macros?.sex as "male" | "female") ?? prev.sex,
+        age:             macros?.age             ? String(macros.age)             : prev.age,
+        height:          macros?.height_cm       ? String(macros.height_cm)       : prev.height,
+        weight:          macros?.weight_kg       ? String(macros.weight_kg)       : prev.weight,
+        activity_factor: macros?.activity_factor ? String(macros.activity_factor) : prev.activity_factor,
+        goal:            macros?.goal            ?? prev.goal,
+        // Preferencias de entrenamiento desde localStorage
+        days_per_week:   savedPrefs.days_per_week ?? prev.days_per_week,
+        equipment:       savedPrefs.equipment     ?? prev.equipment,
+        experience:      savedPrefs.experience    ?? prev.experience,
+        injuries:        savedPrefs.injuries      ?? prev.injuries,
+      }));
+      setLoadingData(false);
+    };
+    loadAll();
   }, [profile.id]);
 
-  // Loading step animation
+  // ── Loading step animation ───────────────────────────────────────────────
   useEffect(() => {
-    if (step !== 4) return;
-    const interval = setInterval(() => {
-      setLoadingStep(prev => (prev < LOADING_STEPS.length - 1 ? prev + 1 : prev));
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [step]);
+    if (!generating) return;
+    const iv = setInterval(() => setLoadingStep(p => p < LOADING_STEPS.length - 1 ? p + 1 : p), 3500);
+    return () => clearInterval(iv);
+  }, [generating]);
 
-  // ── Photo handler ──────────────────────────────────────────────────────────
+  // ── Foto ─────────────────────────────────────────────────────────────────
   const handlePhoto = (file: File) => {
     setPhotoMime(file.type || "image/jpeg");
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      setPhotoPreview(dataUrl);
-      // Strip data: prefix
-      const base64 = dataUrl.split(",")[1];
-      setPhotoBase64(base64);
+    reader.onload = e => {
+      const url = e.target?.result as string;
+      setPhotoPreview(url);
+      setPhotoBase64(url.split(",")[1]);
     };
     reader.readAsDataURL(file);
   };
 
-  // ── Generate ───────────────────────────────────────────────────────────────
+  // ── Guardar prefs en localStorage ────────────────────────────────────────
+  const savePrefs = (d: ClientData) => {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({
+        days_per_week: d.days_per_week, equipment: d.equipment,
+        experience: d.experience, injuries: d.injuries,
+      }));
+    } catch {}
+  };
+
+  const upd = (patch: Partial<ClientData>) => {
+    setData(prev => { const next = { ...prev, ...patch }; savePrefs(next); return next; });
+  };
+
+  // ── Generar ──────────────────────────────────────────────────────────────
   const generate = async () => {
-    setStep(4);
+    setGenerating(true);
     setError(null);
     setLoadingStep(0);
-
     try {
-      const { data, error: fnErr } = await supabase.functions.invoke("ai-generate-plan", {
+      const { data: res, error: fnErr } = await supabase.functions.invoke("ai-generate-plan", {
         body: {
           client_id:     profile.id,
           personal_data: {
-            sex:             personal.sex,
-            age:             Number(personal.age),
-            height:          Number(personal.height),
-            weight:          Number(personal.weight),
-            activity_factor: Number(personal.activity_factor),
-            goal:            personal.goal,
+            sex:             data.sex,
+            age:             Number(data.age),
+            height:          Number(data.height),
+            weight:          Number(data.weight),
+            activity_factor: Number(data.activity_factor),
+            goal:            data.goal,
           },
           training_prefs: {
-            days_per_week: prefs.days_per_week,
-            equipment:     prefs.equipment,
-            experience:    prefs.experience,
-            injuries:      prefs.injuries || "",
+            days_per_week: data.days_per_week,
+            equipment:     data.equipment,
+            experience:    data.experience,
+            injuries:      data.injuries || "",
           },
           photo_base64: photoBase64 ?? undefined,
           photo_mime:   photoBase64 ? photoMime : undefined,
         },
       });
-
-      if (fnErr || data?.error) {
-        throw new Error(fnErr?.message ?? data?.error ?? "Error desconocido");
-      }
-
-      const generationResult = data as GenerationResult;
-      setResult(generationResult);
-      // Persistir en localStorage para sobrevivir cambios de pestaña
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(generationResult)); } catch {}
-      // Recargar el programa asignado en FitnessApp
+      if (fnErr || res?.error) throw new Error(fnErr?.message ?? res?.error);
+      const r = res as GenerationResult;
+      setResult(r);
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify(r)); } catch {}
       onPlanGenerated();
-      setStep(5);
     } catch (err) {
       setError(String(err));
-      setStep(3); // back to photo step with error
+    } finally {
+      setGenerating(false);
     }
   };
 
-  // ── Validation helpers ─────────────────────────────────────────────────────
-  const step1Valid =
-    personal.age.trim()    !== "" &&
-    personal.height.trim() !== "" &&
-    personal.weight.trim() !== "" &&
-    Number(personal.age)    > 10  && Number(personal.age)    < 99 &&
-    Number(personal.height) > 100 && Number(personal.height) < 250 &&
-    Number(personal.weight) > 30  && Number(personal.weight) < 300;
+  const resetResult = () => {
+    try { localStorage.removeItem(RESULT_KEY); } catch {}
+    setResult(null);
+    setPhotoBase64(null);
+    setPhotoPreview(null);
+    setError(null);
+  };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const canGenerate = data.weight.trim() !== "" && Number(data.weight) > 0;
+
+  // ── Render: Loading ───────────────────────────────────────────────────────
+  if (generating) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-8 px-8"
+        style={{ minHeight: "100dvh", background: "#08090d" }}>
+        <div className="relative w-24 h-24">
+          <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="40" fill="none" stroke="#1a1a1a" strokeWidth="6" />
+            <circle cx="48" cy="48" r="40" fill="none" stroke="var(--mvp-red)" strokeWidth="6"
+              strokeDasharray="251"
+              strokeDashoffset={251 - 251 * ((loadingStep + 1) / LOADING_STEPS.length)}
+              style={{ transition: "stroke-dashoffset 0.8s ease" }}
+              strokeLinecap="round" />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <i className={`ti ${LOADING_STEPS[loadingStep].icon}`}
+              style={{ fontSize: 28, color: "var(--mvp-red)" }} />
+          </div>
+        </div>
+        <div className="text-center space-y-2">
+          <p className="text-white font-bold text-lg">Generando tu plan…</p>
+          <p className="text-neutral-400 text-sm">{LOADING_STEPS[loadingStep].text}</p>
+        </div>
+        <div className="w-full max-w-xs space-y-2">
+          {LOADING_STEPS.map((s, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                style={{
+                  background: i < loadingStep ? "var(--mvp-red)" : i === loadingStep ? "var(--mvp-red-soft)" : "#1a1a1a",
+                  border: i === loadingStep ? "1px solid var(--mvp-red-border)" : "none",
+                  transition: "all 0.5s",
+                }}>
+                {i < loadingStep
+                  ? <i className="ti ti-check" style={{ fontSize: 11, color: "#fff" }} />
+                  : i === loadingStep
+                    ? <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--mvp-red)" }} />
+                    : null}
+              </div>
+              <p className="text-xs" style={{ color: i <= loadingStep ? "#ccc" : "#333" }}>{s.text}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-neutral-600">Esto puede tardar 20–30 segundos</p>
+      </div>
+    );
+  }
+
+  // ── Render: Resultados ────────────────────────────────────────────────────
+  if (result) {
+    return (
+      <div className="flex flex-col" style={{ minHeight: "100dvh", background: "#08090d" }}>
+        <div className="header-safe shrink-0 flex items-center gap-3 px-4 pt-4 pb-3"
+          style={{ borderBottom: "1px solid #1a1a1a" }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }}>
+            <i className="ti ti-sparkles" style={{ fontSize: 18, color: "var(--mvp-red)" }} />
+          </div>
+          <div className="flex-1">
+            <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--mvp-red)" }}>
+              Tu Plan · IA
+            </p>
+            <p className="text-white font-bold text-sm">Plan generado</p>
+          </div>
+          <button onClick={resetResult}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg"
+            style={{ background: "#1a1a1a", color: "#777", border: "1px solid #2a2a2a" }}>
+            Nuevo plan
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-8 space-y-4">
+          {/* Análisis */}
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+            <div className="flex">
+              <div className="w-[3px] shrink-0" style={{ background: "var(--mvp-red)" }} />
+              <div className="flex-1 px-4 py-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <i className="ti ti-sparkles" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
+                  <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "var(--mvp-red)" }}>
+                    Análisis personalizado
+                  </p>
+                </div>
+                <p className="text-sm text-neutral-300 leading-relaxed">{result.analysis}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Macros */}
+          <div className="space-y-2">
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
+              Tus macros · Día de entreno
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Calorías",  val: `${result.macros.kcal_on}`,     unit: "kcal" },
+                { label: "Proteína",  val: `${result.macros.protein_g}g`,  unit: "" },
+                { label: "Hidratos",  val: `${result.macros.carbs_on_g}g`, unit: "" },
+                { label: "Grasa",     val: `${result.macros.fat_g}g`,      unit: "" },
+              ].map(({ label, val, unit }) => (
+                <div key={label} className="rounded-2xl px-4 py-4"
+                  style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+                  <p className="text-[10px] text-neutral-500 uppercase tracking-wider">{label}</p>
+                  <p className="text-2xl font-bold text-white mt-1 tabular-nums">{val}</p>
+                  {unit && <p className="text-[10px] text-neutral-600">{unit}</p>}
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-neutral-600 text-center">
+              Día de descanso: {result.macros.kcal_off} kcal · {result.macros.carbs_off_g}g hidratos
+            </p>
+          </div>
+
+          {/* CTAs */}
+          <div className="space-y-3 pt-1">
+            <button onClick={onGoToWorkout}
+              className="w-full flex items-center justify-between px-5 py-4 rounded-2xl active:scale-[0.98] transition-all"
+              style={{ background: "var(--mvp-red)", color: "#fff", boxShadow: "0 4px 20px rgba(192,41,43,0.3)" }}>
+              <div className="flex items-center gap-3">
+                <i className="ti ti-barbell" style={{ fontSize: 22 }} />
+                <div className="text-left">
+                  <p className="font-bold text-sm">Ver mi entrenamiento</p>
+                  <p className="text-[11px] opacity-75">{data.days_per_week} días · ya asignado</p>
+                </div>
+              </div>
+              <i className="ti ti-chevron-right" style={{ fontSize: 18, opacity: 0.7 }} />
+            </button>
+
+            <button onClick={onGoToDiet}
+              className="w-full flex items-center justify-between px-5 py-4 rounded-2xl active:scale-[0.98] transition-all"
+              style={{ background: "#141414", border: "1px solid #2a2a2a", color: "#ccc" }}>
+              <div className="flex items-center gap-3">
+                <i className="ti ti-salad" style={{ fontSize: 22, color: "#888" }} />
+                <div className="text-left">
+                  <p className="font-bold text-sm text-white">Ver mi dieta</p>
+                  <p className="text-[11px] text-neutral-500">Plan generado · ya asignado</p>
+                </div>
+              </div>
+              <i className="ti ti-chevron-right" style={{ fontSize: 18, color: "#555" }} />
+            </button>
+          </div>
+
+          <p className="text-[10px] text-neutral-700 text-center leading-relaxed px-2 pt-2">
+            Generado por IA · Recomendaciones orientativas. Consulta con tu entrenador ante cualquier duda.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render: Pantalla principal (datos + foto) ─────────────────────────────
   return (
     <div className="flex flex-col" style={{ minHeight: "100dvh", background: "#08090d" }}>
-
       {/* Header */}
       <div className="header-safe shrink-0 flex items-center gap-3 px-4 pt-4 pb-3"
         style={{ borderBottom: "1px solid #1a1a1a" }}>
@@ -247,565 +407,352 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
           style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }}>
           <i className="ti ti-sparkles" style={{ fontSize: 18, color: "var(--mvp-red)" }} />
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1">
           <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--mvp-red)" }}>
             IA · MVP Team
           </p>
-          <p className="text-white font-bold text-sm leading-tight">Tu Plan Personalizado</p>
+          <p className="text-white font-bold text-sm">Tu Plan Personalizado</p>
         </div>
-        {step > 1 && step < 4 && (
-          <button onClick={() => setStep((step - 1) as Step)}
-            className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ background: "#1a1a1a", color: "#aaa", border: "1px solid #2a2a2a" }}>
-            <i className="ti ti-arrow-left" style={{ fontSize: 16 }} />
-          </button>
-        )}
-        {step === 5 && (
-          <button
-            onClick={() => {
-              try { localStorage.removeItem(STORAGE_KEY); } catch {}
-              setResult(null);
-              setPhotoBase64(null);
-              setPhotoPreview(null);
-              setError(null);
-              setLoadingStep(0);
-              setStep(1);
-            }}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg"
-            style={{ background: "#1a1a1a", color: "#777", border: "1px solid #2a2a2a" }}>
-            Nuevo plan
-          </button>
-        )}
       </div>
 
-      {/* Step indicator (steps 1–3) */}
-      {step <= 3 && (
-        <div className="shrink-0 flex items-center gap-2 px-4 py-3">
-          {[1, 2, 3].map(s => (
-            <div key={s} className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center transition-all"
-                style={{
-                  background: s <= step ? "var(--mvp-red)" : "#1a1a1a",
-                  border: s === step ? "none" : "1px solid #2a2a2a",
-                }}>
-                <span className="text-[10px] font-bold" style={{ color: s <= step ? "#fff" : "#444" }}>
-                  {s}
-                </span>
-              </div>
-              {s < 3 && (
-                <div className="flex-1 h-px" style={{ background: s < step ? "var(--mvp-red)" : "#1a1a1a", width: 28 }} />
-              )}
-            </div>
-          ))}
-          <p className="ml-2 text-[10px] text-neutral-500 font-medium">
-            {step === 1 ? "Datos personales" : step === 2 ? "Entreno" : "Foto (opcional)"}
-          </p>
-        </div>
-      )}
+      {/* Scroll */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6 space-y-4">
 
-      {/* Scroll area */}
-      <div className="flex-1 overflow-y-auto">
-
-        {/* ══ PASO 1: Datos personales ══════════════════════════════════════ */}
-        {step === 1 && (
-          <div className="px-4 pt-2 pb-6 space-y-5">
-
-            {/* Sexo */}
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Sexo</p>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: "male",   label: "Hombre", icon: "ti-mars" },
-                  { value: "female", label: "Mujer",  icon: "ti-venus" },
-                ].map(({ value, label, icon }) => {
-                  const active = personal.sex === value;
-                  return (
-                    <button key={value}
-                      onClick={() => setPersonal(p => ({ ...p, sex: value as "male" | "female" }))}
-                      className="flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-sm transition-all"
-                      style={{
-                        background: active ? "var(--mvp-red-soft)" : "#141414",
-                        border: `1px solid ${active ? "var(--mvp-red-border)" : "#222"}`,
-                        color: active ? "var(--mvp-red)" : "#777",
-                      }}>
-                      <i className={`ti ${icon}`} style={{ fontSize: 18 }} />
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Edad / Peso / Altura */}
-            <div className="grid grid-cols-3 gap-3">
-              {([
-                { field: "age",    label: "Edad",    unit: "años", min: 12,  max: 90  },
-                { field: "weight", label: "Peso",    unit: "kg",   min: 30,  max: 300 },
-                { field: "height", label: "Altura",  unit: "cm",   min: 100, max: 250 },
-              ] as const).map(({ field, label, unit, min, max }) => (
-                <div key={field} className="space-y-1.5">
-                  <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">{label}</p>
-                  <div className="rounded-xl overflow-hidden"
-                    style={{ background: "#141414", border: "1px solid #222" }}>
-                    <input
-                      type="number"
-                      value={personal[field]}
-                      onChange={e => setPersonal(p => ({ ...p, [field]: e.target.value }))}
-                      min={min} max={max}
-                      placeholder="—"
-                      className="w-full px-3 py-3 text-white font-bold text-sm text-center bg-transparent focus:outline-none"
-                    />
-                  </div>
-                  <p className="text-[9px] text-neutral-600 text-center">{unit}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Actividad */}
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
-                Nivel de actividad
-              </p>
-              <div className="space-y-1.5">
-                {ACTIVITY_OPTIONS.map(opt => {
-                  const active = personal.activity_factor === opt.value;
-                  return (
-                    <button key={opt.value}
-                      onClick={() => setPersonal(p => ({ ...p, activity_factor: opt.value }))}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all"
-                      style={{
-                        background: active ? "var(--mvp-red-soft)" : "#141414",
-                        border: `1px solid ${active ? "var(--mvp-red-border)" : "#222"}`,
-                      }}>
-                      <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
-                        style={{ borderColor: active ? "var(--mvp-red)" : "#444" }}>
-                        {active && (
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--mvp-red)" }} />
-                        )}
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-semibold"
-                          style={{ color: active ? "var(--mvp-red)" : "#ccc" }}>
-                          {opt.label}
-                        </p>
-                        <p className="text-[10px] text-neutral-500">{opt.desc}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Objetivo */}
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Objetivo</p>
-              <div className="grid grid-cols-2 gap-2">
-                {GOAL_OPTIONS.map(opt => {
-                  const active = personal.goal === opt.value;
-                  return (
-                    <button key={opt.value}
-                      onClick={() => setPersonal(p => ({ ...p, goal: opt.value }))}
-                      className="flex flex-col items-start px-3 py-3 rounded-xl transition-all"
-                      style={{
-                        background: active ? "var(--mvp-red-soft)" : "#141414",
-                        border: `1px solid ${active ? "var(--mvp-red-border)" : "#222"}`,
-                      }}>
-                      {active && (
-                        <i className="ti ti-check mb-1" style={{ fontSize: 12, color: "var(--mvp-red)" }} />
-                      )}
-                      <p className="text-xs font-bold leading-tight"
-                        style={{ color: active ? "var(--mvp-red)" : "#ccc" }}>
-                        {opt.label}
-                      </p>
-                      <p className="text-[10px] text-neutral-500 mt-0.5">{opt.desc}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+        {loadingData ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-6 h-6 rounded-full border-2 animate-spin"
+              style={{ borderColor: "var(--mvp-red)", borderTopColor: "transparent" }} />
           </div>
-        )}
-
-        {/* ══ PASO 2: Preferencias de entrenamiento ════════════════════════ */}
-        {step === 2 && (
-          <div className="px-4 pt-2 pb-6 space-y-5">
-
-            {/* Días a la semana */}
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
-                Días de entrenamiento / semana
-              </p>
-              <div className="flex gap-2">
-                {[2, 3, 4, 5, 6].map(d => {
-                  const active = prefs.days_per_week === d;
-                  return (
-                    <button key={d}
-                      onClick={() => setPrefs(p => ({ ...p, days_per_week: d }))}
-                      className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
-                      style={{
-                        background: active ? "var(--mvp-red)" : "#141414",
-                        border: `1px solid ${active ? "transparent" : "#222"}`,
-                        color: active ? "#fff" : "#666",
-                      }}>
-                      {d}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Equipamiento */}
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Equipamiento</p>
-              <div className="grid grid-cols-2 gap-2">
-                {EQUIPMENT_OPTIONS.map(opt => {
-                  const active = prefs.equipment === opt.value;
-                  return (
-                    <button key={opt.value}
-                      onClick={() => setPrefs(p => ({ ...p, equipment: opt.value }))}
-                      className="flex items-center gap-2.5 px-4 py-3.5 rounded-xl transition-all"
-                      style={{
-                        background: active ? "var(--mvp-red-soft)" : "#141414",
-                        border: `1px solid ${active ? "var(--mvp-red-border)" : "#222"}`,
-                      }}>
-                      <i className={`ti ${opt.icon}`} style={{ fontSize: 20, color: active ? "var(--mvp-red)" : "#555" }} />
-                      <span className="text-sm font-semibold"
-                        style={{ color: active ? "var(--mvp-red)" : "#aaa" }}>
-                        {opt.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Experiencia */}
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Experiencia</p>
-              <div className="space-y-1.5">
-                {EXPERIENCE_OPTIONS.map(opt => {
-                  const active = prefs.experience === opt.value;
-                  return (
-                    <button key={opt.value}
-                      onClick={() => setPrefs(p => ({ ...p, experience: opt.value }))}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all"
-                      style={{
-                        background: active ? "var(--mvp-red-soft)" : "#141414",
-                        border: `1px solid ${active ? "var(--mvp-red-border)" : "#222"}`,
-                      }}>
-                      <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
-                        style={{ borderColor: active ? "var(--mvp-red)" : "#444" }}>
-                        {active && (
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--mvp-red)" }} />
-                        )}
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-semibold"
-                          style={{ color: active ? "var(--mvp-red)" : "#ccc" }}>
-                          {opt.label}
-                        </p>
-                        <p className="text-[10px] text-neutral-500">{opt.desc}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Lesiones */}
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
-                Lesiones o limitaciones
-                <span className="ml-2 normal-case text-[10px] text-neutral-600 font-normal">(opcional)</span>
-              </p>
-              <textarea
-                value={prefs.injuries}
-                onChange={e => setPrefs(p => ({ ...p, injuries: e.target.value }))}
-                placeholder="Ej: Lesión de rodilla, dolor lumbar, no puedo hacer sentadilla…"
-                rows={3}
-                className="w-full rounded-xl px-4 py-3 text-white text-sm placeholder-neutral-700 focus:outline-none resize-none"
-                style={{ background: "#141414", border: "1px solid #222" }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ══ PASO 3: Foto (opcional) ═══════════════════════════════════════ */}
-        {step === 3 && (
-          <div className="px-4 pt-2 pb-6 space-y-4">
-
-            <div className="rounded-2xl p-4 space-y-1"
-              style={{ background: "#141414", border: "1px solid var(--mvp-red-border)" }}>
-              <div className="flex items-center gap-2">
-                <i className="ti ti-info-circle" style={{ fontSize: 16, color: "var(--mvp-red)" }} />
-                <p className="text-xs font-semibold text-white">La foto es opcional pero mejora el análisis</p>
-              </div>
-              <p className="text-[11px] text-neutral-500 ml-6">
-                Sube una foto de cuerpo completo (de pie, ropa ajustada). La IA analiza tu composición corporal
-                para personalizar mejor tus macros y entrenamiento. No se guarda en nuestros servidores.
-              </p>
-            </div>
-
-            {/* Upload area */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => {
-                const file = e.target.files?.[0];
-                if (file) handlePhoto(file);
-              }}
-            />
-
-            {photoPreview ? (
-              <div className="space-y-3">
-                <div className="relative rounded-2xl overflow-hidden"
-                  style={{ border: "1px solid var(--mvp-red-border)" }}>
-                  <img src={photoPreview} alt="foto" className="w-full object-cover" style={{ maxHeight: 300 }} />
-                  <button
-                    onClick={() => { setPhotoBase64(null); setPhotoPreview(null); }}
-                    className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(0,0,0,0.7)", color: "#fff", border: "1px solid #333" }}>
-                    <i className="ti ti-x" style={{ fontSize: 14 }} />
-                  </button>
-                </div>
-                <p className="text-[11px] text-center text-neutral-500">
-                  Foto cargada — la IA la analizará durante la generación
-                </p>
-              </div>
-            ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full flex flex-col items-center gap-3 py-10 rounded-2xl transition-all active:opacity-70"
-                style={{ background: "#141414", border: "2px dashed #2a2a2a" }}>
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                  style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }}>
-                  <i className="ti ti-camera" style={{ fontSize: 28, color: "var(--mvp-red)" }} />
-                </div>
-                <div className="text-center">
-                  <p className="text-white font-semibold text-sm">Subir foto</p>
-                  <p className="text-neutral-500 text-xs mt-0.5">JPG, PNG — de pie, cuerpo completo</p>
-                </div>
-              </button>
-            )}
-
-            {error && (
-              <div className="rounded-xl px-4 py-3 flex items-start gap-2"
-                style={{ background: "#1a0a0a", border: "1px solid #4a1a1a" }}>
-                <i className="ti ti-alert-triangle shrink-0 mt-0.5" style={{ fontSize: 14, color: "#f87171" }} />
-                <p className="text-xs text-red-400">{error}</p>
-              </div>
-            )}
-
-            <p className="text-center text-[10px] text-neutral-600">
-              También puedes generar sin foto — igual de preciso con tus datos
-            </p>
-          </div>
-        )}
-
-        {/* ══ PASO 4: Generando ════════════════════════════════════════════ */}
-        {step === 4 && (
-          <div className="flex flex-col items-center justify-center px-8 py-16 gap-8">
-
-            {/* Animated ring */}
-            <div className="relative w-24 h-24">
-              <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
-                <circle cx="48" cy="48" r="40" fill="none" stroke="#1a1a1a" strokeWidth="6" />
-                <circle cx="48" cy="48" r="40" fill="none" stroke="var(--mvp-red)" strokeWidth="6"
-                  strokeDasharray="251"
-                  strokeDashoffset={251 - 251 * ((loadingStep + 1) / LOADING_STEPS.length)}
-                  style={{ transition: "stroke-dashoffset 0.8s ease" }}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <i className={`ti ${LOADING_STEPS[loadingStep].icon}`}
-                  style={{ fontSize: 28, color: "var(--mvp-red)" }} />
-              </div>
-            </div>
-
-            <div className="text-center space-y-2">
-              <p className="text-white font-bold text-lg">Generando tu plan…</p>
-              <p className="text-neutral-400 text-sm transition-all"
-                style={{ minHeight: 20 }}>
-                {LOADING_STEPS[loadingStep].text}
-              </p>
-            </div>
-
-            {/* Steps list */}
-            <div className="w-full max-w-xs space-y-2">
-              {LOADING_STEPS.map((s, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                    style={{
-                      background: i < loadingStep ? "var(--mvp-red)" : i === loadingStep ? "var(--mvp-red-soft)" : "#1a1a1a",
-                      border: i === loadingStep ? "1px solid var(--mvp-red-border)" : "none",
-                      transition: "all 0.5s ease",
-                    }}>
-                    {i < loadingStep ? (
-                      <i className="ti ti-check" style={{ fontSize: 11, color: "#fff" }} />
-                    ) : i === loadingStep ? (
-                      <div className="w-1.5 h-1.5 rounded-full animate-pulse"
-                        style={{ background: "var(--mvp-red)" }} />
-                    ) : null}
-                  </div>
-                  <p className="text-xs transition-colors"
-                    style={{ color: i <= loadingStep ? "#ccc" : "#333" }}>
-                    {s.text}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-[11px] text-neutral-600 text-center">
-              Esto puede tardar 15–30 segundos
-            </p>
-          </div>
-        )}
-
-        {/* ══ PASO 5: Resultados ═══════════════════════════════════════════ */}
-        {step === 5 && result && (
-          <div className="px-4 pt-2 pb-8 space-y-5">
-
-            {/* Análisis */}
+        ) : (
+          <>
+            {/* ── Peso (el único campo que el usuario toca siempre) ── */}
             <div className="rounded-2xl overflow-hidden"
               style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
               <div className="flex">
                 <div className="w-[3px] shrink-0" style={{ background: "var(--mvp-red)" }} />
                 <div className="flex-1 px-4 py-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <i className="ti ti-sparkles" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
-                    <p className="text-[10px] uppercase tracking-wider font-bold"
-                      style={{ color: "var(--mvp-red)" }}>
-                      Análisis de IA
-                    </p>
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 mb-3">
+                    Tu peso actual
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      value={data.weight}
+                      onChange={e => upd({ weight: e.target.value })}
+                      placeholder="75"
+                      className="w-28 text-3xl font-bold text-white bg-transparent focus:outline-none tabular-nums"
+                    />
+                    <span className="text-neutral-500 text-lg">kg</span>
                   </div>
-                  <p className="text-sm text-neutral-300 leading-relaxed">{result.analysis}</p>
+                  {!data.weight && (
+                    <p className="text-[11px] mt-1" style={{ color: "var(--mvp-red)" }}>
+                      Introduce tu peso para continuar
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Macros ON */}
+            {/* ── Resumen de datos (toca para editar) ── */}
             <div className="space-y-2">
               <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
-                Tus macros · Día de entreno
+                Tus datos · toca para editar
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: "Calorías",  val: `${result.macros.kcal_on}`,      unit: "kcal" },
-                  { label: "Proteína",  val: `${result.macros.protein_g}g`,   unit: "" },
-                  { label: "Hidratos",  val: `${result.macros.carbs_on_g}g`,  unit: "" },
-                  { label: "Grasa",     val: `${result.macros.fat_g}g`,       unit: "" },
-                ].map(({ label, val, unit }) => (
-                  <div key={label} className="rounded-2xl px-4 py-4"
-                    style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
-                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">{label}</p>
-                    <p className="text-2xl font-bold text-white mt-1 tabular-nums">{val}</p>
-                    {unit && <p className="text-[10px] text-neutral-600">{unit}</p>}
+
+              {/* Fila: cuerpo */}
+              <button onClick={() => setEditPanel("datos")}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
+                style={{ background: "#141414", border: "1px solid #222" }}>
+                <i className="ti ti-user" style={{ fontSize: 18, color: "#555" }} />
+                <div className="flex-1 text-left">
+                  <p className="text-xs text-neutral-500">Cuerpo</p>
+                  <p className="text-sm text-white font-medium">
+                    {data.sex === "male" ? "Hombre" : "Mujer"} · {data.age || "—"} años · {data.height || "—"} cm
+                  </p>
+                </div>
+                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#444" }} />
+              </button>
+
+              {/* Fila: objetivo */}
+              <button onClick={() => setEditPanel("objetivo")}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
+                style={{ background: "#141414", border: "1px solid #222" }}>
+                <i className="ti ti-target" style={{ fontSize: 18, color: "#555" }} />
+                <div className="flex-1 text-left">
+                  <p className="text-xs text-neutral-500">Objetivo</p>
+                  <p className="text-sm text-white font-medium">{GOAL_LABELS[data.goal] ?? data.goal}</p>
+                </div>
+                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#444" }} />
+              </button>
+
+              {/* Fila: actividad */}
+              <button onClick={() => setEditPanel("actividad")}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
+                style={{ background: "#141414", border: "1px solid #222" }}>
+                <i className="ti ti-flame" style={{ fontSize: 18, color: "#555" }} />
+                <div className="flex-1 text-left">
+                  <p className="text-xs text-neutral-500">Actividad diaria</p>
+                  <p className="text-sm text-white font-medium">
+                    {ACT_LABELS[data.activity_factor] ?? `×${data.activity_factor}`}
+                  </p>
+                </div>
+                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#444" }} />
+              </button>
+
+              {/* Fila: entreno */}
+              <button onClick={() => setEditPanel("entreno")}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
+                style={{ background: "#141414", border: "1px solid #222" }}>
+                <i className="ti ti-barbell" style={{ fontSize: 18, color: "#555" }} />
+                <div className="flex-1 text-left">
+                  <p className="text-xs text-neutral-500">Entrenamiento</p>
+                  <p className="text-sm text-white font-medium">
+                    {data.days_per_week} días/sem · {EQUIP_LABELS[data.equipment] ?? data.equipment}
+                  </p>
+                </div>
+                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#444" }} />
+              </button>
+            </div>
+
+            {/* ── Foto ── */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
+                  Foto corporal
+                </p>
+                <span className="text-[10px] text-neutral-600 font-medium px-1.5 py-0.5 rounded"
+                  style={{ background: "#1a1a1a" }}>
+                  opcional pero recomendada
+                </span>
+              </div>
+
+              <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f); }} />
+
+              {photoPreview ? (
+                <div className="relative rounded-2xl overflow-hidden"
+                  style={{ border: "1px solid var(--mvp-red-border)" }}>
+                  <img src={photoPreview} alt="foto" className="w-full object-cover" style={{ maxHeight: 220 }} />
+                  <button onClick={() => { setPhotoBase64(null); setPhotoPreview(null); }}
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(0,0,0,0.75)", color: "#fff", border: "1px solid #333" }}>
+                    <i className="ti ti-x" style={{ fontSize: 14 }} />
+                  </button>
+                  <div className="absolute bottom-0 inset-x-0 px-3 py-2"
+                    style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
+                    <p className="text-[11px] text-neutral-300">
+                      La IA analizará tu composición corporal
+                    </p>
                   </div>
+                </div>
+              ) : (
+                <button onClick={() => fileRef.current?.click()}
+                  className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl active:opacity-70 transition-all"
+                  style={{ background: "#141414", border: "2px dashed #2a2a2a" }}>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "var(--mvp-red-soft)", border: "1px solid var(--mvp-red-border)" }}>
+                    <i className="ti ti-camera" style={{ fontSize: 24, color: "var(--mvp-red)" }} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-semibold text-sm">Subir foto</p>
+                    <p className="text-neutral-500 text-xs mt-0.5">
+                      De pie, ropa ajustada · mejora mucho el análisis
+                    </p>
+                  </div>
+                </button>
+              )}
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="rounded-xl px-4 py-3 flex items-start gap-2"
+                style={{ background: "#1a0a0a", border: "1px solid #4a1a1a" }}>
+                <i className="ti ti-alert-triangle shrink-0 mt-0.5" style={{ fontSize: 14, color: "#f87171" }} />
+                <div>
+                  <p className="text-xs text-red-400 font-semibold">Error al generar</p>
+                  <p className="text-xs text-red-500 mt-0.5">{error}</p>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Botón generar */}
+      <div className="shrink-0 px-4 pb-6 pt-3 footer-safe"
+        style={{ borderTop: "1px solid #1a1a1a", background: "#08090d" }}>
+        <button
+          onClick={generate}
+          disabled={!canGenerate || loadingData}
+          className="w-full py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+          style={{
+            background: canGenerate ? "var(--mvp-red)" : "#141414",
+            color: canGenerate ? "#fff" : "#444",
+            boxShadow: canGenerate ? "0 4px 20px rgba(192,41,43,0.35)" : "none",
+          }}>
+          <i className="ti ti-sparkles" style={{ fontSize: 16 }} />
+          {error ? "Reintentar generación" : "Generar mi plan con IA"}
+        </button>
+        {!canGenerate && !loadingData && (
+          <p className="text-[10px] text-neutral-600 text-center mt-2">
+            Introduce tu peso para continuar
+          </p>
+        )}
+      </div>
+
+      {/* ── Paneles de edición ── */}
+
+      {editPanel === "datos" && (
+        <EditSheet title="Datos corporales" onClose={() => setEditPanel(null)}>
+          <div className="space-y-4">
+            {/* Sexo */}
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Sexo</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[{ v: "male", l: "Hombre" }, { v: "female", l: "Mujer" }].map(({ v, l }) => (
+                  <button key={v} onClick={() => upd({ sex: v as "male" | "female" })}
+                    className="py-3 rounded-xl font-semibold text-sm"
+                    style={{
+                      background: data.sex === v ? "var(--mvp-red-soft)" : "#1a1a1a",
+                      border: `1px solid ${data.sex === v ? "var(--mvp-red-border)" : "#2a2a2a"}`,
+                      color: data.sex === v ? "var(--mvp-red)" : "#777",
+                    }}>{l}</button>
                 ))}
               </div>
-              <p className="text-[10px] text-neutral-600 text-center">
-                Día de descanso: {result.macros.kcal_off} kcal · {result.macros.carbs_off_g}g hidratos
-              </p>
             </div>
-
-            {/* CTAs */}
-            <div className="space-y-3 pt-2">
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 text-center">
-                Tu plan está listo
-              </p>
-
-              <button
-                onClick={onGoToWorkout}
-                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all active:scale-[0.98]"
-                style={{ background: "var(--mvp-red)", color: "#fff" }}>
-                <div className="flex items-center gap-3">
-                  <i className="ti ti-barbell" style={{ fontSize: 22 }} />
-                  <div className="text-left">
-                    <p className="font-bold text-sm">Ver mi entrenamiento</p>
-                    <p className="text-[11px] opacity-75">{prefs.days_per_week} días · ya asignado</p>
+            {/* Edad / Altura */}
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { f: "age",    l: "Edad",   u: "años" },
+                { f: "height", l: "Altura", u: "cm"   },
+              ] as const).map(({ f, l, u }) => (
+                <div key={f} className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">{l}</p>
+                  <div className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+                    style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}>
+                    <input type="number" value={data[f]}
+                      onChange={e => upd({ [f]: e.target.value } as Partial<ClientData>)}
+                      className="w-full text-white text-sm font-bold bg-transparent focus:outline-none" />
+                    <span className="text-neutral-600 text-xs shrink-0">{u}</span>
                   </div>
                 </div>
-                <i className="ti ti-chevron-right" style={{ fontSize: 18, opacity: 0.7 }} />
-              </button>
-
-              <button
-                onClick={onGoToDiet}
-                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all active:scale-[0.98]"
-                style={{ background: "#141414", border: "1px solid #2a2a2a", color: "#ccc" }}>
-                <div className="flex items-center gap-3">
-                  <i className="ti ti-salad" style={{ fontSize: 22, color: "#888" }} />
-                  <div className="text-left">
-                    <p className="font-bold text-sm text-white">Ver mi dieta</p>
-                    <p className="text-[11px] text-neutral-500">Plan generado · ya asignado</p>
-                  </div>
-                </div>
-                <i className="ti ti-chevron-right" style={{ fontSize: 18, color: "#555" }} />
-              </button>
-
-              <button
-                onClick={() => {
-                  try { localStorage.removeItem(STORAGE_KEY); } catch {}
-                  setStep(1);
-                  setResult(null);
-                  setPhotoBase64(null);
-                  setPhotoPreview(null);
-                  setError(null);
-                  setLoadingStep(0);
-                }}
-                className="w-full py-3 rounded-2xl text-sm font-medium"
-                style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", color: "#555" }}>
-                Generar nuevo plan
-              </button>
+              ))}
             </div>
-
-            {/* Disclaimer */}
-            <p className="text-[10px] text-neutral-700 text-center leading-relaxed px-2">
-              Generado por IA · Recomendaciones orientativas. Consulta con un profesional ante dudas de salud.
-            </p>
           </div>
-        )}
+        </EditSheet>
+      )}
 
-      </div>{/* fin scroll */}
+      {editPanel === "objetivo" && (
+        <EditSheet title="Tu objetivo" onClose={() => setEditPanel(null)}>
+          <div className="space-y-2">
+            {Object.entries(GOAL_LABELS).map(([v, l]) => (
+              <button key={v} onClick={() => { upd({ goal: v }); setEditPanel(null); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl"
+                style={{
+                  background: data.goal === v ? "var(--mvp-red-soft)" : "#1a1a1a",
+                  border: `1px solid ${data.goal === v ? "var(--mvp-red-border)" : "#2a2a2a"}`,
+                }}>
+                {data.goal === v && <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />}
+                <span className="text-sm font-semibold"
+                  style={{ color: data.goal === v ? "var(--mvp-red)" : "#aaa" }}>{l}</span>
+              </button>
+            ))}
+          </div>
+        </EditSheet>
+      )}
 
-      {/* Footer CTA (steps 1–3) */}
-      {step <= 3 && (
-        <div className="shrink-0 px-4 pb-6 pt-3 footer-safe"
-          style={{ borderTop: "1px solid #1a1a1a", background: "#08090d" }}>
-          {step < 3 ? (
-            <button
-              onClick={() => setStep((step + 1) as Step)}
-              disabled={step === 1 && !step1Valid}
-              className="w-full py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-              style={{
-                background: (step === 1 && !step1Valid) ? "#141414" : "var(--mvp-red)",
-                color: (step === 1 && !step1Valid) ? "#444" : "#fff",
-                boxShadow: (step === 1 && !step1Valid) ? "none" : "0 4px 20px rgba(192,41,43,0.35)",
-              }}>
-              Siguiente
-              <i className="ti ti-arrow-right" style={{ fontSize: 16 }} />
-            </button>
-          ) : (
-            <button
-              onClick={generate}
-              className="w-full py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-              style={{
-                background: "var(--mvp-red)",
-                color: "#fff",
-                boxShadow: "0 4px 20px rgba(192,41,43,0.35)",
-              }}>
-              <i className="ti ti-sparkles" style={{ fontSize: 16 }} />
-              Generar mi plan con IA
-            </button>
-          )}
-          {step === 1 && !step1Valid && (
-            <p className="text-[10px] text-neutral-600 text-center mt-2">
-              Rellena edad, peso y altura para continuar
-            </p>
-          )}
-        </div>
+      {editPanel === "actividad" && (
+        <EditSheet title="Actividad diaria" onClose={() => setEditPanel(null)}>
+          <div className="space-y-2">
+            {Object.entries(ACT_LABELS).map(([v, l]) => (
+              <button key={v} onClick={() => { upd({ activity_factor: v }); setEditPanel(null); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl"
+                style={{
+                  background: data.activity_factor === v ? "var(--mvp-red-soft)" : "#1a1a1a",
+                  border: `1px solid ${data.activity_factor === v ? "var(--mvp-red-border)" : "#2a2a2a"}`,
+                }}>
+                {data.activity_factor === v && <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />}
+                <div className="text-left">
+                  <p className="text-sm font-semibold"
+                    style={{ color: data.activity_factor === v ? "var(--mvp-red)" : "#aaa" }}>{l}</p>
+                  <p className="text-[10px] text-neutral-600">×{v}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </EditSheet>
+      )}
+
+      {editPanel === "entreno" && (
+        <EditSheet title="Preferencias de entreno" onClose={() => setEditPanel(null)}>
+          <div className="space-y-5">
+            {/* Días */}
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Días / semana</p>
+              <div className="flex gap-2">
+                {[2, 3, 4, 5, 6].map(d => (
+                  <button key={d} onClick={() => upd({ days_per_week: d })}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                    style={{
+                      background: data.days_per_week === d ? "var(--mvp-red)" : "#1a1a1a",
+                      border: `1px solid ${data.days_per_week === d ? "transparent" : "#2a2a2a"}`,
+                      color: data.days_per_week === d ? "#fff" : "#666",
+                    }}>{d}</button>
+                ))}
+              </div>
+            </div>
+            {/* Equipamiento */}
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Equipamiento</p>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(EQUIP_LABELS).map(([v, l]) => (
+                  <button key={v} onClick={() => upd({ equipment: v })}
+                    className="py-2.5 rounded-xl text-xs font-semibold"
+                    style={{
+                      background: data.equipment === v ? "var(--mvp-red-soft)" : "#1a1a1a",
+                      border: `1px solid ${data.equipment === v ? "var(--mvp-red-border)" : "#2a2a2a"}`,
+                      color: data.equipment === v ? "var(--mvp-red)" : "#777",
+                    }}>{l}</button>
+                ))}
+              </div>
+            </div>
+            {/* Experiencia */}
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Experiencia</p>
+              <div className="space-y-1.5">
+                {[
+                  { v: "beginner", l: "Principiante", d: "< 1 año" },
+                  { v: "intermediate", l: "Intermedio", d: "1–3 años" },
+                  { v: "advanced", l: "Avanzado", d: "> 3 años" },
+                ].map(({ v, l, d }) => (
+                  <button key={v} onClick={() => upd({ experience: v })}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                    style={{
+                      background: data.experience === v ? "var(--mvp-red-soft)" : "#1a1a1a",
+                      border: `1px solid ${data.experience === v ? "var(--mvp-red-border)" : "#2a2a2a"}`,
+                    }}>
+                    {data.experience === v && <i className="ti ti-check shrink-0" style={{ fontSize: 12, color: "var(--mvp-red)" }} />}
+                    <div className="text-left">
+                      <p className="text-sm font-semibold"
+                        style={{ color: data.experience === v ? "var(--mvp-red)" : "#aaa" }}>{l}</p>
+                      <p className="text-[10px] text-neutral-600">{d}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Lesiones */}
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">
+                Lesiones · <span className="normal-case font-normal">opcional</span>
+              </p>
+              <textarea value={data.injuries} onChange={e => upd({ injuries: e.target.value })}
+                placeholder="Ej: rodilla, lumbar…" rows={2}
+                className="w-full rounded-xl px-3 py-2.5 text-white text-sm placeholder-neutral-700 focus:outline-none resize-none"
+                style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }} />
+            </div>
+          </div>
+        </EditSheet>
       )}
     </div>
   );
