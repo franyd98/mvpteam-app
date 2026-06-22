@@ -313,13 +313,12 @@ ${mealsHtml}
 <footer>Plan nutricional · MVP Team · ${today} · Pesa los alimentos en crudo y en seco salvo indicación contraria</footer>
 </body></html>`;
 
-  // Abrir en ventana nueva y disparar impresión → en iOS = "Guardar como PDF"
+  // Abrir en ventana nueva — el usuario pulsa "Guardar PDF" para imprimir/exportar
   const win = window.open("", "_blank");
   if (!win) return;
   win.document.write(html);
   win.document.close();
-  // Pequeño delay para que el navegador pinte el contenido antes de imprimir
-  setTimeout(() => { win.focus(); win.print(); }, 400);
+  win.focus();
 }
 
 // ── ShopBtn ───────────────────────────────────────────────────────────────────
