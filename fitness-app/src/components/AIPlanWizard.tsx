@@ -263,9 +263,11 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
     setError(null);
   };
 
-  const canGenerate = isNewClient
-    ? Number(data.weight) > 0 && Number(data.age) > 0 && Number(data.height) > 0
-    : Number(data.weight) > 0;
+  const canGenerate = photos.front !== null && (
+    isNewClient
+      ? Number(data.weight) > 0 && Number(data.age) > 0 && Number(data.height) > 0
+      : Number(data.weight) > 0
+  );
 
   // ── Render: Loading ───────────────────────────────────────────────────────
   if (generating) {
@@ -659,11 +661,11 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
               <p className="text-[10px] text-neutral-500 text-center leading-relaxed">
                 De pie · ropa ajustada · buena iluminación
               </p>
-              {(!photos.side || !photos.back) && photos.front && (
+              {photos.front && (!photos.side || !photos.back) && (
                 <p className="text-[10px] text-center leading-relaxed px-2"
-                  style={{ color: "var(--mvp-red)" }}>
+                  style={{ color: "#666" }}>
                   <i className="ti ti-info-circle" style={{ fontSize: 11, marginRight: 3 }} />
-                  Añadir foto lateral y de espalda mejora mucho la precisión del análisis
+                  Añadir lateral y espalda mejora la precisión del análisis
                 </p>
               )}
             </div>
@@ -700,7 +702,9 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
         </button>
         {!canGenerate && !loadingData && (
           <p className="text-[10px] text-neutral-600 text-center mt-2">
-            {isNewClient
+            {!photos.front
+              ? "Sube al menos la foto frontal para continuar"
+              : isNewClient
               ? "Rellena edad, altura y peso para continuar"
               : "Introduce tu peso para continuar"}
           </p>
