@@ -180,10 +180,13 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   };
 
   const loadAssignedProgram = async () => {
-    // Cargar todos los programas asignados (para el selector)
+    // Cargar programas para el selector:
+    // - Los que están activos ahora, O
+    // - Los que pertenecen a este cliente (owner_client_id) aunque estén inactivos (ej: plan IA anterior)
+    // NO mostrar programas de otros clientes que quedaron asignados por error
     const { data: allAssign } = await supabase
       .from("program_assignments")
-      .select("program_id, programs(id, name, source)")
+      .select("program_id, active, programs(id, name, source, owner_client_id)")
       .eq("client_id", profile.id)
       .order("program_id", { ascending: false });
 
@@ -192,6 +195,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       const list = allAssign
         .filter((a: any) => {
           if (seen.has(a.program_id)) return false;
+          const prog = a.programs as any;
+          // Incluir solo si: está activo ahora, o el programa es propiedad de este cliente
+          if (!a.active && prog?.owner_client_id !== profile.id) return false;
           seen.add(a.program_id);
           return true;
         })

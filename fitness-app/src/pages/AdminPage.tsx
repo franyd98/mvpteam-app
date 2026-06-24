@@ -265,7 +265,31 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   };
 
   const handleAssign = async (programId: number, clientId: string, clientName: string) => {
+    // 1. Obtener todos los assignments actuales del cliente
+    const { data: existing } = await supabase
+      .from("program_assignments")
+      .select("program_id, programs(owner_client_id)")
+      .eq("client_id", clientId);
+
+    // 2. Borrar assignments de programas que NO pertenecen a este cliente
+    //    (evita que programas de otros clientes queden contaminando el selector)
+    const toDelete = (existing ?? []).filter((a: any) => {
+      const owner = a.programs?.owner_client_id;
+      return owner !== null && owner !== clientId;
+    }).map((a: any) => a.program_id);
+
+    if (toDelete.length > 0) {
+      await supabase
+        .from("program_assignments")
+        .delete()
+        .eq("client_id", clientId)
+        .in("program_id", toDelete);
+    }
+
+    // 3. Desactivar los que quedan (planes propios del cliente, como planes IA)
     await supabase.from("program_assignments").update({ active: false }).eq("client_id", clientId);
+
+    // 4. Insertar el nuevo assignment activo
     const { error } = await supabase.from("program_assignments").insert({ program_id: programId, client_id: clientId, active: true });
     showToast(error ? "Error al asignar" : `✅ Asignado a ${clientName}`);
     setAssigning(null);
