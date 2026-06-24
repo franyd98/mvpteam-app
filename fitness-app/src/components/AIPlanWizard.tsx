@@ -29,7 +29,8 @@ interface ClientData {
 }
 
 interface GenerationResult {
-  analysis: string;
+  analysis:        string;
+  priority_groups: string[];   // grupos musculares priorizados por la IA
   macros: {
     kcal_on: number; protein_g: number;
     carbs_on_g: number; fat_g: number;
@@ -356,6 +357,52 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
               </div>
             </div>
           </div>
+
+          {/* Grupos musculares priorizados (solo si la IA los detectó) */}
+          {result.priority_groups?.length > 0 && (
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+              <div className="flex">
+                <div className="w-[3px] shrink-0" style={{ background: "#3b82f6" }} />
+                <div className="flex-1 px-4 py-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <i className="ti ti-target" style={{ fontSize: 14, color: "#3b82f6" }} />
+                    <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "#3b82f6" }}>
+                      Zonas a reforzar · detectadas por IA
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {result.priority_groups.map(grp => {
+                      const EMOJI: Record<string, string> = {
+                        PECHO:"💪", ESPALDA:"🔙", HOMBROS:"🏋️", BÍCEPS:"💪",
+                        TRÍCEPS:"💪", TRAPECIOS:"🔝", CUÁDRICEPS:"🦵",
+                        FEMORALES:"🦵", GLÚTEOS:"🍑", GEMELOS:"🦵",
+                        CORE:"⚡", ABDOMINALES:"⚡",
+                      };
+                      const LABEL: Record<string, string> = {
+                        PECHO:"Pecho", ESPALDA:"Espalda", HOMBROS:"Hombros",
+                        BÍCEPS:"Bíceps", TRÍCEPS:"Tríceps", TRAPECIOS:"Trapecios",
+                        CUÁDRICEPS:"Cuádriceps", FEMORALES:"Femorales",
+                        GLÚTEOS:"Glúteos", GEMELOS:"Gemelos",
+                        CORE:"Core", ABDOMINALES:"Abdominales",
+                      };
+                      return (
+                        <span key={grp}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                          style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", color: "#93c5fd" }}>
+                          {EMOJI[grp] ?? "💪"} {LABEL[grp] ?? grp}
+                          <span className="text-[9px] opacity-60 font-normal">+1 ejercicio</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] mt-3" style={{ color: "#555" }}>
+                    Tu entrenamiento incluye un ejercicio extra en estas zonas en cada sesión que las trabaje.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Macros */}
           <div className="space-y-2">

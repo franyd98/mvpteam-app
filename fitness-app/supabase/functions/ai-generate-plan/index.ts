@@ -488,8 +488,10 @@ function buildWorkoutDays(
   days: number,
   experience: string,
   byMuscle: Record<string, { id: number; name: string }[]>,
+  priorityGroups: string[] = [],   // grupos a reforzar con +1 ejercicio
 ): WorkoutDay[] {
   const split = SPLITS[days] ?? SPLITS[3];
+  const prioritySet = new Set(priorityGroups.map(g => g.toUpperCase()));
 
   // Pase 0: compuestos primero, rango fuerza-hipertrofia
   const srA = experience === "beginner"
@@ -518,7 +520,8 @@ function buildWorkoutDays(
       if (!pool.length) continue;
       // compuestos primero en pase A
       pool.sort((a, b) => (isCompound(b.name)?1:0) - (isCompound(a.name)?1:0));
-      const count = EX_PER_GROUP[grp] ?? 2;
+      // grupos prioritarios reciben +1 ejercicio
+      const count = (EX_PER_GROUP[grp] ?? 2) + (prioritySet.has(grp) ? 1 : 0);
       pool.filter(e => !sessionUsed.has(e.id)).slice(0, count).forEach(e => {
         exercises.push({ id: e.id, name: e.name, ...srA });
         sessionUsed.add(e.id);
@@ -545,7 +548,8 @@ function buildWorkoutDays(
       reuse.sort((a, b) => (isCompound(a.name)?1:0) - (isCompound(b.name)?1:0));
 
       const ordered = [...fresh, ...reuse].filter(e => !sessionUsed.has(e.id));
-      const count   = EX_PER_GROUP[grp] ?? 2;
+      // grupos prioritarios reciben +1 ejercicio también en pase B
+      const count   = (EX_PER_GROUP[grp] ?? 2) + (prioritySet.has(grp) ? 1 : 0);
       ordered.slice(0, count).forEach(e => {
         exercises.push({ id: e.id, name: e.name, ...srB });
         sessionUsed.add(e.id);
@@ -629,8 +633,15 @@ serve(async (req) => {
       byMuscle[mg].push({ id: ex.id, name: ex.name });
     }
 
-    // ── 4. Análisis de foto con IA (llamada pequeña) ───────────────────────
-    let analysis = "Plan personalizado basado en tus datos y objetivos.";
+    // ── 4. Análisis de foto con IA ─────────────────────────────────────────
+    // Devuelve: párrafo de análisis + grupos musculares a priorizar en el entreno
+    // Grupos válidos (deben coincidir exactamente con muscle_group en BD):
+    const VALID_GROUPS = ["PECHO","ESPALDA","HOMBROS","BÍCEPS","TRÍCEPS","TRAPECIOS",
+                          "CUÁDRICEPS","FEMORALES","GLÚTEOS","GEMELOS","CORE","ABDOMINALES"];
+
+    let analysis      = "Plan personalizado basado en tus datos y objetivos.";
+    let priorityGroups: string[] = [];   // grupos a reforzar según la foto
+
     if (anyPhoto) {
       try {
         type Block = { type:"text"; text:string } | { type:"image"; source:{ type:"base64"; media_type:string; data:string } };
@@ -640,24 +651,51 @@ serve(async (req) => {
         if (photoBack)  { content.push({type:"text",text:"[FOTO ESPALDA]"}); content.push({type:"image",source:{type:"base64",media_type:photoBack.mime,data:photoBack.base64}}); }
         content.push({type:"text", text:
           `Cliente: ${profile?.full_name ?? "Cliente"} · ${sex==="female"?"Mujer":"Hombre"} · ${age}a · ${weight}kg · ${height}cm\n` +
-          `Objetivo: ${goal} · Experiencia: ${experience}\n` +
-          `Analiza las fotos corporales y escribe un párrafo breve (3-4 frases) describiendo: % grasa visual aproximado, ` +
-          `distribución de grasa, nivel de desarrollo muscular por zona y puntos a mejorar. Solo el análisis, sin saludos.`
+          `Objetivo: ${goal} · Experiencia: ${experience}\n\n` +
+          `Analiza las fotos corporales y responde ÚNICAMENTE con este JSON (sin texto extra, sin markdown):\n` +
+          `{\n` +
+          `  "analysis": "<párrafo 3-4 frases: % grasa visual, distribución grasa, desarrollo muscular por zona, puntos a mejorar>",\n` +
+          `  "priority_groups": ["<GRUPO1>","<GRUPO2>","<GRUPO3>"]\n` +
+          `}\n\n` +
+          `priority_groups: elige 2-4 grupos musculares que más necesita desarrollar este cliente según las fotos.\n` +
+          `Grupos disponibles (usa exactamente estos nombres en mayúsculas):\n` +
+          `${VALID_GROUPS.join(", ")}`
         });
         const r = await fetch("https://api.anthropic.com/v1/messages", {
           method:"POST",
           headers:{ "x-api-key":Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version":"2023-06-01", "content-type":"application/json" },
-          body: JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens:400, system:"Eres un entrenador personal experto en análisis de composición corporal. Responde solo con el análisis, en español, sin saludos ni introducciones.", messages:[{role:"user",content}] }),
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 500,
+            system: "Eres un entrenador personal experto en análisis de composición corporal. Responde SOLO con el JSON solicitado, sin texto extra ni markdown.",
+            messages: [{ role:"user", content }],
+          }),
         });
         if (r.ok) {
           const d = await r.json();
-          if (d.content?.[0]?.text) analysis = d.content[0].text.trim();
+          const raw = (d.content?.[0]?.text ?? "").trim();
+          // Parsear JSON — puede venir con o sin backticks
+          const jsonStr = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.analysis)        analysis       = String(parsed.analysis).trim();
+            if (Array.isArray(parsed.priority_groups)) {
+              // Filtrar solo grupos válidos para evitar alucinaciones
+              priorityGroups = parsed.priority_groups
+                .map((g: string) => String(g).toUpperCase().trim())
+                .filter((g: string) => VALID_GROUPS.includes(g))
+                .slice(0, 4);
+            }
+          } catch {
+            // Si el JSON falla, usar el texto completo como análisis
+            if (raw.length > 20) analysis = raw;
+          }
         }
-      } catch { /* Si falla el análisis, usamos el texto genérico */ }
+      } catch { /* Si falla la llamada IA, seguimos sin análisis ni prioridades */ }
     }
 
     // ── 5. Guardar programa (algorítmico) ──────────────────────────────────
-    const workoutDays = buildWorkoutDays(days_per_week, experience, byMuscle);
+    const workoutDays = buildWorkoutDays(days_per_week, experience, byMuscle, priorityGroups);
     const GOAL_ES: Record<string,string> = {
       lose_fat_aggressive:"Definición agresiva", lose_fat:"Definición", lose_fat_soft:"Definición suave",
       maintain:"Mantenimiento", gain_muscle:"Volumen", bulk:"Bulk",
@@ -786,11 +824,11 @@ serve(async (req) => {
     // ── 8. Tracking ────────────────────────────────────────────────────────
     await supabase.from("ai_plan_generations").insert({
       client_id, program_id:programId, diet_plan_id:dietPlanId,
-      analysis, photo_used:!!anyPhoto,
+      analysis, photo_used:!!anyPhoto, priority_groups: priorityGroups,
     });
 
     return new Response(
-      JSON.stringify({ success:true, analysis, macros, program_id:programId, diet_plan_id:dietPlanId }),
+      JSON.stringify({ success:true, analysis, priority_groups:priorityGroups, macros, program_id:programId, diet_plan_id:dietPlanId }),
       { headers:{ ...corsHeaders, "Content-Type":"application/json" } },
     );
 
