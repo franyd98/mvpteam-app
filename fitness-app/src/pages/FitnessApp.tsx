@@ -956,9 +956,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             </section>
           )}
 
-          {/* Lista de ejercicios — espacio extra para el bottom nav */}
+          {/* Lista de ejercicios — espacio extra para el bottom nav y el rest timer */}
           {microcycle && (
-            <section className="space-y-3 pb-8">
+            <section className="space-y-3" style={{ paddingBottom: rest ? "200px" : "32px" }}>
               {microcycle.exercises.map((ex, idx) => {
                 const sub = substitutions[subKey(dayId, microcycleNumber, idx)];
                 const displayName = sub?.name ?? ex.name;
