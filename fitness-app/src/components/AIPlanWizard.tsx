@@ -16,17 +16,26 @@ interface Props {
 }
 
 interface ClientData {
-  sex:             "male" | "female";
-  age:             string;
-  height:          string;
-  weight:          string;
-  activity_factor: string;
-  goal:            string;
-  days_per_week:   number;
-  equipment:       string;
-  experience:      string;
-  injuries:        string;
+  sex:                "male" | "female";
+  age:                string;
+  height:             string;
+  weight:             string;
+  activity_factor:    string;
+  goal:               string;
+  days_per_week:      number;
+  equipment:          string;
+  experience:         string;
+  injuries:           string;
+  diet_restrictions:  string[];   // chips: sin_lactosa, sin_gluten, vegetariano, vegano
+  diet_avoid:         string;     // texto libre: "no me gusta el atún, alérgico al marisco"
 }
+
+const DIET_RESTRICTION_LABELS: Record<string, { label: string; icon: string }> = {
+  sin_lactosa:   { label: "Sin lactosa",   icon: "🥛" },
+  sin_gluten:    { label: "Sin gluten",    icon: "🌾" },
+  vegetariano:   { label: "Vegetariano",   icon: "🥗" },
+  vegano:        { label: "Vegano",        icon: "🌱" },
+};
 
 interface GenerationResult {
   analysis:        string;
@@ -71,6 +80,7 @@ const DEFAULT_DATA: ClientData = {
   activity_factor: "1.55", goal: "lose_fat",
   days_per_week: 4, equipment: "gym_full",
   experience: "intermediate", injuries: "",
+  diet_restrictions: [], diet_avoid: "",
 };
 
 const PREFS_KEY = "mvp_ai_prefs_v1";
@@ -132,7 +142,7 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
 
   // Modales de edición
   const [editPanel, setEditPanel] = useState<
-    "datos" | "objetivo" | "actividad" | "entreno" | null
+    "datos" | "objetivo" | "actividad" | "entreno" | "dieta" | null
   >(null);
 
   // ── Cargar datos del cliente al montar ──────────────────────────────────
@@ -169,11 +179,13 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
         weight:          macros?.weight_kg       ? String(macros.weight_kg)       : prev.weight,
         activity_factor: macros?.activity_factor ? String(macros.activity_factor) : prev.activity_factor,
         goal:            macros?.goal            ?? prev.goal,
-        // Preferencias de entrenamiento desde localStorage
-        days_per_week:   savedPrefs.days_per_week ?? prev.days_per_week,
-        equipment:       savedPrefs.equipment     ?? prev.equipment,
-        experience:      savedPrefs.experience    ?? prev.experience,
-        injuries:        savedPrefs.injuries      ?? prev.injuries,
+        // Preferencias de entrenamiento y dieta desde localStorage
+        days_per_week:      savedPrefs.days_per_week      ?? prev.days_per_week,
+        equipment:          savedPrefs.equipment           ?? prev.equipment,
+        experience:         savedPrefs.experience          ?? prev.experience,
+        injuries:           savedPrefs.injuries            ?? prev.injuries,
+        diet_restrictions:  savedPrefs.diet_restrictions  ?? prev.diet_restrictions,
+        diet_avoid:         savedPrefs.diet_avoid         ?? prev.diet_avoid,
       }));
       setLoadingData(false);
     };
@@ -205,8 +217,12 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
   const savePrefs = (d: ClientData) => {
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({
-        days_per_week: d.days_per_week, equipment: d.equipment,
-        experience: d.experience, injuries: d.injuries,
+        days_per_week:     d.days_per_week,
+        equipment:         d.equipment,
+        experience:        d.experience,
+        injuries:          d.injuries,
+        diet_restrictions: d.diet_restrictions,
+        diet_avoid:        d.diet_avoid,
       }));
     } catch {}
   };
@@ -237,6 +253,10 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
             equipment:     data.equipment,
             experience:    data.experience,
             injuries:      data.injuries || "",
+          },
+          diet_prefs: {
+            restrictions: data.diet_restrictions,
+            avoid:        data.diet_avoid || "",
           },
           photos: {
             front: photos.front ? { base64: photos.front.base64, mime: photos.front.mime } : null,
@@ -626,6 +646,12 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
                     { panel: "objetivo" as const,  icon: "ti-target",  label: "Objetivo",         val: GOAL_LABELS[data.goal] ?? data.goal },
                     { panel: "actividad" as const, icon: "ti-flame",   label: "Actividad diaria", val: ACT_LABELS[data.activity_factor] ?? `×${data.activity_factor}` },
                     { panel: "entreno" as const,   icon: "ti-barbell", label: "Entrenamiento",    val: `${data.days_per_week} días/sem · ${EQUIP_LABELS[data.equipment] ?? data.equipment}` },
+                    { panel: "dieta" as const,     icon: "ti-salad",   label: "Preferencias dieta",
+                      val: data.diet_restrictions.length > 0
+                        ? data.diet_restrictions.map(r => DIET_RESTRICTION_LABELS[r]?.label ?? r).join(" · ")
+                        : data.diet_avoid
+                          ? `Evita: ${data.diet_avoid.slice(0, 40)}${data.diet_avoid.length > 40 ? "…" : ""}`
+                          : "Sin restricciones" },
                   ].map(({ panel, icon, label, val }) => (
                     <button key={panel} onClick={() => setEditPanel(panel)}
                       className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:opacity-70 transition-all"
@@ -908,6 +934,69 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
                 placeholder="Ej: rodilla, lumbar…" rows={2}
                 className="w-full rounded-xl px-3 py-2.5 text-white text-sm placeholder-neutral-700 focus:outline-none resize-none"
                 style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }} />
+            </div>
+          </div>
+        </EditSheet>
+      )}
+
+      {editPanel === "dieta" && (
+        <EditSheet title="Preferencias de dieta" onClose={() => setEditPanel(null)}>
+          <div className="space-y-6">
+            {/* Restricciones rápidas */}
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">
+                Restricciones · <span className="normal-case font-normal">selecciona las que apliquen</span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(DIET_RESTRICTION_LABELS).map(([key, { label, icon }]) => {
+                  const active = data.diet_restrictions.includes(key);
+                  // Vegano implica vegetariano
+                  const implied = key === "vegetariano" && data.diet_restrictions.includes("vegano");
+                  return (
+                    <button key={key}
+                      onClick={() => {
+                        let next = [...data.diet_restrictions];
+                        if (active) {
+                          next = next.filter(r => r !== key);
+                        } else {
+                          next.push(key);
+                          // Vegano activa automáticamente vegetariano
+                          if (key === "vegano" && !next.includes("vegetariano")) next.push("vegetariano");
+                        }
+                        upd({ diet_restrictions: next });
+                      }}
+                      className="flex items-center gap-2 px-3 py-3 rounded-xl text-sm font-semibold transition-all"
+                      style={{
+                        background: (active || implied) ? "var(--mvp-red-soft)" : "#1a1a1a",
+                        border: `1px solid ${(active || implied) ? "var(--mvp-red-border)" : "#2a2a2a"}`,
+                        color: (active || implied) ? "var(--mvp-red)" : "#777",
+                        opacity: implied && !active ? 0.6 : 1,
+                      }}>
+                      <span style={{ fontSize: 16 }}>{icon}</span>
+                      <span className="text-xs">{label}</span>
+                      {(active || implied) && <i className="ti ti-check ml-auto shrink-0" style={{ fontSize: 11 }} />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Alimentos a evitar — texto libre */}
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500">
+                ¿Qué no puedes o no quieres comer? · <span className="normal-case font-normal">opcional</span>
+              </p>
+              <textarea
+                value={data.diet_avoid}
+                onChange={e => upd({ diet_avoid: e.target.value })}
+                placeholder="Ej: no me gusta el atún, alérgico al marisco, no como cerdo…"
+                rows={3}
+                className="w-full rounded-xl px-3 py-2.5 text-white text-sm placeholder-neutral-700 focus:outline-none resize-none"
+                style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}
+              />
+              <p className="text-[10px] text-neutral-600">
+                La dieta eliminará automáticamente esos alimentos de las opciones.
+              </p>
             </div>
           </div>
         </EditSheet>

@@ -37,9 +37,60 @@ function calcMacros(sex:string,weight:number,height:number,age:number,af:number,
 function scON(ref: number, carbsOn: number)  { return Math.max(20, Math.round(ref * carbsOn  / 333 / 5) * 5); }
 function scOFF(ref: number, carbsOff: number){ return Math.max(15, Math.round(ref * carbsOff / 290 / 5) * 5); }
 
+// ── Filtrado de alimentos según restricciones ─────────────────────────────────
+// Devuelve true si el item debe EXCLUIRSE
+function shouldExclude(item: string, restrictions: string[], avoidKeywords: string[]): boolean {
+  const lower = item.toLowerCase();
+
+  // Palabras clave por restricción
+  const RESTRICTION_KW: Record<string, string[]> = {
+    sin_lactosa: ["yogur","leche","queso","mousse","lácteo","batido proteico","mousse proteico",
+                  "yogur proteico","leche desnatada","bebida vegetal","kefir"],
+    sin_gluten:  ["pan","harina","avena","pasta","weetabix","corn flakes","muesli","copos",
+                  "crunchy","tortitas","bizcocho","tortas de arroz","tortas de maíz"],
+    vegetariano: ["pollo","ternera","pavo","atún","salmón","merluza","dorada","lubina",
+                  "jamón","lomo","bacalao","gambas","langostinos","lenguado","gallo",
+                  "pechuga","pavo fiambre","lomo embuchado"],
+    vegano:      ["pollo","ternera","pavo","atún","salmón","merluza","dorada","lubina",
+                  "jamón","lomo","bacalao","gambas","langostinos","lenguado","gallo",
+                  "pechuga","pavo fiambre","lomo embuchado",
+                  "huevo","claras","yogur","leche","queso","mousse","lácteo","proteína en polvo"],
+  };
+
+  for (const r of restrictions) {
+    const kws = RESTRICTION_KW[r] ?? [];
+    if (kws.some(kw => lower.includes(kw))) return true;
+  }
+
+  // Palabras del campo "evitar" (texto libre)
+  if (avoidKeywords.some(kw => kw.length > 2 && lower.includes(kw))) return true;
+
+  return false;
+}
+
+// Filtra los items de un grupo; si todos se excluyen, devuelve los originales
+// (es mejor mostrar algo que dejar el grupo vacío)
+function filterItems(items: string[], restrictions: string[], avoidKeywords: string[]): string[] {
+  if (!restrictions.length && !avoidKeywords.length) return items;
+  const filtered = items.filter(it => !shouldExclude(it, restrictions, avoidKeywords));
+  return filtered.length > 0 ? filtered : items; // fallback: devolver todos si no queda nada
+}
+
 // ── Plantillas de dieta ───────────────────────────────────────────────────────
-function buildDietMeals(carbsOn: number, carbsOff: number, goal: string) {
+function buildDietMeals(
+  carbsOn: number, carbsOff: number, goal: string,
+  restrictions: string[] = [], avoidText: string = "",
+) {
   const noCarbs = goal === "lose_fat_aggressive";
+  // Convertir texto libre a lista de keywords (minúsculas, split por coma/punto)
+  const avoidKeywords = avoidText
+    .toLowerCase()
+    .split(/[,;.\n]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 2);
+
+  // Helper de filtrado local
+  const fi = (items: string[]) => filterItems(items, restrictions, avoidKeywords);
 
   const GRASAS = ["5g Aceite de Oliva Virgen Extra","5g Aceite de Coco","10g Chocolate Negro 85%","30g Aguacate"];
   const GRASAS_COMIDA = ["10g Aceite de Oliva Virgen Extra","30g Aguacate","30g Guacamole 95%"];
@@ -426,6 +477,21 @@ function buildDietMeals(carbsOn: number, carbsOff: number, goal: string) {
       ],
     },
   ];
+
+  // ── Postprocesado: aplicar filtros a todos los items de todas las opciones ──
+  // Hacemos esto de forma genérica para no tocar cada línea de las plantillas
+  if (restrictions.length || avoidKeywords.length) {
+    for (const meal of meals as any[]) {
+      for (const opt of meal.options) {
+        for (const grp of opt.groups) {
+          grp.items = fi(grp.items as string[]);
+        }
+        // Eliminar opciones donde TODOS los grupos quedan vacíos (no debería pasar con el fallback)
+      }
+    }
+  }
+
+  return meals;
 }
 
 // ── Generador de entreno algorítmico ─────────────────────────────────────────
@@ -599,7 +665,7 @@ serve(async (req) => {
 
   try {
     const {
-      client_id, personal_data, training_prefs,
+      client_id, personal_data, training_prefs, diet_prefs,
       photos, photo_base64, photo_mime,
     } = await req.json();
 
@@ -769,7 +835,9 @@ serve(async (req) => {
     await supabase.from("program_assignments").insert({ client_id, program_id:programId, active:true });
 
     // ── 6. Guardar dieta (plantillas) ─────────────────────────────────────
-    const dietMeals = buildDietMeals(macros.carbs_on_g, macros.carbs_off_g, goal);
+    const dietRestrictions: string[] = Array.isArray(diet_prefs?.restrictions) ? diet_prefs.restrictions : [];
+    const dietAvoid: string          = typeof diet_prefs?.avoid === "string" ? diet_prefs.avoid : "";
+    const dietMeals = buildDietMeals(macros.carbs_on_g, macros.carbs_off_g, goal, dietRestrictions, dietAvoid);
     const { data: dietRow, error: dietErr } = await supabase
       .from("diet_plans")
       .insert({
