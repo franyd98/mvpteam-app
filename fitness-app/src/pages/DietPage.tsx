@@ -656,11 +656,13 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
     await loadDiet();
   };
 
-  const deleteAIDiet = async (asgnId: string, planId: string) => {
+  const deleteDiet = async (asgnId: string, planId: string) => {
     setShowDietPicker(false);
     setLoading(true);
+    // Borrar assignment y el plan completo (cascade borra meals, options…)
     await supabase.from("diet_assignments").delete().eq("id", asgnId);
     await supabase.from("diet_plans").delete().eq("id", planId);
+    // Si quedan más, activar la más reciente
     const remaining = allDiets.filter(d => d.asgnId !== asgnId);
     if (remaining.length > 0) {
       await supabase.from("diet_assignments").update({ active: true }).eq("id", remaining[0].asgnId);
@@ -766,7 +768,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
             <h1 className="text-white font-bold text-base">Dieta</h1>
             <div className="flex items-center gap-1.5">
               <p className="text-neutral-600 text-xs truncate">{profile.full_name}</p>
-              {allDiets.length > 1 && (
+              {allDiets.length > 0 && (
                 <button
                   onClick={() => setShowDietPicker(p => !p)}
                   className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 active:opacity-60"
@@ -802,14 +804,15 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
         </div>
 
         {/* Picker de dietas */}
-        {showDietPicker && allDiets.length > 1 && (
+        {showDietPicker && allDiets.length > 0 && (
           <div className="absolute left-4 right-4 top-full mt-1 rounded-2xl overflow-hidden z-50 shadow-2xl"
             style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}>
             <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 px-4 pt-3 pb-2">
-              Cambiar dieta
+              {allDiets.length > 1 ? "Cambiar / eliminar dieta" : "Gestionar dieta"}
             </p>
             {allDiets.map(d => (
               <div key={d.asgnId} className="flex items-center border-t" style={{ borderColor: "#222" }}>
+                {/* Botón principal — cambiar a esta dieta */}
                 <button
                   onClick={() => switchDiet(d.asgnId)}
                   className="flex-1 flex items-center gap-3 px-4 py-3 active:opacity-60">
@@ -817,22 +820,24 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                     style={{ fontSize: 16, color: d.source === "ai" ? "var(--mvp-red)" : "#555" }} />
                   <div className="flex-1 text-left min-w-0">
                     <p className="text-sm font-semibold text-white truncate">{d.name}</p>
-                    <p className="text-[10px] text-neutral-500">{d.source === "ai" ? "Generada por IA" : "Asignada por coach"}</p>
+                    <p className="text-[10px] text-neutral-500">
+                      {d.source === "ai" ? "Generada por IA" : "Asignada por coach"}
+                    </p>
                   </div>
                   {d.active && <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />}
                 </button>
-                {d.source === "ai" && (
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`¿Borrar "${d.name}"? Esta acción no se puede deshacer.`)) {
-                        deleteAIDiet(d.asgnId, d.planId);
-                      }
-                    }}
-                    className="px-4 py-3 active:opacity-60 shrink-0"
-                    style={{ color: "#555", borderLeft: "1px solid #222" }}>
-                    <i className="ti ti-trash" style={{ fontSize: 16 }} />
-                  </button>
-                )}
+                {/* Borrar — disponible para cualquier dieta */}
+                <button
+                  onClick={() => {
+                    if (window.confirm(`¿Borrar "${d.name}"?\n\nEsta acción no se puede deshacer.`)) {
+                      deleteDiet(d.asgnId, d.planId);
+                    }
+                  }}
+                  className="px-4 py-3 active:opacity-60 shrink-0"
+                  style={{ color: "#555", borderLeft: "1px solid #222" }}
+                  title="Eliminar esta dieta">
+                  <i className="ti ti-trash" style={{ fontSize: 16 }} />
+                </button>
               </div>
             ))}
             <div className="h-2" />
