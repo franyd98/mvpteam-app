@@ -656,16 +656,28 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
     await loadDiet();
   };
 
-  const deleteDiet = async (asgnId: string, planId: string) => {
+  const deleteDiet = async (asgnId: string, _planId: string, _source: string) => {
     setShowDietPicker(false);
     setLoading(true);
-    // Borrar assignment y el plan completo (cascade borra meals, options…)
-    await supabase.from("diet_assignments").delete().eq("id", asgnId);
-    await supabase.from("diet_plans").delete().eq("id", planId);
-    // Si quedan más, activar la más reciente
+    // Borrar solo la asignación (la política RLS client_delete_own_assignment lo permite)
+    // El plan queda huérfano en la BD pero ya no aparece en el picker del cliente
+    const { error } = await supabase
+      .from("diet_assignments")
+      .delete()
+      .eq("id", asgnId)
+      .eq("client_id", profile.id); // doble check de seguridad
+    if (error) {
+      showToast("Error al borrar la dieta");
+      setLoading(false);
+      return;
+    }
+    // Si quedan asignaciones, activar la más reciente si ninguna está activa
     const remaining = allDiets.filter(d => d.asgnId !== asgnId);
-    if (remaining.length > 0) {
-      await supabase.from("diet_assignments").update({ active: true }).eq("id", remaining[0].asgnId);
+    if (remaining.length > 0 && !remaining.some(d => d.active)) {
+      await supabase
+        .from("diet_assignments")
+        .update({ active: true })
+        .eq("id", remaining[0].asgnId);
     }
     await loadDiet();
   };
@@ -830,7 +842,7 @@ export default function DietPage({ profile, onBack }: { profile: Profile; onBack
                 <button
                   onClick={() => {
                     if (window.confirm(`¿Borrar "${d.name}"?\n\nEsta acción no se puede deshacer.`)) {
-                      deleteDiet(d.asgnId, d.planId);
+                      deleteDiet(d.asgnId, d.planId, d.source);
                     }
                   }}
                   className="px-4 py-3 active:opacity-60 shrink-0"
