@@ -864,76 +864,38 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             {program.programName}
           </p>
 
-          {/* Selector de día — lista vertical con etiqueta + nombre, A/A1 juntos */}
+          {/* Selector de día */}
           <section className="mb-4">
             <label className="text-xs uppercase tracking-wider text-neutral-500 mb-2 block">Día</label>
-            {(() => {
-              // Extrae "A", "A1", "B1"… del final del nombre
-              const getLabel = (name: string, fallbackIdx: number) => {
-                const m = name.match(/([A-Z]\d*)\s*$/);
-                return m ? m[1] : String.fromCharCode(65 + fallbackIdx);
-              };
-              // Nombre limpio sin la letra final: "Tirón A1" → "Tirón"
-              const getCleanName = (name: string) =>
-                name.replace(/\s+[A-Z]\d*\s*$/, "").trim() || name;
-
-              return (
-                <div className="flex flex-col gap-1">
-                  {program.days.map((d, i) => {
-                    const isActive  = d.id === dayId;
-                    const label     = getLabel(d.name, i);
-                    const isVar     = label.endsWith("1"); // A1, B1…
-                    const cleanName = getCleanName(d.name);
-                    // Línea separadora antes de cada par primario (A, B, C…)
-                    const showSep = i > 0 && !isVar;
-                    return (
-                      <div key={d.id}>
-                        {showSep && <div className="h-px mx-1 mb-1" style={{ background: "#1e1e1e" }} />}
-                        <button
-                          onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all active:scale-[0.98] text-left"
-                          style={isActive
-                            ? { background: "rgba(192,41,43,0.12)", border: "1px solid rgba(192,41,43,0.35)" }
-                            : { background: "transparent", border: "1px solid transparent" }}
-                        >
-                          {/* Badge de letra */}
-                          <span
-                            className="text-xs font-black shrink-0 flex items-center justify-center rounded-lg"
-                            style={{
-                              width: 36, height: 36,
-                              ...(isActive
-                                ? { background: "var(--mvp-red)", color: "#fff", boxShadow: "0 2px 10px rgba(192,41,43,0.4)" }
-                                : isVar
-                                  ? { background: "#151515", color: "#444", border: "1px solid #1e1e1e" }
-                                  : { background: "#181818", color: "#666", border: "1px solid #252525" })
-                            }}
-                          >
-                            {label}
-                          </span>
-                          {/* Nombre del día */}
-                          <span
-                            className="text-sm font-semibold truncate"
-                            style={{ color: isActive ? "#fff" : isVar ? "#444" : "#666" }}
-                          >
-                            {cleanName}
-                            {isVar && (
-                              <span className="ml-1.5 text-[10px] font-normal" style={{ color: isActive ? "rgba(255,255,255,0.5)" : "#333" }}>
-                                variación
-                              </span>
-                            )}
-                          </span>
-                          {/* Indicador activo */}
-                          {isActive && (
-                            <i className="ti ti-chevron-right ml-auto shrink-0"
-                              style={{ fontSize: 14, color: "var(--mvp-red)" }} />
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
+            <div className="flex gap-2 flex-wrap">
+              {program.days.map((d, i) => {
+                const letter = String.fromCharCode(65 + i);
+                const isActive = d.id === dayId;
+                return (
+                  <button
+                    key={d.id}
+                    onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
+                    className="w-10 h-10 rounded-xl text-sm font-black transition-all active:scale-95 flex items-center justify-center shrink-0"
+                    style={isActive
+                      ? { background: "var(--mvp-red)", color: "#fff", border: "1px solid rgba(192,41,43,0.6)", boxShadow: "0 2px 12px rgba(192,41,43,0.3)" }
+                      : { background: "#111", color: "#555", border: "1px solid #1c1c1c" }}
+                    title={d.name}
+                  >
+                    {letter}
+                  </button>
+                );
+              })}
+            </div>
+            {day && (
+              <p className="text-xs font-semibold mt-2 pl-0.5 truncate" style={{ color: "var(--mvp-red)" }}>
+                {day.name
+                  .replace(/\s+[A-Z]\d*\s*$/, "")
+                  .replace(/^día\s+[a-z]\s*[-–]\s*/i, "")
+                  .replace(/^[a-z]\s*[-–]\s*/i, "")
+                  .trim() || day.name}
+                {day.optional && <span className="ml-1 text-neutral-600 font-normal">(opcional)</span>}
+              </p>
+            )}
           </section>
 
           {/* Selector de microciclo + botón de bloqueo */}

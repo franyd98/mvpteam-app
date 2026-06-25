@@ -1,9 +1,11 @@
-// ai-generate-plan v3 — Sin IA para dieta/entreno, solo para análisis de foto
+// ai-generate-plan v4 — 100% algorítmico, sin llamadas a IA externa
 // Dieta: plantillas fijas escaladas por macros (estilo coach franvyother)
-// Entreno: algoritmo determinista con ejercicios de la BD
-// IA: llamada pequeña solo para análisis de foto corporal
+// Entreno: algoritmo determinista modelado en programas Excel reales
+//   · 2 series por ejercicio (pesada + back-off), rangos por tier
+//   · Progresión 16 semanas con fases adapt/normal/deload/PR + técnicas R&P / Dropset
+// Pliegues: opcionalmente Jackson-Pollock 3 pliegues para BF% real → macros más precisas
 //
-// Env vars: ANTHROPIC_API_KEY · SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY
+// Env vars: SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -31,6 +33,36 @@ function calcMacros(sex:string,weight:number,height:number,age:number,af:number,
   const carbs_on_g  = Math.max(20, Math.round((kcal_on  - protein_g*4 - fat_g*9)/4));
   const carbs_off_g = Math.max(20, Math.round((kcal_off - protein_g*4 - fat_g*9)/4));
   return { bmr, tdee, kcal_on, kcal_off, protein_g, fat_g, carbs_on_g, carbs_off_g };
+}
+
+// ── Jackson-Pollock 3 pliegues (opcional) ────────────────────────────────────
+// Hombre: pecho, abdomen, muslo (mm)   | Mujer: tríceps, suprailíaco, muslo (mm)
+// Devuelve % grasa corporal (1 decimal) o null si faltan datos
+function calcBodyFatJP(sex: string, age: number, s1: number, s2: number, s3: number): number | null {
+  const sum = s1 + s2 + s3;
+  if (!sum || sum <= 0) return null;
+  let density: number;
+  if (sex === "female") {
+    density = 1.0994921 - (0.0009929 * sum) + (0.0000023 * sum * sum) - (0.0001392 * age);
+  } else {
+    density = 1.10938   - (0.0008267 * sum) + (0.0000016 * sum * sum) - (0.0002574 * age);
+  }
+  const bf = (495 / density) - 450; // Siri equation
+  return Math.max(5, Math.min(50, Math.round(bf * 10) / 10));
+}
+
+// Recalcula proteína y grasa basadas en masa magra real (más preciso con pliegues)
+function refineMacrosByLeanMass(
+  base: ReturnType<typeof calcMacros>,
+  bodyFatPct: number,
+  weight: number,
+) {
+  const leanMass  = weight * (1 - bodyFatPct / 100);
+  const protein_g   = Math.round(leanMass * 2.5);       // 2.5g/kg masa magra
+  const fat_g       = Math.round(leanMass * 1.2);       // 1.2g/kg masa magra
+  const carbs_on_g  = Math.max(20, Math.round((base.kcal_on  - protein_g*4 - fat_g*9) / 4));
+  const carbs_off_g = Math.max(20, Math.round((base.kcal_off - protein_g*4 - fat_g*9) / 4));
+  return { ...base, protein_g, fat_g, carbs_on_g, carbs_off_g };
 }
 
 // ── Escalado de hidratos (referencia: 333g ON / 290g OFF del PDF franvyother) ─
@@ -495,184 +527,228 @@ function buildDietMeals(
 }
 
 // ── Generador de entreno algorítmico ─────────────────────────────────────────
-// Cada split tiene grupos con cuenta exacta de ejercicios → sesiones de 6-9 ejercicios
-// Orden de días: A, A1, B, B1, C, C1, D, D1 (intercalado)
+// Modelado en programas Excel reales (Bloque 4 PPL, Bloque 3 Arnolt, etc.)
+// Estructura: 2 series por ejercicio (pesada + back-off con diferente rango)
+// Tier 1 = primer compuesto del grupo | Tier 2 = segundo | Tier 3+ = aislamiento
 
 type SplitGroup = { name: string; count: number };
 type SplitDay   = { name: string; groups: SplitGroup[] };
 
+// SPLITS basados en los Excel de referencia
+// Tirón:  ESPALDA×6 (ESPALDA ALTA + DORSAL fusionados), TRAPECIOS×1, BÍCEPS×3, ABDOMINALES×1 = 11
+// Empuje: PECHO×3, HOMBROS×3, TRÍCEPS×3, ABDOMINALES×1 = 10
+// Pierna: GEMELOS×1, CUÁDRICEPS×3, FEMORALES×2, GLÚTEOS×1 = 7
 const SPLITS: Record<number, SplitDay[]> = {
-  1: [{ name:"Full Body", groups:[
-    { name:"ESPALDA",       count:2 },
-    { name:"CUÁDRICEPS",    count:2 },
-    { name:"PECHO",         count:2 },
-    { name:"HOMBROS",       count:1 },
-    { name:"FEMORALES",     count:1 },
-    { name:"CORE",          count:1 },
+  1: [{ name: "Full Body", groups: [
+    { name: "ESPALDA",     count: 2 },
+    { name: "CUÁDRICEPS",  count: 2 },
+    { name: "PECHO",       count: 2 },
+    { name: "HOMBROS",     count: 1 },
+    { name: "FEMORALES",   count: 1 },
+    { name: "ABDOMINALES", count: 1 },
   ]}],
   2: [
-    { name:"Superior", groups:[
-      { name:"ESPALDA",     count:3 },
-      { name:"PECHO",       count:2 },
-      { name:"HOMBROS",     count:2 },
-      { name:"BÍCEPS",      count:1 },
-      { name:"TRÍCEPS",     count:1 },
+    { name: "Superior", groups: [
+      { name: "ESPALDA",     count: 3 },
+      { name: "PECHO",       count: 3 },
+      { name: "HOMBROS",     count: 2 },
+      { name: "BÍCEPS",      count: 1 },
+      { name: "TRÍCEPS",     count: 1 },
     ]},
-    { name:"Inferior", groups:[
-      { name:"CUÁDRICEPS",  count:3 },
-      { name:"FEMORALES",   count:2 },
-      { name:"GLÚTEOS",     count:1 },
-      { name:"GEMELOS",     count:1 },
-      { name:"CORE",        count:1 },
+    { name: "Inferior", groups: [
+      { name: "CUÁDRICEPS",  count: 3 },
+      { name: "FEMORALES",   count: 2 },
+      { name: "GLÚTEOS",     count: 1 },
+      { name: "GEMELOS",     count: 1 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
   ],
   3: [
-    { name:"Empuje", groups:[
-      { name:"PECHO",       count:3 },
-      { name:"HOMBROS",     count:2 },
-      { name:"TRÍCEPS",     count:2 },
+    { name: "Empuje", groups: [
+      { name: "PECHO",       count: 3 },
+      { name: "HOMBROS",     count: 3 },
+      { name: "TRÍCEPS",     count: 3 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
-    { name:"Tirón", groups:[
-      { name:"ESPALDA",     count:3 },
-      { name:"TRAPECIOS",   count:1 },
-      { name:"BÍCEPS",      count:2 },
-      { name:"ABDOMINALES", count:1 },
+    { name: "Tirón", groups: [
+      { name: "ESPALDA",     count: 6 },
+      { name: "TRAPECIOS",   count: 1 },
+      { name: "BÍCEPS",      count: 3 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
-    { name:"Piernas", groups:[
-      { name:"CUÁDRICEPS",  count:3 },
-      { name:"FEMORALES",   count:2 },
-      { name:"GLÚTEOS",     count:1 },
-      { name:"GEMELOS",     count:1 },
+    { name: "Pierna", groups: [
+      { name: "GEMELOS",     count: 1 },
+      { name: "CUÁDRICEPS",  count: 3 },
+      { name: "FEMORALES",   count: 2 },
+      { name: "GLÚTEOS",     count: 1 },
     ]},
   ],
   4: [
-    { name:"Tirón", groups:[
-      { name:"ESPALDA",     count:3 },
-      { name:"TRAPECIOS",   count:1 },
-      { name:"BÍCEPS",      count:2 },
-      { name:"ABDOMINALES", count:1 },
+    { name: "Empuje", groups: [
+      { name: "PECHO",       count: 3 },
+      { name: "HOMBROS",     count: 3 },
+      { name: "TRÍCEPS",     count: 3 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
-    { name:"Cuádriceps", groups:[
-      { name:"CUÁDRICEPS",  count:3 },
-      { name:"GEMELOS",     count:2 },
-      { name:"FEMORALES",   count:1 },
+    { name: "Tirón", groups: [
+      { name: "ESPALDA",     count: 6 },
+      { name: "TRAPECIOS",   count: 1 },
+      { name: "BÍCEPS",      count: 3 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
-    { name:"Empuje", groups:[
-      { name:"PECHO",       count:3 },
-      { name:"HOMBROS",     count:2 },
-      { name:"TRÍCEPS",     count:2 },
+    { name: "Cuádriceps", groups: [
+      { name: "GEMELOS",     count: 1 },
+      { name: "CUÁDRICEPS",  count: 4 },
+      { name: "FEMORALES",   count: 1 },
+      { name: "GLÚTEOS",     count: 1 },
     ]},
-    { name:"Femorales", groups:[
-      { name:"FEMORALES",   count:3 },
-      { name:"GLÚTEOS",     count:1 },
-      { name:"GEMELOS",     count:1 },
-      { name:"CUÁDRICEPS",  count:1 },
+    { name: "Femorales", groups: [
+      { name: "FEMORALES",   count: 3 },
+      { name: "GLÚTEOS",     count: 2 },
+      { name: "GEMELOS",     count: 1 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
   ],
   5: [
-    { name:"Tirón", groups:[
-      { name:"ESPALDA",     count:3 },
-      { name:"TRAPECIOS",   count:1 },
-      { name:"BÍCEPS",      count:2 },
-      { name:"ABDOMINALES", count:1 },
+    { name: "Tirón", groups: [
+      { name: "ESPALDA",     count: 6 },
+      { name: "TRAPECIOS",   count: 1 },
+      { name: "BÍCEPS",      count: 3 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
-    { name:"Cuádriceps", groups:[
-      { name:"CUÁDRICEPS",  count:3 },
-      { name:"GEMELOS",     count:2 },
-      { name:"FEMORALES",   count:1 },
+    { name: "Cuádriceps", groups: [
+      { name: "GEMELOS",     count: 1 },
+      { name: "CUÁDRICEPS",  count: 4 },
+      { name: "FEMORALES",   count: 1 },
+      { name: "GLÚTEOS",     count: 1 },
     ]},
-    { name:"Empuje", groups:[
-      { name:"PECHO",       count:3 },
-      { name:"HOMBROS",     count:2 },
-      { name:"TRÍCEPS",     count:2 },
+    { name: "Empuje", groups: [
+      { name: "PECHO",       count: 3 },
+      { name: "HOMBROS",     count: 3 },
+      { name: "TRÍCEPS",     count: 3 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
-    { name:"Femorales", groups:[
-      { name:"FEMORALES",   count:3 },
-      { name:"GLÚTEOS",     count:1 },
-      { name:"GEMELOS",     count:1 },
-      { name:"CUÁDRICEPS",  count:1 },
+    { name: "Femorales", groups: [
+      { name: "FEMORALES",   count: 3 },
+      { name: "GLÚTEOS",     count: 2 },
+      { name: "GEMELOS",     count: 1 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
-    { name:"Repaso Torso", groups:[
-      { name:"ESPALDA",     count:2 },
-      { name:"HOMBROS",     count:2 },
-      { name:"BÍCEPS",      count:1 },
-      { name:"TRÍCEPS",     count:1 },
-      { name:"ABDOMINALES", count:1 },
+    { name: "Hombro-Brazos", groups: [
+      { name: "HOMBROS",     count: 3 },
+      { name: "BÍCEPS",      count: 2 },
+      { name: "TRÍCEPS",     count: 2 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
   ],
   6: [
-    { name:"Tirón Pesado", groups:[
-      { name:"ESPALDA",     count:3 },
-      { name:"TRAPECIOS",   count:2 },
-      { name:"BÍCEPS",      count:2 },
+    { name: "Tirón A", groups: [
+      { name: "ESPALDA",     count: 4 },
+      { name: "TRAPECIOS",   count: 2 },
+      { name: "BÍCEPS",      count: 2 },
     ]},
-    { name:"Cuádriceps", groups:[
-      { name:"CUÁDRICEPS",  count:3 },
-      { name:"GEMELOS",     count:2 },
-      { name:"CORE",        count:1 },
+    { name: "Cuádriceps", groups: [
+      { name: "GEMELOS",     count: 1 },
+      { name: "CUÁDRICEPS",  count: 4 },
+      { name: "FEMORALES",   count: 1 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
-    { name:"Empuje Pesado", groups:[
-      { name:"PECHO",       count:3 },
-      { name:"HOMBROS",     count:2 },
-      { name:"TRÍCEPS",     count:2 },
+    { name: "Empuje A", groups: [
+      { name: "PECHO",       count: 3 },
+      { name: "HOMBROS",     count: 3 },
+      { name: "TRÍCEPS",     count: 2 },
     ]},
-    { name:"Femorales", groups:[
-      { name:"FEMORALES",   count:3 },
-      { name:"GLÚTEOS",     count:2 },
-      { name:"GEMELOS",     count:1 },
+    { name: "Tirón B", groups: [
+      { name: "ESPALDA",     count: 3 },
+      { name: "BÍCEPS",      count: 2 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
-    { name:"Tirón Accesorios", groups:[
-      { name:"ESPALDA",     count:2 },
-      { name:"BÍCEPS",      count:2 },
-      { name:"ABDOMINALES", count:2 },
+    { name: "Femorales", groups: [
+      { name: "FEMORALES",   count: 3 },
+      { name: "GLÚTEOS",     count: 2 },
+      { name: "GEMELOS",     count: 1 },
     ]},
-    { name:"Empuje Accesorios", groups:[
-      { name:"PECHO",       count:2 },
-      { name:"HOMBROS",     count:3 },
-      { name:"TRÍCEPS",     count:2 },
+    { name: "Empuje B", groups: [
+      { name: "HOMBROS",     count: 3 },
+      { name: "PECHO",       count: 2 },
+      { name: "TRÍCEPS",     count: 2 },
+      { name: "ABDOMINALES", count: 1 },
     ]},
   ],
 };
 
-// Palabras clave de ejercicios compuestos (para orden y rep range)
-const COMPOUND_KW = ["press","sentadilla","peso muerto","remo","dominada","jalón","fondos",
-                     "hip thrust","zancada","estocada","pullover","face pull"];
+// Grupos con rangos de alta repetición (abdomen, gemelos)
+const HIGH_REP_GROUPS = new Set(["ABDOMINALES", "CORE", "GEMELOS"]);
 
-function isCompound(name: string) {
+// Palabras clave de ejercicios compuestos (se ordenan primero en cada grupo)
+const COMPOUND_KW = ["press", "sentadilla", "peso muerto", "remo", "dominada", "jalón",
+                     "fondos", "hip thrust", "zancada", "estocada", "pullover", "face pull"];
+
+function isCompound(name: string): boolean {
   return COMPOUND_KW.some(k => name.toLowerCase().includes(k));
 }
 
-// Rep range según tipo de ejercicio y experiencia
-function getRepRange(compound: boolean, isPassB: boolean, experience: string): string {
-  if (compound) {
-    // Compuesto: rangos de fuerza-hipertrofia
-    const base = experience === "beginner" ? "8-12"
-               : experience === "advanced"  ? "5-8"
-               : "6-10";
-    // En pase B (variación), ligero +2 para enfoque hipertrofia
-    if (isPassB) {
-      const map: Record<string,string> = { "8-12":"10-15", "6-10":"8-12", "5-8":"6-10" };
-      return map[base] ?? base;
-    }
-    return base;
-  } else {
-    // Aislamiento: rangos hipertrofia
-    const base = experience === "beginner" ? "12-15"
-               : experience === "advanced"  ? "10-12"
-               : "10-15";
-    if (isPassB) {
-      const map: Record<string,string> = { "12-15":"15-20", "10-12":"12-15", "10-15":"12-15" };
-      return map[base] ?? base;
-    }
-    return base;
+// ── Rangos de reps por tier y experiencia ────────────────────────────────────
+// 2 series por ejercicio: s1 = pesada, s2 = back-off (más reps, menos RIR o a fallo)
+// Modelado en los programas Excel:
+//   Tier 1: 5-8 (RIR 1) / 8-10 (RIR 0)
+//   Tier 2: 6-9 (RIR 0) / 9-12 (RIR 0)
+//   Tier 3: 9-12 (RIR 0) / 10-12 (fallo)
+type RepRangePair = { s1: string; s2: string };
+
+function getBaseRepRanges(tier: 1|2|3, experience: string, group: string): RepRangePair {
+  if (HIGH_REP_GROUPS.has(group)) {
+    return experience === "beginner"
+      ? { s1: "15-20 (RIR 1)", s2: "15-20 (RIR 0)" }
+      : { s1: "12-15 (RIR 1)", s2: "12-15 (RIR 0)" };
   }
+  if (experience === "beginner") {
+    const m: Record<number, RepRangePair> = {
+      1: { s1: "8-10 (RIR 2)",  s2: "10-12 (RIR 1)"  },
+      2: { s1: "10-12 (RIR 1)", s2: "12-15 (RIR 0)"  },
+      3: { s1: "12-15 (RIR 0)", s2: "12-15 (fallo)"  },
+    };
+    return m[tier] ?? m[3];
+  }
+  if (experience === "advanced") {
+    const m: Record<number, RepRangePair> = {
+      1: { s1: "4-6 (RIR 1)",  s2: "6-8 (RIR 0)"    },
+      2: { s1: "5-8 (RIR 0)",  s2: "8-10 (fallo)"   },
+      3: { s1: "8-10 (RIR 0)", s2: "10-12 (fallo)"  },
+    };
+    return m[tier] ?? m[3];
+  }
+  // intermediate (default)
+  const m: Record<number, RepRangePair> = {
+    1: { s1: "5-8 (RIR 1)",   s2: "8-10 (RIR 0)"   },
+    2: { s1: "6-9 (RIR 0)",   s2: "9-12 (RIR 0)"   },
+    3: { s1: "9-12 (RIR 0)",  s2: "10-12 (fallo)"  },
+  };
+  return m[tier] ?? m[3];
 }
 
-// Letras para los días
-const DAY_LETTERS = ["A","B","C","D","E","F"];
+// Ajusta los rangos según la fase de la semana (deload → más RIR; adapt → s1 más suave)
+function applyPhase(rr: RepRangePair, phase: string): RepRangePair {
+  if (phase === "deload") {
+    const ease = (s: string) => s
+      .replace("RIR 0", "RIR 2").replace("RIR 1", "RIR 3").replace("RIR 2", "RIR 3")
+      .replace("fallo", "RIR 2");
+    return { s1: ease(rr.s1), s2: ease(rr.s2) };
+  }
+  if (phase === "adapt") {
+    const ease1 = (s: string) => s
+      .replace("(RIR 0)", "(RIR 1)").replace("(RIR 1)", "(RIR 2)")
+      .replace("(fallo)", "(RIR 1)");
+    return { s1: ease1(rr.s1), s2: rr.s2 };
+  }
+  return rr;
+}
 
-type WorkoutExercise = { id: number; name: string; compound: boolean; reps: string };
-type WorkoutDay = { name: string; exercises: WorkoutExercise[] };
+// ── Letras para los días ─────────────────────────────────────────────────────
+const DAY_LETTERS = ["A", "B", "C", "D", "E", "F"];
+
+type ExWithTier = { id: number; name: string; tier: 1|2|3; group: string };
+type WorkoutDay = { name: string; exercises: ExWithTier[] };
 
 function buildWorkoutDays(
   days: number,
@@ -681,104 +757,62 @@ function buildWorkoutDays(
   priorityGroups: string[] = [],
 ): WorkoutDay[] {
   const split = SPLITS[days] ?? SPLITS[4];
-  const prioritySet = new Set(priorityGroups.map(g => g.toUpperCase()));
+  const prioritySet = new Set(priorityGroups.map(g => g.toUpperCase().trim()));
 
-  // Registrar ejercicios usados en pase A por grupo (para pase B variar)
-  const usedInA: Record<string, Set<number>> = {};
-
-  // ── Pase A: compuestos primero, rangos base ──────────────────────────────
-  const passA: WorkoutDay[] = split.map((day, di) => {
-    const exercises: WorkoutExercise[] = [];
+  return split.map((day, di) => {
+    const exercises: ExWithTier[] = [];
     const sessionUsed = new Set<number>();
 
     for (const { name: grp, count } of day.groups) {
-      if (!usedInA[grp]) usedInA[grp] = new Set();
       const pool = [...(byMuscle[grp] ?? [])];
       if (!pool.length) continue;
-      // Compuestos primero
-      pool.sort((a, b) => (isCompound(b.name)?1:0) - (isCompound(a.name)?1:0));
+      // Compuestos primero dentro del grupo
+      pool.sort((a, b) => (isCompound(b.name) ? 1 : 0) - (isCompound(a.name) ? 1 : 0));
+      // +1 ejercicio en grupos prioritarios
       const take = count + (prioritySet.has(grp) ? 1 : 0);
-      pool.filter(e => !sessionUsed.has(e.id)).slice(0, take).forEach(e => {
-        const compound = isCompound(e.name);
-        exercises.push({ id: e.id, name: e.name, compound,
-          reps: getRepRange(compound, false, experience) });
-        sessionUsed.add(e.id);
-        usedInA[grp].add(e.id);
-      });
+      let tierInGroup = 0;
+      for (const ex of pool) {
+        if (sessionUsed.has(ex.id)) continue;
+        if (tierInGroup >= take) break;
+        const tier = (tierInGroup === 0 ? 1 : tierInGroup === 1 ? 2 : 3) as 1|2|3;
+        exercises.push({ id: ex.id, name: ex.name, tier, group: grp });
+        sessionUsed.add(ex.id);
+        tierInGroup++;
+      }
     }
     return { name: `${day.name} ${DAY_LETTERS[di]}`, exercises };
   });
-
-  // ── Pase B: aislamientos/variación primero, rangos +2 reps ──────────────
-  const passB: WorkoutDay[] = split.map((day, di) => {
-    const exercises: WorkoutExercise[] = [];
-    const sessionUsed = new Set<number>();
-
-    for (const { name: grp, count } of day.groups) {
-      const pool = [...(byMuscle[grp] ?? [])];
-      if (!pool.length) continue;
-      const fresh = pool.filter(e => !(usedInA[grp]?.has(e.id)));
-      const reuse = pool.filter(e =>   usedInA[grp]?.has(e.id));
-      // En pase B: aislamientos/variación primero
-      fresh.sort((a, b) => (isCompound(a.name)?1:0) - (isCompound(b.name)?1:0));
-      reuse.sort((a, b) => (isCompound(a.name)?1:0) - (isCompound(b.name)?1:0));
-      const ordered = [...fresh, ...reuse].filter(e => !sessionUsed.has(e.id));
-      const take    = count + (prioritySet.has(grp) ? 1 : 0);
-      ordered.slice(0, take).forEach(e => {
-        const compound = isCompound(e.name);
-        exercises.push({ id: e.id, name: e.name, compound,
-          reps: getRepRange(compound, true, experience) });
-        sessionUsed.add(e.id);
-      });
-    }
-    return { name: `${day.name} ${DAY_LETTERS[di]}1`, exercises };
-  });
-
-  // ── Intercalar A/A1/B/B1/C/C1… ──────────────────────────────────────────
-  const result: WorkoutDay[] = [];
-  for (let i = 0; i < passA.length; i++) {
-    result.push(passA[i]);
-    result.push(passB[i]);
-  }
-  return result;
 }
 
 // ── Matriz de progresión 16 semanas ──────────────────────────────────────────
-// baseSets: series de partida para esa semana (sin modificadores)
-// repMod:   ajuste al rango de reps (negativo = más fuerza, positivo = más volumen/descarga)
-// rpe:      esfuerzo percibido de la sesión
-// technique: null | "rp" (Rest & Pause último set aislamientos) | "rp_drop" (+ Dropset último ejercicio)
+// Phases: adapt (semana 1 de cada bloque), normal, deload, pr (semana pico)
+// technique: null | "rp" (R&P último set aislamientos) | "rp_drop" (R&P + Dropset)
 const PROG_MATRIX: readonly {
-  baseSets: number; rpe: number; repMod: number; label: string; technique: null | "rp" | "rp_drop";
+  label: string;
+  phase: "adapt" | "normal" | "deload" | "pr";
+  technique: null | "rp" | "rp_drop";
 }[] = [
   // ── Bloque 1 ──────────────────────────────────────────────────────────────
-  { baseSets:3, rpe:7,  repMod: 0, label:"S1  · Adaptación",      technique: null      },
-  { baseSets:3, rpe:8,  repMod: 0, label:"S2  · Progresión",       technique: null      },
-  { baseSets:4, rpe:8,  repMod: 0, label:"S3  · Sobrecarga",       technique: null      },
-  { baseSets:3, rpe:6,  repMod: 2, label:"S4  · Descarga",         technique: null      },
-  { baseSets:4, rpe:9,  repMod:-2, label:"S5  · Bloque fuerza",    technique: "rp"      },
-  { baseSets:4, rpe:9,  repMod:-2, label:"S6  · Sobrecarga II",    technique: "rp_drop" },
-  { baseSets:4, rpe:10, repMod:-3, label:"S7  · Semana de PR",     technique: "rp_drop" },
-  { baseSets:3, rpe:6,  repMod: 2, label:"S8  · Descarga final",   technique: null      },
-  // ── Bloque 2 (nivel superior) ─────────────────────────────────────────────
-  { baseSets:3, rpe:7,  repMod: 1, label:"S9  · Adaptación II",    technique: null      },
-  { baseSets:4, rpe:8,  repMod: 1, label:"S10 · Volumen II",        technique: null      },
-  { baseSets:4, rpe:9,  repMod: 1, label:"S11 · Sobrecarga III",    technique: "rp"      },
-  { baseSets:3, rpe:6,  repMod: 3, label:"S12 · Descarga II",       technique: null      },
-  { baseSets:4, rpe:8,  repMod:-1, label:"S13 · Fuerza-Volumen",    technique: "rp"      },
-  { baseSets:5, rpe:9,  repMod:-1, label:"S14 · Sobrecarga IV",     technique: "rp_drop" },
-  { baseSets:5, rpe:10, repMod:-2, label:"S15 · Semana de PR II",   technique: "rp_drop" },
-  { baseSets:3, rpe:6,  repMod: 3, label:"S16 · Descarga final II", technique: null      },
+  { label: "S1  · Adaptación",        phase: "adapt",  technique: null      },
+  { label: "S2  · Progresión",         phase: "normal", technique: null      },
+  { label: "S3  · Sobrecarga",         phase: "normal", technique: null      },
+  { label: "S4  · Descarga",           phase: "deload", technique: null      },
+  { label: "S5  · Bloque fuerza",      phase: "normal", technique: "rp"      },
+  { label: "S6  · Sobrecarga II",      phase: "normal", technique: "rp_drop" },
+  { label: "S7  · Semana de PR",       phase: "pr",     technique: "rp_drop" },
+  { label: "S8  · Descarga final",     phase: "deload", technique: null      },
+  // ── Bloque 2 ──────────────────────────────────────────────────────────────
+  { label: "S9  · Adaptación II",      phase: "adapt",  technique: null      },
+  { label: "S10 · Progresión II",       phase: "normal", technique: null      },
+  { label: "S11 · Sobrecarga III",      phase: "normal", technique: "rp"      },
+  { label: "S12 · Descarga II",         phase: "deload", technique: null      },
+  { label: "S13 · Intensidad II",       phase: "normal", technique: "rp"      },
+  { label: "S14 · Sobrecarga IV",       phase: "normal", technique: "rp_drop" },
+  { label: "S15 · Semana de PR II",     phase: "pr",     technique: "rp_drop" },
+  { label: "S16 · Descarga final II",   phase: "deload", technique: null      },
 ];
 
 const N_WEEKS = PROG_MATRIX.length; // 16
-
-function parseRepRange(s: string): [number, number] {
-  const m = s.match(/(\d+)\s*[-–]\s*(\d+)/);
-  if (m) return [parseInt(m[1]), parseInt(m[2])];
-  const n = parseInt(s);
-  return isNaN(n) ? [8,10] : [n,n];
-}
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 serve(async (req) => {
@@ -787,13 +821,8 @@ serve(async (req) => {
   try {
     const {
       client_id, personal_data, training_prefs, diet_prefs,
-      photos, photo_base64, photo_mime,
+      skinfolds, priority_groups: manualPriorityGroups,
     } = await req.json();
-
-    const photoFront = photos?.front ?? (photo_base64 ? { base64:photo_base64, mime:photo_mime??"image/jpeg" } : null);
-    const photoSide  = photos?.side  ?? null;
-    const photoBack  = photos?.back  ?? null;
-    const anyPhoto   = photoFront ?? photoSide ?? photoBack;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -803,8 +832,15 @@ serve(async (req) => {
     const { sex, age, height, weight, activity_factor, goal } = personal_data;
     const { days_per_week, equipment, experience, injuries } = training_prefs;
 
-    // ── 1. Macros ──────────────────────────────────────────────────────────
-    const macros = calcMacros(sex, weight, height, age, activity_factor, goal);
+    // ── 1. Macros (con refinamiento opcional por pliegues) ─────────────────
+    let macros = calcMacros(sex, weight, height, age, activity_factor, goal);
+    let bodyFatPct: number | null = null;
+    if (skinfolds?.s1 && skinfolds?.s2 && skinfolds?.s3) {
+      bodyFatPct = calcBodyFatJP(sex, Number(age), Number(skinfolds.s1), Number(skinfolds.s2), Number(skinfolds.s3));
+      if (bodyFatPct !== null) {
+        macros = refineMacrosByLeanMass(macros, bodyFatPct, Number(weight));
+      }
+    }
 
     // ── 2. Fetch datos cliente ─────────────────────────────────────────────
     const [{ data: profile }, { data: exercises }] = await Promise.all([
@@ -820,66 +856,17 @@ serve(async (req) => {
       byMuscle[mg].push({ id: ex.id, name: ex.name });
     }
 
-    // ── 4. Análisis de foto con IA ─────────────────────────────────────────
-    // Devuelve: párrafo de análisis + grupos musculares a priorizar en el entreno
-    // Grupos válidos (deben coincidir exactamente con muscle_group en BD):
+    // ── 4. Grupos prioritarios (selección manual del wizard) ──────────────
     const VALID_GROUPS = ["PECHO","ESPALDA","HOMBROS","BÍCEPS","TRÍCEPS","TRAPECIOS",
                           "CUÁDRICEPS","FEMORALES","GLÚTEOS","GEMELOS","CORE","ABDOMINALES"];
+    const priorityGroups: string[] = Array.isArray(manualPriorityGroups)
+      ? manualPriorityGroups.map((g: string) => String(g).toUpperCase().trim())
+                            .filter((g: string) => VALID_GROUPS.includes(g)).slice(0, 4)
+      : [];
 
-    let analysis      = "Plan personalizado basado en tus datos y objetivos.";
-    let priorityGroups: string[] = [];   // grupos a reforzar según la foto
-
-    if (anyPhoto) {
-      try {
-        type Block = { type:"text"; text:string } | { type:"image"; source:{ type:"base64"; media_type:string; data:string } };
-        const content: Block[] = [];
-        if (photoFront) { content.push({type:"text",text:"[FOTO FRENTE]"}); content.push({type:"image",source:{type:"base64",media_type:photoFront.mime,data:photoFront.base64}}); }
-        if (photoSide)  { content.push({type:"text",text:"[FOTO LATERAL]"}); content.push({type:"image",source:{type:"base64",media_type:photoSide.mime,data:photoSide.base64}}); }
-        if (photoBack)  { content.push({type:"text",text:"[FOTO ESPALDA]"}); content.push({type:"image",source:{type:"base64",media_type:photoBack.mime,data:photoBack.base64}}); }
-        content.push({type:"text", text:
-          `Cliente: ${profile?.full_name ?? "Cliente"} · ${sex==="female"?"Mujer":"Hombre"} · ${age}a · ${weight}kg · ${height}cm\n` +
-          `Objetivo: ${goal} · Experiencia: ${experience}\n\n` +
-          `Analiza las fotos corporales y responde ÚNICAMENTE con este JSON (sin texto extra, sin markdown):\n` +
-          `{\n` +
-          `  "analysis": "<párrafo 3-4 frases: % grasa visual, distribución grasa, desarrollo muscular por zona, puntos a mejorar>",\n` +
-          `  "priority_groups": ["<GRUPO1>","<GRUPO2>","<GRUPO3>"]\n` +
-          `}\n\n` +
-          `priority_groups: elige 2-4 grupos musculares que más necesita desarrollar este cliente según las fotos.\n` +
-          `Grupos disponibles (usa exactamente estos nombres en mayúsculas):\n` +
-          `${VALID_GROUPS.join(", ")}`
-        });
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
-          method:"POST",
-          headers:{ "x-api-key":Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version":"2023-06-01", "content-type":"application/json" },
-          body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 500,
-            system: "Eres un entrenador personal experto en análisis de composición corporal. Responde SOLO con el JSON solicitado, sin texto extra ni markdown.",
-            messages: [{ role:"user", content }],
-          }),
-        });
-        if (r.ok) {
-          const d = await r.json();
-          const raw = (d.content?.[0]?.text ?? "").trim();
-          // Parsear JSON — puede venir con o sin backticks
-          const jsonStr = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-          try {
-            const parsed = JSON.parse(jsonStr);
-            if (parsed.analysis)        analysis       = String(parsed.analysis).trim();
-            if (Array.isArray(parsed.priority_groups)) {
-              // Filtrar solo grupos válidos para evitar alucinaciones
-              priorityGroups = parsed.priority_groups
-                .map((g: string) => String(g).toUpperCase().trim())
-                .filter((g: string) => VALID_GROUPS.includes(g))
-                .slice(0, 4);
-            }
-          } catch {
-            // Si el JSON falla, usar el texto completo como análisis
-            if (raw.length > 20) analysis = raw;
-          }
-        }
-      } catch { /* Si falla la llamada IA, seguimos sin análisis ni prioridades */ }
-    }
+    const analysis = bodyFatPct !== null
+      ? `Plan personalizado · ${bodyFatPct}% grasa corporal (Jackson-Pollock) · ${macros.protein_g}g proteína · ${macros.kcal_on}kcal días on.`
+      : `Plan personalizado · ${macros.protein_g}g proteína · ${macros.kcal_on}kcal días on.`;
 
     // ── 5. Guardar programa (algorítmico) ──────────────────────────────────
     const workoutDays = buildWorkoutDays(days_per_week, experience, byMuscle, priorityGroups);
@@ -891,7 +878,7 @@ serve(async (req) => {
       .from("programs")
       .insert({
         name:            `Plan ${GOAL_ES[goal]??goal} - ${days_per_week} días`,
-        description:     `Algoritmo · ${new Date().toLocaleDateString("es-ES")} · ${macros.kcal_on}kcal · 16 semanas · ${days_per_week*2} sesiones/ciclo`,
+        description:     `Algoritmo · ${new Date().toLocaleDateString("es-ES")} · ${macros.kcal_on}kcal · 16 semanas · ${days_per_week} días/semana`,
         owner_client_id: client_id,
         source:          "ai",
       })
@@ -914,67 +901,56 @@ serve(async (req) => {
       if (!mcRows?.length) continue;
 
       for (let mc = 0; mc < N_WEEKS; mc++) {
-        const prog     = PROG_MATRIX[mc];
-        const mcId     = mcRows[mc].id;
-        const rir      = Math.max(0, 10 - prog.rpe);
-        const totalEx  = day.exercises.length;
+        const prog    = PROG_MATRIX[mc];
+        const mcId    = mcRows[mc].id;
+        const totalEx = day.exercises.length;
 
         type MeRow = {
-          microcycle_id:string; exercise_id:number; order_index:number;
-          total_sets:number; note:string|null;
-          _minR:number; _maxR:number; _rir:number;
-          _compound:boolean; _exIndex:number; _totalEx:number;
+          microcycle_id: string; exercise_id: number; order_index: number;
+          total_sets: number; note: string | null;
+          _tier: 1|2|3; _group: string; _exIndex: number; _totalEx: number;
         };
         const meInputs: MeRow[] = [];
 
         day.exercises.forEach((ex, ei) => {
-          const [minR, maxR] = parseRepRange(ex.reps);
-          // repMod negativo = menos reps (fuerza), positivo = más reps (descarga/volumen)
-          const adjMin = Math.max(1, minR + prog.repMod);
-          const adjMax = Math.max(1, maxR + prog.repMod);
-          // Series base de la semana, mínimo 2
-          const sets   = Math.max(2, prog.baseSets);
           meInputs.push({
             microcycle_id: mcId, exercise_id: ex.id,
-            order_index: ei + 1, total_sets: sets,
-            note: prog.label,
-            _minR: adjMin, _maxR: adjMax, _rir: rir,
-            _compound: ex.compound, _exIndex: ei, _totalEx: totalEx,
+            order_index:   ei + 1, total_sets: 2, // siempre 2 series: pesada + back-off
+            note:          prog.label,
+            _tier: ex.tier, _group: ex.group, _exIndex: ei, _totalEx: totalEx,
           });
         });
         if (!meInputs.length) continue;
 
         const { data: meRows } = await supabase
           .from("microcycle_exercises")
-          .insert(meInputs.map(({ _minR:_a, _maxR:_b, _rir:_c, _compound:_d, _exIndex:_e, _totalEx:_f, ...r }) => r))
+          .insert(meInputs.map(({ _tier:_a, _group:_b, _exIndex:_c, _totalEx:_d, ...r }) => r))
           .select("id");
         if (!meRows?.length) continue;
 
-        const setInserts = meRows.flatMap((me, ei) => {
-          const inp  = meInputs[ei];
-          const base = inp._minR === inp._maxR ? String(inp._minR) : `${inp._minR}-${inp._maxR}`;
+        const setInserts = meRows.flatMap((me: { id: string }, ei: number) => {
+          const inp   = meInputs[ei];
+          const baseR = getBaseRepRanges(inp._tier, experience, inp._group);
+          const rr    = applyPhase(baseR, prog.phase);
 
-          return Array.from({ length: inp.total_sets }, (_, sn) => {
-            const isLastSet = sn === inp.total_sets - 1;
-            // Técnicas de alta intensidad en el último set de aislamientos
-            // (no compuestos, no el primer ejercicio de la sesión)
-            let technique = "";
-            if (isLastSet && !inp._compound && inp._exIndex > 0 && prog.technique) {
-              if (prog.technique === "rp") {
-                technique = " · R&P";
-              } else if (prog.technique === "rp_drop") {
-                // Dropset en el último ejercicio de la sesión, R&P en los demás
-                technique = inp._exIndex === inp._totalEx - 1 ? " · Dropset -20%" : " · R&P";
-              }
+          // Técnica en la última serie (s2) de aislamientos (tier 2+) en semanas de intensidad
+          const isTier1 = inp._tier === 1;
+          let tech2 = "";
+          if (!isTier1 && prog.technique) {
+            if (prog.technique === "rp") {
+              tech2 = " · R&P";
+            } else if (prog.technique === "rp_drop") {
+              // Último ejercicio de la sesión: Dropset; resto de aislamientos: R&P
+              tech2 = inp._exIndex === inp._totalEx - 1 ? " · Dropset -20%" : " · R&P";
             }
-            return {
-              microcycle_exercise_id: me.id,
-              set_number: sn + 1,
-              target_reps: `${base} (RIR ${inp._rir})${technique}`,
-              target_weight: null,
-              target_rpe: null,
-            };
-          });
+          }
+
+          return [
+            { microcycle_exercise_id: me.id, set_number: 1, target_reps: rr.s1,
+              target_weight: null, target_rpe: null },
+            { microcycle_exercise_id: me.id, set_number: 2, target_reps: rr.s2 + tech2,
+              target_weight: null, target_rpe: null },
+          ];
         });
         if (setInserts.length) await supabase.from("exercise_sets").insert(setInserts);
       }
@@ -1041,11 +1017,11 @@ serve(async (req) => {
     // ── 8. Tracking ────────────────────────────────────────────────────────
     await supabase.from("ai_plan_generations").insert({
       client_id, program_id:programId, diet_plan_id:dietPlanId,
-      analysis, photo_used:!!anyPhoto, priority_groups: priorityGroups,
+      analysis, photo_used: false, priority_groups: priorityGroups,
     });
 
     return new Response(
-      JSON.stringify({ success:true, analysis, priority_groups:priorityGroups, macros, program_id:programId, diet_plan_id:dietPlanId }),
+      JSON.stringify({ success:true, analysis, priority_groups:priorityGroups, body_fat_pct:bodyFatPct, macros, program_id:programId, diet_plan_id:dietPlanId }),
       { headers:{ ...corsHeaders, "Content-Type":"application/json" } },
     );
 

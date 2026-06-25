@@ -1,8 +1,9 @@
-// AIPlanWizard.tsx — v3
-// UX simplificado: una pantalla con datos pre-cargados, foto opcional, genera.
-// El usuario solo actualiza el peso si ha cambiado y sube foto si quiere.
+// AIPlanWizard.tsx — v4
+// 100% algorítmico — sin IA externa, sin fotos.
+// Pliegues opcionales (Jackson-Pollock) para refinar macros por masa magra real.
+// Grupos prioritarios: el usuario elige qué músculos potenciar (+1 ejercicio).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "../lib/supabase";
 
@@ -39,7 +40,8 @@ const DIET_RESTRICTION_LABELS: Record<string, { label: string; icon: string }> =
 
 interface GenerationResult {
   analysis:        string;
-  priority_groups: string[];   // grupos musculares priorizados por la IA
+  priority_groups: string[];
+  body_fat_pct:    number | null;  // % grasa por Jackson-Pollock (null si sin pliegues)
   macros: {
     kcal_on: number; protein_g: number;
     carbs_on_g: number; fat_g: number;
@@ -123,14 +125,30 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
   const [loadingData, setLoadingData] = useState(true);
   const [isNewClient, setIsNewClient] = useState(false); // true si no hay datos previos
 
-  // Fotos (frente, lateral, espalda)
-  type PhotoSlot = { base64: string; mime: string; preview: string } | null;
-  const [photos, setPhotos] = useState<{ front: PhotoSlot; side: PhotoSlot; back: PhotoSlot }>({
-    front: null, side: null, back: null,
-  });
-  const fileRefFront = useRef<HTMLInputElement>(null);
-  const fileRefSide  = useRef<HTMLInputElement>(null);
-  const fileRefBack  = useRef<HTMLInputElement>(null);
+  // Pliegues opcionales (Jackson-Pollock 3 pliegues)
+  const [useSkinfolds, setUseSkinfolds] = useState(false);
+  const [skinfolds, setSkinfolds] = useState({ s1: "", s2: "", s3: "" });
+
+  // Grupos prioritarios (selección manual, 0-4 grupos)
+  const PRIORITY_OPTIONS = [
+    { key: "PECHO",      label: "Pecho",       icon: "ti-heart-filled" },
+    { key: "ESPALDA",    label: "Espalda",     icon: "ti-barbell" },
+    { key: "HOMBROS",    label: "Hombros",     icon: "ti-arrow-up" },
+    { key: "BÍCEPS",     label: "Bíceps",      icon: "ti-trending-up" },
+    { key: "TRÍCEPS",    label: "Tríceps",     icon: "ti-trending-down" },
+    { key: "TRAPECIOS",  label: "Trapecios",   icon: "ti-arrow-bar-up" },
+    { key: "CUÁDRICEPS", label: "Cuádriceps",  icon: "ti-layout-2" },
+    { key: "FEMORALES",  label: "Femorales",   icon: "ti-layout-2" },
+    { key: "GLÚTEOS",    label: "Glúteos",     icon: "ti-layout-bottombar" },
+    { key: "GEMELOS",    label: "Gemelos",     icon: "ti-layout-bottombar" },
+    { key: "ABDOMINALES",label: "Abdominales", icon: "ti-layout-rows" },
+  ];
+  const [priorityGroups, setPriorityGroups] = useState<string[]>([]);
+
+  const togglePriority = (key: string) =>
+    setPriorityGroups(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : prev.length < 4 ? [...prev, key] : prev
+    );
 
   // Estado de generación
   const [generating,   setGenerating]   = useState(false);
@@ -199,20 +217,6 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
     return () => clearInterval(iv);
   }, [generating]);
 
-  // ── Fotos ────────────────────────────────────────────────────────────────
-  const handlePhoto = (file: File, slot: "front" | "side" | "back") => {
-    const mime = file.type || "image/jpeg";
-    const reader = new FileReader();
-    reader.onload = e => {
-      const url = e.target?.result as string;
-      setPhotos(prev => ({ ...prev, [slot]: { base64: url.split(",")[1], mime, preview: url } }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const clearPhoto = (slot: "front" | "side" | "back") =>
-    setPhotos(prev => ({ ...prev, [slot]: null }));
-
   // ── Guardar prefs en localStorage ────────────────────────────────────────
   const savePrefs = (d: ClientData) => {
     try {
@@ -237,34 +241,37 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
     setError(null);
     setLoadingStep(0);
     try {
-      const { data: res, error: fnErr } = await supabase.functions.invoke("ai-generate-plan", {
-        body: {
-          client_id:     profile.id,
-          personal_data: {
-            sex:             data.sex,
-            age:             Number(data.age),
-            height:          Number(data.height),
-            weight:          Number(data.weight),
-            activity_factor: Number(data.activity_factor),
-            goal:            data.goal,
-          },
-          training_prefs: {
-            days_per_week: data.days_per_week,
-            equipment:     data.equipment,
-            experience:    data.experience,
-            injuries:      data.injuries || "",
-          },
-          diet_prefs: {
-            restrictions: data.diet_restrictions,
-            avoid:        data.diet_avoid || "",
-          },
-          photos: {
-            front: photos.front ? { base64: photos.front.base64, mime: photos.front.mime } : null,
-            side:  photos.side  ? { base64: photos.side.base64,  mime: photos.side.mime  } : null,
-            back:  photos.back  ? { base64: photos.back.base64,  mime: photos.back.mime  } : null,
-          },
+      const body: Record<string, unknown> = {
+        client_id:     profile.id,
+        personal_data: {
+          sex:             data.sex,
+          age:             Number(data.age),
+          height:          Number(data.height),
+          weight:          Number(data.weight),
+          activity_factor: Number(data.activity_factor),
+          goal:            data.goal,
         },
-      });
+        training_prefs: {
+          days_per_week: data.days_per_week,
+          equipment:     data.equipment,
+          experience:    data.experience,
+          injuries:      data.injuries || "",
+        },
+        diet_prefs: {
+          restrictions: data.diet_restrictions,
+          avoid:        data.diet_avoid || "",
+        },
+        priority_groups: priorityGroups,
+      };
+      // Pliegues opcionales
+      if (useSkinfolds && skinfolds.s1 && skinfolds.s2 && skinfolds.s3) {
+        body.skinfolds = {
+          s1: Number(skinfolds.s1),
+          s2: Number(skinfolds.s2),
+          s3: Number(skinfolds.s3),
+        };
+      }
+      const { data: res, error: fnErr } = await supabase.functions.invoke("ai-generate-plan", { body });
       if (fnErr || res?.error) throw new Error(fnErr?.message ?? res?.error);
       const r = res as GenerationResult;
       setResult(r);
@@ -280,15 +287,14 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
   const resetResult = () => {
     try { localStorage.removeItem(RESULT_KEY); } catch {}
     setResult(null);
-    setPhotos({ front: null, side: null, back: null });
+    setSkinfolds({ s1: "", s2: "", s3: "" });
+    setPriorityGroups([]);
     setError(null);
   };
 
-  const canGenerate = photos.front !== null && (
-    isNewClient
-      ? Number(data.weight) > 0 && Number(data.age) > 0 && Number(data.height) > 0
-      : Number(data.weight) > 0
-  );
+  const canGenerate = isNewClient
+    ? Number(data.weight) > 0 && Number(data.age) > 0 && Number(data.height) > 0
+    : Number(data.weight) > 0;
 
   // ── Render: Loading ───────────────────────────────────────────────────────
   if (generating) {
@@ -349,14 +355,14 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
           </div>
           <div className="flex-1">
             <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--mvp-red)" }}>
-              Tu Plan · IA
+              Mi Plan · MVP Team
             </p>
             <p className="text-white font-bold text-sm">Plan generado</p>
           </div>
           <button onClick={resetResult}
             className="text-xs font-medium px-3 py-1.5 rounded-lg"
             style={{ background: "#1a1a1a", color: "#777", border: "1px solid #2a2a2a" }}>
-            Nuevo plan
+            Regenerar
           </button>
         </div>
 
@@ -378,7 +384,30 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
             </div>
           </div>
 
-          {/* Grupos musculares priorizados (solo si la IA los detectó) */}
+          {/* % Grasa corporal si se usaron pliegues */}
+          {result.body_fat_pct !== null && result.body_fat_pct !== undefined && (
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
+              <div className="flex">
+                <div className="w-[3px] shrink-0" style={{ background: "#10b981" }} />
+                <div className="flex-1 px-4 py-4 flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-[10px] uppercase tracking-wider font-bold mb-1" style={{ color: "#10b981" }}>
+                      % Grasa corporal · Jackson-Pollock
+                    </p>
+                    <p className="text-sm text-neutral-400">
+                      Macros calculadas sobre <strong className="text-white">{Math.round(Number(data.weight) * (1 - result.body_fat_pct / 100))} kg</strong> de masa magra
+                    </p>
+                  </div>
+                  <p className="text-3xl font-bold tabular-nums" style={{ color: "#10b981" }}>
+                    {result.body_fat_pct}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Grupos prioritarios seleccionados */}
           {result.priority_groups?.length > 0 && (
             <div className="rounded-2xl overflow-hidden"
               style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
@@ -388,17 +417,11 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
                   <div className="flex items-center gap-2 mb-3">
                     <i className="ti ti-target" style={{ fontSize: 14, color: "#3b82f6" }} />
                     <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "#3b82f6" }}>
-                      Zonas a reforzar · detectadas por IA
+                      Zonas priorizadas en tu entreno
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {result.priority_groups.map(grp => {
-                      const EMOJI: Record<string, string> = {
-                        PECHO:"💪", ESPALDA:"🔙", HOMBROS:"🏋️", BÍCEPS:"💪",
-                        TRÍCEPS:"💪", TRAPECIOS:"🔝", CUÁDRICEPS:"🦵",
-                        FEMORALES:"🦵", GLÚTEOS:"🍑", GEMELOS:"🦵",
-                        CORE:"⚡", ABDOMINALES:"⚡",
-                      };
                       const LABEL: Record<string, string> = {
                         PECHO:"Pecho", ESPALDA:"Espalda", HOMBROS:"Hombros",
                         BÍCEPS:"Bíceps", TRÍCEPS:"Tríceps", TRAPECIOS:"Trapecios",
@@ -410,14 +433,14 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
                         <span key={grp}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
                           style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", color: "#93c5fd" }}>
-                          {EMOJI[grp] ?? "💪"} {LABEL[grp] ?? grp}
+                          {LABEL[grp] ?? grp}
                           <span className="text-[9px] opacity-60 font-normal">+1 ejercicio</span>
                         </span>
                       );
                     })}
                   </div>
                   <p className="text-[10px] mt-3" style={{ color: "#555" }}>
-                    Tu entrenamiento incluye un ejercicio extra en estas zonas en cada sesión que las trabaje.
+                    Tu entreno incluye un ejercicio extra en estas zonas en cada sesión que las trabaje.
                   </p>
                 </div>
               </div>
@@ -479,7 +502,7 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
           </div>
 
           <p className="text-[10px] text-neutral-700 text-center leading-relaxed px-2 pt-2">
-            Generado por IA · Recomendaciones orientativas. Consulta con tu entrenador ante cualquier duda.
+            Plan generado algorítmicamente · Recomendaciones orientativas. Consulta con tu entrenador ante cualquier duda.
           </p>
         </div>
       </div>
@@ -498,7 +521,7 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
         </div>
         <div className="flex-1">
           <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--mvp-red)" }}>
-            IA · MVP Team
+            Mi Plan · MVP Team
           </p>
           <p className="text-white font-bold text-sm">Tu Plan Personalizado</p>
         </div>
@@ -668,78 +691,99 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
               </>
             )}
 
-            {/* ── Fotos corporales ── */}
+            {/* ── Grupos musculares a potenciar ── */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">
-                  Fotos corporales
+                  Musculatura prioritaria
                 </p>
                 <span className="text-[10px] text-neutral-600">
-                  mejoran mucho el análisis
+                  {priorityGroups.length > 0 ? `${priorityGroups.length}/4 seleccionados` : "opcional · máx. 4"}
                 </span>
               </div>
-
-              {/* Inputs ocultos */}
-              <input ref={fileRefFront} type="file" accept="image/*" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f, "front"); }} />
-              <input ref={fileRefSide}  type="file" accept="image/*" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f, "side");  }} />
-              <input ref={fileRefBack}  type="file" accept="image/*" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f, "back");  }} />
-
-              {/* Grid de slots */}
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  { slot: "front" as const, ref: fileRefFront, label: "Frente",  required: true  },
-                  { slot: "side"  as const, ref: fileRefSide,  label: "Lateral", required: false },
-                  { slot: "back"  as const, ref: fileRefBack,  label: "Espalda", required: false },
-                ]).map(({ slot, ref, label, required }) => {
-                  const p = photos[slot];
+              <div className="flex flex-wrap gap-2">
+                {PRIORITY_OPTIONS.map(({ key, label }) => {
+                  const active = priorityGroups.includes(key);
+                  const maxed  = priorityGroups.length >= 4 && !active;
                   return (
-                    <div key={slot} className="space-y-1">
-                      <p className="text-[10px] text-center font-semibold"
-                        style={{ color: required ? "var(--mvp-red)" : "#555" }}>
-                        {label}{!required && <span className="text-neutral-600"> (opc)</span>}
-                      </p>
-                      {p ? (
-                        <div className="relative rounded-xl overflow-hidden aspect-[3/4]">
-                          <img src={p.preview} alt={label} className="w-full h-full object-cover" />
-                          <button onClick={() => clearPhoto(slot)}
-                            className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center"
-                            style={{ background: "rgba(0,0,0,0.8)", color: "#fff" }}>
-                            <i className="ti ti-x" style={{ fontSize: 11 }} />
-                          </button>
-                        </div>
-                      ) : (
-                        <button onClick={() => ref.current?.click()}
-                          className="w-full aspect-[3/4] rounded-xl flex flex-col items-center justify-center gap-1 active:opacity-70"
-                          style={{
-                            background: "#141414",
-                            border: `2px dashed ${required ? "var(--mvp-red-border)" : "#2a2a2a"}`,
-                          }}>
-                          <i className="ti ti-camera"
-                            style={{ fontSize: 22, color: required ? "var(--mvp-red)" : "#444" }} />
-                          <span className="text-[9px] font-medium"
-                            style={{ color: required ? "var(--mvp-red)" : "#444" }}>
-                            {required ? "Requerida" : "Opcional"}
-                          </span>
-                        </button>
-                      )}
-                    </div>
+                    <button key={key} onClick={() => !maxed && togglePriority(key)}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                      style={{
+                        background: active ? "rgba(59,130,246,0.15)" : "#141414",
+                        border: `1px solid ${active ? "rgba(59,130,246,0.4)" : "#222"}`,
+                        color: active ? "#93c5fd" : maxed ? "#333" : "#666",
+                        cursor: maxed ? "not-allowed" : "pointer",
+                      }}>
+                      {label}
+                      {active && <i className="ti ti-check ml-1" style={{ fontSize: 10 }} />}
+                    </button>
                   );
                 })}
               </div>
-
-              {/* Hint */}
-              <p className="text-[10px] text-neutral-500 text-center leading-relaxed">
-                De pie · ropa ajustada · buena iluminación
+              <p className="text-[10px] text-neutral-600">
+                Añade un ejercicio extra en estas zonas en cada sesión que las trabaje.
               </p>
-              {photos.front && (!photos.side || !photos.back) && (
-                <p className="text-[10px] text-center leading-relaxed px-2"
-                  style={{ color: "#666" }}>
-                  <i className="ti ti-info-circle" style={{ fontSize: 11, marginRight: 3 }} />
-                  Añadir lateral y espalda mejora la precisión del análisis
-                </p>
+            </div>
+
+            {/* ── Pliegues cutáneos (Jackson-Pollock) ── */}
+            <div className="space-y-3">
+              {/* Toggle */}
+              <button onClick={() => setUseSkinfolds(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl active:opacity-70 transition-all"
+                style={{
+                  background: useSkinfolds ? "rgba(16,185,129,0.08)" : "#141414",
+                  border: `1px solid ${useSkinfolds ? "rgba(16,185,129,0.3)" : "#222"}`,
+                }}>
+                <div className="flex items-center gap-3">
+                  <i className="ti ti-ruler-measure"
+                    style={{ fontSize: 18, color: useSkinfolds ? "#10b981" : "#555" }} />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold"
+                      style={{ color: useSkinfolds ? "#10b981" : "#aaa" }}>
+                      Usar pliegues cutáneos
+                    </p>
+                    <p className="text-[10px] text-neutral-600">
+                      Refina proteína y grasa por masa magra real · opcional
+                    </p>
+                  </div>
+                </div>
+                <div className="w-10 h-5 rounded-full relative shrink-0"
+                  style={{ background: useSkinfolds ? "#10b981" : "#333" }}>
+                  <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
+                    style={{ left: useSkinfolds ? "calc(100% - 1.125rem)" : "0.125rem" }} />
+                </div>
+              </button>
+
+              {/* Inputs de pliegues */}
+              {useSkinfolds && (
+                <div className="rounded-xl px-4 py-4 space-y-3"
+                  style={{ background: "#0d1a15", border: "1px solid rgba(16,185,129,0.2)" }}>
+                  <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">
+                    Pliegues Jackson-Pollock 3 sitios
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(data.sex === "male"
+                      ? [{ k: "s1", l: "Pecho" }, { k: "s2", l: "Abdomen" }, { k: "s3", l: "Muslo" }]
+                      : [{ k: "s1", l: "Tríceps" }, { k: "s2", l: "Suprailíaco" }, { k: "s3", l: "Muslo" }]
+                    ).map(({ k, l }) => (
+                      <div key={k} className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-wider text-center text-emerald-700">{l}</p>
+                        <div className="rounded-xl overflow-hidden"
+                          style={{ background: "#111", border: "1px solid rgba(16,185,129,0.2)" }}>
+                          <input type="number" min="1" max="60"
+                            value={skinfolds[k as "s1"|"s2"|"s3"]}
+                            onChange={e => setSkinfolds(prev => ({ ...prev, [k]: e.target.value }))}
+                            placeholder="—"
+                            className="w-full px-2 py-2 text-white text-sm font-bold text-center bg-transparent focus:outline-none tabular-nums" />
+                        </div>
+                        <p className="text-[9px] text-center text-neutral-700">mm</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-neutral-600 leading-relaxed">
+                    Medidos con plicómetro · suma de los 3 pliegues en mm
+                  </p>
+                </div>
               )}
             </div>
 
@@ -770,14 +814,12 @@ export default function AIPlanWizard({ profile, onGoToWorkout, onGoToDiet, onPla
             color: canGenerate ? "#fff" : "#444",
             boxShadow: canGenerate ? "0 4px 20px rgba(192,41,43,0.35)" : "none",
           }}>
-          <i className="ti ti-sparkles" style={{ fontSize: 16 }} />
-          {error ? "Reintentar generación" : "Generar mi plan con IA"}
+          <i className="ti ti-player-play" style={{ fontSize: 16 }} />
+          {error ? "Reintentar generación" : "Generar mi plan"}
         </button>
         {!canGenerate && !loadingData && (
           <p className="text-[10px] text-neutral-600 text-center mt-2">
-            {!photos.front
-              ? "Sube al menos la foto frontal para continuar"
-              : isNewClient
+            {isNewClient
               ? "Rellena edad, altura y peso para continuar"
               : "Introduce tu peso para continuar"}
           </p>
