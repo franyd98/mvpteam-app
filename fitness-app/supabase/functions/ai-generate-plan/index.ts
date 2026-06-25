@@ -681,11 +681,39 @@ const SPLITS: Record<number, SplitDay[]> = {
 const HIGH_REP_GROUPS = new Set(["ABDOMINALES", "CORE", "GEMELOS"]);
 
 // Palabras clave de ejercicios compuestos (se ordenan primero en cada grupo)
-const COMPOUND_KW = ["press", "sentadilla", "peso muerto", "remo", "dominada", "jalón",
-                     "fondos", "hip thrust", "zancada", "estocada", "pullover", "face pull"];
+const COMPOUND_KW = ["press", "prensa", "sentadilla", "peso muerto", "remo", "dominada",
+                     "jalón", "fondos", "hip thrust", "hip trust", "zancada", "estocada",
+                     "pullover", "face pull"];
 
 function isCompound(name: string): boolean {
   return COMPOUND_KW.some(k => name.toLowerCase().includes(k));
+}
+
+// ── Alias de grupos musculares ────────────────────────────────────────────────
+// Los nombres en la BD difieren de los nombres del algoritmo.
+// Este mapa convierte el nombre del algoritmo → uno o varios nombres reales en la BD.
+const GROUP_ALIASES: Record<string, string[]> = {
+  "ESPALDA":     ["ESPALDA ALTA", "DORSAL"],
+  "PECHO":       ["PECTORAL"],
+  "HOMBROS":     ["HOMBRO"],
+  "TRAPECIOS":   ["HOMBRO POSTERIOR", "TRAPECIOS"],
+  "ABDOMINALES": ["ABDOMEN", "ABDOMINALES", "CORE"],
+  "FEMORALES":   ["FEMORAL", "FEM./GLÚT.", "FEMORALES"],
+  "GEMELOS":     ["GEMELO", "GEMELOS"],
+  "GLÚTEOS":     ["GLÚTEO", "GLÚTEOS"],
+  "CUÁDRICEPS":  ["CUÁDRICEPS"],
+  "CADERA":      ["CADERA"],
+  "BÍCEPS":      ["BÍCEPS"],
+  "TRÍCEPS":     ["TRÍCEPS"],
+  "CORE":        ["ABDOMEN", "ABDOMINALES", "CORE"],
+};
+
+function resolveGroup(
+  grp: string,
+  byMuscle: Record<string, { id: number; name: string }[]>,
+): { id: number; name: string }[] {
+  const aliases = GROUP_ALIASES[grp] ?? [grp];
+  return aliases.flatMap(a => byMuscle[a] ?? []);
 }
 
 // ── Rangos de reps por tier y experiencia ────────────────────────────────────
@@ -764,7 +792,7 @@ function buildWorkoutDays(
     const sessionUsed = new Set<number>();
 
     for (const { name: grp, count } of day.groups) {
-      const pool = [...(byMuscle[grp] ?? [])];
+      const pool = [...resolveGroup(grp, byMuscle)];
       if (!pool.length) continue;
       // Compuestos primero dentro del grupo
       pool.sort((a, b) => (isCompound(b.name) ? 1 : 0) - (isCompound(a.name) ? 1 : 0));
