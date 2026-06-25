@@ -871,31 +871,40 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               {program.days.map((d, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const isActive = d.id === dayId;
+                // Nombre corto: quitar la letra final y abreviar
+                const shortName = d.name
+                  .replace(/\s+[A-Z]\d*\s*$/, "")
+                  .replace(/^día\s+[a-z]\s*[-–]\s*/i, "")
+                  .replace(/^[a-z]\s*[-–]\s*/i, "")
+                  .replace("Cuádriceps", "Cuád.")
+                  .replace("Femorales", "Feml.")
+                  .replace("Hombro-Brazos", "H-B")
+                  .replace("Superior", "Sup.")
+                  .replace("Inferior", "Inf.")
+                  .replace("Full Body", "Full")
+                  .trim();
                 return (
                   <button
                     key={d.id}
                     onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
-                    className="w-10 h-10 rounded-xl text-sm font-black transition-all active:scale-95 flex items-center justify-center shrink-0"
-                    style={isActive
-                      ? { background: "var(--mvp-red)", color: "#fff", border: "1px solid rgba(192,41,43,0.6)", boxShadow: "0 2px 12px rgba(192,41,43,0.3)" }
-                      : { background: "#111", color: "#555", border: "1px solid #1c1c1c" }}
+                    className="flex flex-col items-center justify-center rounded-xl transition-all active:scale-95 shrink-0"
+                    style={{
+                      width: 48, minHeight: 52, paddingTop: 6, paddingBottom: 6,
+                      ...(isActive
+                        ? { background: "var(--mvp-red)", color: "#fff", border: "1px solid rgba(192,41,43,0.6)", boxShadow: "0 2px 12px rgba(192,41,43,0.3)" }
+                        : { background: "#111", color: "#555", border: "1px solid #1c1c1c" }),
+                    }}
                     title={d.name}
                   >
-                    {letter}
+                    <span className="text-sm font-black leading-none">{letter}</span>
+                    <span className="text-[8px] font-semibold leading-tight mt-0.5 text-center px-0.5 break-words"
+                      style={{ opacity: isActive ? 0.85 : 0.5, maxWidth: 44 }}>
+                      {shortName}
+                    </span>
                   </button>
                 );
               })}
             </div>
-            {day && (
-              <p className="text-xs font-semibold mt-2 pl-0.5 truncate" style={{ color: "var(--mvp-red)" }}>
-                {day.name
-                  .replace(/\s+[A-Z]\d*\s*$/, "")
-                  .replace(/^día\s+[a-z]\s*[-–]\s*/i, "")
-                  .replace(/^[a-z]\s*[-–]\s*/i, "")
-                  .trim() || day.name}
-                {day.optional && <span className="ml-1 text-neutral-600 font-normal">(opcional)</span>}
-              </p>
-            )}
           </section>
 
           {/* Selector de microciclo + botón de bloqueo */}
