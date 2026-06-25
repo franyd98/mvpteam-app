@@ -54,7 +54,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   // Edición inline de reps/RIR por serie: setId → { target_reps, target_rpe }
   const [setEdits, setSetEdits] = useState<Record<number, { target_reps: string; target_rpe: string }>>({});
 
-  // Cuando está activo, guardar un campo lo replica en el mismo ejercicio+serie de todos los Mcs
+  // Cuando está activo, guardar un campo lo replica en el mismo ejercicio+serie en los Mcs SIGUIENTES (no los pasados)
   const [autoSync, setAutoSync] = useState(true);
   // Feedback visual breve tras sincronizar
   const [syncFlash, setSyncFlash] = useState(false);
@@ -454,7 +454,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
 
   // Guarda reps/RIR de una serie.
   // Puede recibir valores directos (desde el select) o leerlos del estado (al perder foco).
-  // Si autoSync está activo, propaga el valor al mismo ejercicio+serie en todos los Mcs del día.
+  // Si autoSync está activo, propaga el valor al mismo ejercicio+serie en los Mcs POSTERIORES del día.
   const saveSetField = async (setId: number, overrideReps?: string | null) => {
     const edit = setEdits[setId];
     if (!edit && overrideReps === undefined) return;
@@ -489,11 +489,12 @@ export default function ProgramEditor({ programId, onBack }: Props) {
       }
 
       if (srcMcId !== null && exerciseId !== null && setNumber !== null) {
-        // Excluir el microciclo que contiene el setId editado (no el currentMc del selector)
-        const otherMcs = currentDay.microcycles.filter(m => m.id !== srcMcId);
+        // Solo propagar a microciclos POSTERIORES (número mayor) — nunca a los pasados
+        const srcMcNumber = currentDay.microcycles.find(m => m.id === srcMcId)?.number ?? 0;
+        const futureMcs   = currentDay.microcycles.filter(m => m.number > srcMcNumber);
         let synced = 0;
 
-        for (const mc of otherMcs) {
+        for (const mc of futureMcs) {
           const sameEx = mc.exercises.find(e => e.exercise_id === exerciseId);
           if (!sameEx) continue;
           const sameSet = sameEx.sets.find(s => s.set_number === setNumber);
@@ -786,7 +787,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                 (autoSync ? "left-5" : "left-1")} />
             </button>
             <span className="text-xs text-neutral-400">
-              Aplicar reps/RIR a <span className="font-semibold text-neutral-200">todos los microciclos</span>
+              Aplicar reps/RIR a <span className="font-semibold text-neutral-200">este Mc y los siguientes</span>
             </span>
           </label>
           {syncFlash && (
