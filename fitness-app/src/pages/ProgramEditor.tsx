@@ -455,6 +455,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   // Guarda reps/RIR de una serie.
   // Puede recibir valores directos (desde el select) o leerlos del estado (al perder foco).
   // Si autoSync está activo, propaga el valor al mismo ejercicio+serie en los Mcs POSTERIORES del día.
+  // La propagación va directo a BD (no depende de datos en memoria, que pueden estar truncados).
   const saveSetField = async (setId: number, overrideReps?: string | null) => {
     const edit = setEdits[setId];
     if (!edit && overrideReps === undefined) return;
@@ -462,62 +463,74 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     const newReps = overrideReps !== undefined ? (overrideReps || null) : ((edit?.target_reps ?? "").trim() || null);
     const newRpe  = overrideReps !== undefined ? null : ((edit?.target_rpe ?? "").trim() || null);
 
-    // Guardar el campo actual
+    // 1. Guardar el set actual
     await supabase.from("exercise_sets").update({
       target_reps: newReps,
       target_rpe:  newRpe,
     }).eq("id", setId);
 
-    // Propagar a los demás microciclos si autoSync está ON
-    if (autoSync && currentDay) {
-      // Buscar exactamente en qué microciclo/ejercicio/serie está este setId
-      let srcMcId:    number | null = null;
-      let exerciseId: number | null = null;
-      let setNumber:  number | null = null;
+    if (!autoSync) return;
 
-      for (const mc of currentDay.microcycles) {
-        for (const ex of mc.exercises) {
-          const found = ex.sets.find(s => s.id === setId);
-          if (found) {
-            srcMcId    = mc.id;
-            exerciseId = ex.exercise_id;
-            setNumber  = found.set_number;
-            break;
-          }
+    // 2. Obtener contexto del set editado directamente de la BD
+    const { data: ctx } = await supabase
+      .from("exercise_sets")
+      .select(`
+        set_number,
+        microcycle_exercises!inner (
+          id, exercise_id,
+          microcycles!inner ( id, number, day_id )
+        )
+      `)
+      .eq("id", setId)
+      .single();
+
+    if (!ctx) return;
+    const me         = (ctx as any).microcycle_exercises;
+    const mc         = me.microcycles;
+    const exerciseId = me.exercise_id;
+    const setNumber  = ctx.set_number;
+    const srcMcNum   = mc.number;
+    const dayId      = mc.day_id;
+
+    // 3. Obtener IDs de microciclos POSTERIORES del mismo día
+    const { data: futureMcs } = await supabase
+      .from("microcycles")
+      .select("id")
+      .eq("day_id", dayId)
+      .gt("number", srcMcNum);
+
+    if (!futureMcs?.length) return;
+    const futureMcIds = futureMcs.map((m: any) => m.id);
+
+    // 4. Obtener los microcycle_exercises del mismo ejercicio en esos Mcs
+    const { data: futureExs } = await supabase
+      .from("microcycle_exercises")
+      .select("id")
+      .in("microcycle_id", futureMcIds)
+      .eq("exercise_id", exerciseId);
+
+    if (!futureExs?.length) return;
+    const futureExIds = futureExs.map((e: any) => e.id);
+
+    // 5. Actualizar todas las series que coincidan en número de serie
+    const { data: updatedSets } = await supabase
+      .from("exercise_sets")
+      .update({ target_reps: newReps, target_rpe: newRpe })
+      .in("microcycle_exercise_id", futureExIds)
+      .eq("set_number", setNumber)
+      .select("id");
+
+    if (updatedSets?.length) {
+      // Actualizar estado local para que los selects reflejen el nuevo valor
+      setSetEdits(prev => {
+        const next = { ...prev };
+        for (const s of updatedSets as { id: number }[]) {
+          next[s.id] = { target_reps: newReps ?? "", target_rpe: newRpe ?? "" };
         }
-        if (srcMcId !== null) break;
-      }
-
-      if (srcMcId !== null && exerciseId !== null && setNumber !== null) {
-        // Solo propagar a microciclos POSTERIORES (número mayor) — nunca a los pasados
-        const srcMcNumber = currentDay.microcycles.find(m => m.id === srcMcId)?.number ?? 0;
-        const futureMcs   = currentDay.microcycles.filter(m => m.number > srcMcNumber);
-        let synced = 0;
-
-        for (const mc of futureMcs) {
-          const sameEx = mc.exercises.find(e => e.exercise_id === exerciseId);
-          if (!sameEx) continue;
-          const sameSet = sameEx.sets.find(s => s.set_number === setNumber);
-          if (!sameSet) continue;
-
-          await supabase.from("exercise_sets").update({
-            target_reps: newReps,
-            target_rpe:  newRpe,
-          }).eq("id", sameSet.id);
-
-          // Actualizar estado local para que el select refleje el nuevo valor
-          setSetEdits(prev => ({
-            ...prev,
-            [sameSet.id]: { target_reps: newReps ?? "", target_rpe: newRpe ?? "" },
-          }));
-          synced++;
-        }
-
-        if (synced > 0) {
-          setSyncFlash(true);
-          setTimeout(() => setSyncFlash(false), 1500);
-        }
-      }
+        return next;
+      });
+      setSyncFlash(true);
+      setTimeout(() => setSyncFlash(false), 1500);
     }
   };
 
