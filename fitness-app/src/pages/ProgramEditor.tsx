@@ -471,26 +471,34 @@ export default function ProgramEditor({ programId, onBack }: Props) {
 
     if (!autoSync) return;
 
-    // 2. Obtener contexto del set editado directamente de la BD
-    const { data: ctx } = await supabase
+    // 2a. Obtener set_number y microcycle_exercise_id del set editado
+    const { data: setRow } = await supabase
       .from("exercise_sets")
-      .select(`
-        set_number,
-        microcycle_exercises!inner (
-          id, exercise_id,
-          microcycles!inner ( id, number, day_id )
-        )
-      `)
+      .select("set_number, microcycle_exercise_id")
       .eq("id", setId)
       .single();
+    if (!setRow) return;
 
-    if (!ctx) return;
-    const me         = (ctx as any).microcycle_exercises;
-    const mc         = me.microcycles;
-    const exerciseId = me.exercise_id;
-    const setNumber  = ctx.set_number;
-    const srcMcNum   = mc.number;
-    const dayId      = mc.day_id;
+    // 2b. Obtener exercise_id y microcycle_id del microcycle_exercise
+    const { data: meRow } = await supabase
+      .from("microcycle_exercises")
+      .select("exercise_id, microcycle_id")
+      .eq("id", setRow.microcycle_exercise_id)
+      .single();
+    if (!meRow) return;
+
+    // 2c. Obtener number y day_id del microciclo
+    const { data: mcRow } = await supabase
+      .from("microcycles")
+      .select("number, day_id")
+      .eq("id", meRow.microcycle_id)
+      .single();
+    if (!mcRow) return;
+
+    const exerciseId = meRow.exercise_id;
+    const setNumber  = (setRow as any).set_number;
+    const srcMcNum   = mcRow.number;
+    const dayId      = mcRow.day_id;
 
     // 3. Obtener IDs de microciclos POSTERIORES del mismo día
     const { data: futureMcs } = await supabase
