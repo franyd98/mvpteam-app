@@ -528,53 +528,58 @@ function buildDietMeals(
 
 // ── Generador de entreno algorítmico ─────────────────────────────────────────
 // Modelado en programas Excel reales (Bloque 4 PPL, Bloque 3 Arnolt, etc.)
-// Estructura: 2 series por ejercicio (pesada + back-off con diferente rango)
 // Tier 1 = primer compuesto del grupo | Tier 2 = segundo | Tier 3+ = aislamiento
+// count = nº de EJERCICIOS por grupo (no series)
+// Objetivo: 6-8 ejercicios por sesión para entrenos de duración razonable
 
 type SplitGroup = { name: string; count: number };
 type SplitDay   = { name: string; groups: SplitGroup[] };
 
-// SPLITS basados en los Excel de referencia
-// Tirón:  ESPALDA×6 (ESPALDA ALTA + DORSAL fusionados), TRAPECIOS×1, BÍCEPS×3, ABDOMINALES×1 = 11
-// Empuje: PECHO×3, HOMBROS×3, TRÍCEPS×3, ABDOMINALES×1 = 10
-// Pierna: GEMELOS×1, CUÁDRICEPS×3, FEMORALES×2, GLÚTEOS×1 = 7
 const SPLITS: Record<number, SplitDay[]> = {
+  // ─ 1 día: Full Body ────────────────────────────────────────────────────────
   1: [{ name: "Full Body", groups: [
-    { name: "ESPALDA",     count: 2 },
-    { name: "CUÁDRICEPS",  count: 2 },
-    { name: "PECHO",       count: 2 },
-    { name: "HOMBROS",     count: 1 },
-    { name: "FEMORALES",   count: 1 },
-    { name: "ABDOMINALES", count: 1 },
+    { name: "DORSAL",       count: 1 },
+    { name: "ESPALDA ALTA", count: 1 },
+    { name: "CUÁDRICEPS",   count: 2 },
+    { name: "PECHO",        count: 1 },
+    { name: "FEMORALES",    count: 1 },
+    { name: "HOMBROS",      count: 1 },
+    { name: "ABDOMINALES",  count: 1 },
   ]}],
+
+  // ─ 2 días: Superior / Inferior ────────────────────────────────────────────
   2: [
     { name: "Superior", groups: [
-      { name: "ESPALDA",     count: 3 },
-      { name: "PECHO",       count: 3 },
-      { name: "HOMBROS",     count: 2 },
-      { name: "BÍCEPS",      count: 1 },
-      { name: "TRÍCEPS",     count: 1 },
+      { name: "DORSAL",          count: 2 },
+      { name: "ESPALDA ALTA",    count: 1 },
+      { name: "PECHO",           count: 2 },
+      { name: "HOMBROS",         count: 1 },
+      { name: "BÍCEPS",          count: 1 },
+      { name: "TRÍCEPS",         count: 1 },
     ]},
     { name: "Inferior", groups: [
-      { name: "CUÁDRICEPS",  count: 3 },
+      { name: "CUÁDRICEPS",  count: 2 },
       { name: "FEMORALES",   count: 2 },
       { name: "GLÚTEOS",     count: 1 },
       { name: "GEMELOS",     count: 1 },
       { name: "ABDOMINALES", count: 1 },
     ]},
   ],
+
+  // ─ 3 días: PPL ────────────────────────────────────────────────────────────
   3: [
     { name: "Empuje", groups: [
-      { name: "PECHO",       count: 3 },
-      { name: "HOMBROS",     count: 3 },
-      { name: "TRÍCEPS",     count: 3 },
-      { name: "ABDOMINALES", count: 1 },
+      { name: "PECHO",           count: 3 },
+      { name: "HOMBROS",         count: 2 },
+      { name: "TRÍCEPS",         count: 2 },
+      { name: "ABDOMINALES",     count: 1 },
     ]},
     { name: "Tirón", groups: [
-      { name: "ESPALDA",     count: 6 },
-      { name: "TRAPECIOS",   count: 1 },
-      { name: "BÍCEPS",      count: 3 },
-      { name: "ABDOMINALES", count: 1 },
+      { name: "DORSAL",          count: 2 },
+      { name: "ESPALDA ALTA",    count: 2 },
+      { name: "BÍCEPS",          count: 2 },
+      { name: "HOMBRO POSTERIOR",count: 1 },
+      { name: "ABDOMINALES",     count: 1 },
     ]},
     { name: "Pierna", groups: [
       { name: "GEMELOS",     count: 1 },
@@ -583,94 +588,104 @@ const SPLITS: Record<number, SplitDay[]> = {
       { name: "GLÚTEOS",     count: 1 },
     ]},
   ],
+
+  // ─ 4 días: PPL + Pierna dividida ──────────────────────────────────────────
   4: [
     { name: "Empuje", groups: [
-      { name: "PECHO",       count: 3 },
-      { name: "HOMBROS",     count: 3 },
-      { name: "TRÍCEPS",     count: 3 },
-      { name: "ABDOMINALES", count: 1 },
+      { name: "PECHO",           count: 3 },
+      { name: "HOMBROS",         count: 2 },
+      { name: "TRÍCEPS",         count: 2 },
+      { name: "ABDOMINALES",     count: 1 },
     ]},
     { name: "Tirón", groups: [
-      { name: "ESPALDA",     count: 6 },
-      { name: "TRAPECIOS",   count: 1 },
-      { name: "BÍCEPS",      count: 3 },
-      { name: "ABDOMINALES", count: 1 },
+      { name: "DORSAL",          count: 2 },
+      { name: "ESPALDA ALTA",    count: 2 },
+      { name: "BÍCEPS",          count: 2 },
+      { name: "HOMBRO POSTERIOR",count: 1 },
+      { name: "ABDOMINALES",     count: 1 },
     ]},
     { name: "Cuádriceps", groups: [
       { name: "GEMELOS",     count: 1 },
-      { name: "CUÁDRICEPS",  count: 4 },
+      { name: "CUÁDRICEPS",  count: 3 },
       { name: "FEMORALES",   count: 1 },
-      { name: "GLÚTEOS",     count: 1 },
     ]},
     { name: "Femorales", groups: [
-      { name: "FEMORALES",   count: 3 },
-      { name: "GLÚTEOS",     count: 2 },
       { name: "GEMELOS",     count: 1 },
-      { name: "ABDOMINALES", count: 1 },
+      { name: "FEMORALES",   count: 2 },
+      { name: "GLÚTEOS",     count: 2 },
+      { name: "CUÁDRICEPS",  count: 1 },
     ]},
   ],
+
+  // ─ 5 días: PPL + Pierna dividida + Repaso Torso ───────────────────────────
   5: [
     { name: "Tirón", groups: [
-      { name: "ESPALDA",     count: 6 },
-      { name: "TRAPECIOS",   count: 1 },
-      { name: "BÍCEPS",      count: 3 },
-      { name: "ABDOMINALES", count: 1 },
+      { name: "DORSAL",          count: 3 },
+      { name: "ESPALDA ALTA",    count: 2 },
+      { name: "BÍCEPS",          count: 2 },
+      { name: "HOMBRO POSTERIOR",count: 1 },
+      { name: "ABDOMINALES",     count: 1 },
     ]},
     { name: "Cuádriceps", groups: [
       { name: "GEMELOS",     count: 1 },
       { name: "CUÁDRICEPS",  count: 4 },
       { name: "FEMORALES",   count: 1 },
-      { name: "GLÚTEOS",     count: 1 },
     ]},
     { name: "Empuje", groups: [
-      { name: "PECHO",       count: 3 },
-      { name: "HOMBROS",     count: 3 },
-      { name: "TRÍCEPS",     count: 3 },
-      { name: "ABDOMINALES", count: 1 },
-    ]},
-    { name: "Femorales", groups: [
-      { name: "FEMORALES",   count: 3 },
-      { name: "GLÚTEOS",     count: 2 },
-      { name: "GEMELOS",     count: 1 },
-      { name: "ABDOMINALES", count: 1 },
-    ]},
-    { name: "Hombro-Brazos", groups: [
-      { name: "HOMBROS",     count: 3 },
-      { name: "BÍCEPS",      count: 2 },
+      { name: "PECHO",       count: 4 },
+      { name: "HOMBROS",     count: 2 },
       { name: "TRÍCEPS",     count: 2 },
       { name: "ABDOMINALES", count: 1 },
     ]},
+    { name: "Femorales", groups: [
+      { name: "GEMELOS",     count: 1 },
+      { name: "FEMORALES",   count: 2 },
+      { name: "GLÚTEOS",     count: 2 },
+      { name: "CUÁDRICEPS",  count: 1 },
+    ]},
+    { name: "Torso", groups: [
+      { name: "HOMBROS",         count: 1 },
+      { name: "DORSAL",          count: 2 },
+      { name: "ESPALDA ALTA",    count: 1 },
+      { name: "PECHO",           count: 2 },
+      { name: "BÍCEPS",          count: 1 },
+      { name: "TRÍCEPS",         count: 1 },
+    ]},
   ],
+
+  // ─ 6 días: PPL×2 ──────────────────────────────────────────────────────────
   6: [
     { name: "Tirón A", groups: [
-      { name: "ESPALDA",     count: 4 },
-      { name: "TRAPECIOS",   count: 2 },
-      { name: "BÍCEPS",      count: 2 },
+      { name: "DORSAL",          count: 3 },
+      { name: "ESPALDA ALTA",    count: 1 },
+      { name: "HOMBRO POSTERIOR",count: 1 },
+      { name: "BÍCEPS",          count: 1 },
     ]},
     { name: "Cuádriceps", groups: [
       { name: "GEMELOS",     count: 1 },
-      { name: "CUÁDRICEPS",  count: 4 },
+      { name: "CUÁDRICEPS",  count: 3 },
       { name: "FEMORALES",   count: 1 },
       { name: "ABDOMINALES", count: 1 },
     ]},
     { name: "Empuje A", groups: [
       { name: "PECHO",       count: 3 },
-      { name: "HOMBROS",     count: 3 },
+      { name: "HOMBROS",     count: 2 },
       { name: "TRÍCEPS",     count: 2 },
     ]},
     { name: "Tirón B", groups: [
-      { name: "ESPALDA",     count: 3 },
-      { name: "BÍCEPS",      count: 2 },
-      { name: "ABDOMINALES", count: 1 },
+      { name: "DORSAL",       count: 1 },
+      { name: "ESPALDA ALTA", count: 2 },
+      { name: "BÍCEPS",       count: 2 },
+      { name: "ABDOMINALES",  count: 1 },
     ]},
     { name: "Femorales", groups: [
-      { name: "FEMORALES",   count: 3 },
-      { name: "GLÚTEOS",     count: 2 },
       { name: "GEMELOS",     count: 1 },
+      { name: "FEMORALES",   count: 2 },
+      { name: "GLÚTEOS",     count: 2 },
     ]},
     { name: "Empuje B", groups: [
-      { name: "HOMBROS",     count: 3 },
       { name: "PECHO",       count: 2 },
+      { name: "HOMBROS",     count: 2 },
       { name: "TRÍCEPS",     count: 2 },
       { name: "ABDOMINALES", count: 1 },
     ]},
@@ -691,21 +706,24 @@ function isCompound(name: string): boolean {
 
 // ── Alias de grupos musculares ────────────────────────────────────────────────
 // Los nombres en la BD difieren de los nombres del algoritmo.
-// Este mapa convierte el nombre del algoritmo → uno o varios nombres reales en la BD.
+// DORSAL y ESPALDA ALTA se tratan por separado para controlar el volumen con precisión.
 const GROUP_ALIASES: Record<string, string[]> = {
-  "ESPALDA":     ["ESPALDA ALTA", "DORSAL"],
-  "PECHO":       ["PECTORAL"],
-  "HOMBROS":     ["HOMBRO"],
-  "TRAPECIOS":   ["HOMBRO POSTERIOR", "TRAPECIOS"],
-  "ABDOMINALES": ["ABDOMEN", "ABDOMINALES", "CORE"],
-  "FEMORALES":   ["FEMORAL", "FEM./GLÚT.", "FEMORALES"],
-  "GEMELOS":     ["GEMELO", "GEMELOS"],
-  "GLÚTEOS":     ["GLÚTEO", "GLÚTEOS"],
-  "CUÁDRICEPS":  ["CUÁDRICEPS"],
-  "CADERA":      ["CADERA"],
-  "BÍCEPS":      ["BÍCEPS"],
-  "TRÍCEPS":     ["TRÍCEPS"],
-  "CORE":        ["ABDOMEN", "ABDOMINALES", "CORE"],
+  "DORSAL":           ["DORSAL"],
+  "ESPALDA ALTA":     ["ESPALDA ALTA"],
+  "ESPALDA":          ["ESPALDA ALTA", "DORSAL"],   // alias genérico (fallback)
+  "PECHO":            ["PECTORAL"],
+  "HOMBROS":          ["HOMBRO"],
+  "HOMBRO POSTERIOR": ["HOMBRO POSTERIOR"],
+  "TRAPECIOS":        ["HOMBRO POSTERIOR", "TRAPECIOS"],
+  "ABDOMINALES":      ["ABDOMEN", "ABDOMINALES", "CORE"],
+  "FEMORALES":        ["FEMORAL", "FEM./GLÚT.", "FEMORALES"],
+  "GEMELOS":          ["GEMELO", "GEMELOS"],
+  "GLÚTEOS":          ["GLÚTEO", "GLÚTEOS"],
+  "CUÁDRICEPS":       ["CUÁDRICEPS"],
+  "CADERA":           ["CADERA"],
+  "BÍCEPS":           ["BÍCEPS"],
+  "TRÍCEPS":          ["TRÍCEPS"],
+  "CORE":             ["ABDOMEN", "ABDOMINALES", "CORE"],
 };
 
 function resolveGroup(
@@ -813,31 +831,30 @@ function buildWorkoutDays(
 }
 
 // ── Matriz de progresión 16 semanas ──────────────────────────────────────────
-// Phases: adapt (semana 1 de cada bloque), normal, deload, pr (semana pico)
-// technique: null | "rp" (R&P último set aislamientos) | "rp_drop" (R&P + Dropset)
+// UNA sola descarga al final (Mc16). El resto son semanas de trabajo continuo.
+// R&P desde Mc2. Progresión sets: 2 → 3 → 4 → 4(PR) → 2(descarga final).
 const PROG_MATRIX: readonly {
   label: string;
   phase: "adapt" | "normal" | "deload" | "pr";
   technique: null | "rp" | "rp_drop";
+  sets: number;
 }[] = [
-  // ── Bloque 1 ──────────────────────────────────────────────────────────────
-  { label: "S1  · Adaptación",        phase: "adapt",  technique: null      },
-  { label: "S2  · Progresión",         phase: "normal", technique: null      },
-  { label: "S3  · Sobrecarga",         phase: "normal", technique: null      },
-  { label: "S4  · Descarga",           phase: "deload", technique: null      },
-  { label: "S5  · Bloque fuerza",      phase: "normal", technique: "rp"      },
-  { label: "S6  · Sobrecarga II",      phase: "normal", technique: "rp_drop" },
-  { label: "S7  · Semana de PR",       phase: "pr",     technique: "rp_drop" },
-  { label: "S8  · Descarga final",     phase: "deload", technique: null      },
-  // ── Bloque 2 ──────────────────────────────────────────────────────────────
-  { label: "S9  · Adaptación II",      phase: "adapt",  technique: null      },
-  { label: "S10 · Progresión II",       phase: "normal", technique: null      },
-  { label: "S11 · Sobrecarga III",      phase: "normal", technique: "rp"      },
-  { label: "S12 · Descarga II",         phase: "deload", technique: null      },
-  { label: "S13 · Intensidad II",       phase: "normal", technique: "rp"      },
-  { label: "S14 · Sobrecarga IV",       phase: "normal", technique: "rp_drop" },
-  { label: "S15 · Semana de PR II",     phase: "pr",     technique: "rp_drop" },
-  { label: "S16 · Descarga final II",   phase: "deload", technique: null      },
+  { label: "S1  · Adaptación",        phase: "adapt",  technique: null,      sets: 2 },
+  { label: "S2  · Progresión",         phase: "normal", technique: "rp",      sets: 3 },
+  { label: "S3  · Acumulación",        phase: "normal", technique: "rp",      sets: 3 },
+  { label: "S4  · Sobrecarga",         phase: "normal", technique: "rp_drop", sets: 3 },
+  { label: "S5  · Sobrecarga II",      phase: "normal", technique: "rp_drop", sets: 3 },
+  { label: "S6  · Bloque fuerza",      phase: "normal", technique: "rp",      sets: 4 },
+  { label: "S7  · Bloque fuerza II",   phase: "normal", technique: "rp",      sets: 4 },
+  { label: "S8  · Intensidad",         phase: "normal", technique: "rp_drop", sets: 4 },
+  { label: "S9  · Intensidad II",      phase: "normal", technique: "rp_drop", sets: 4 },
+  { label: "S10 · Pico",               phase: "normal", technique: "rp_drop", sets: 4 },
+  { label: "S11 · Pico II",            phase: "normal", technique: "rp_drop", sets: 4 },
+  { label: "S12 · Semana de PR",       phase: "pr",     technique: "rp_drop", sets: 4 },
+  { label: "S13 · Semana de PR II",    phase: "pr",     technique: "rp_drop", sets: 4 },
+  { label: "S14 · Semana de PR III",   phase: "pr",     technique: "rp_drop", sets: 4 },
+  { label: "S15 · Semana de PR IV",    phase: "pr",     technique: "rp_drop", sets: 4 },
+  { label: "S16 · Descarga final",     phase: "deload", technique: null,      sets: 2 },
 ];
 
 const N_WEEKS = PROG_MATRIX.length; // 16
@@ -943,7 +960,7 @@ serve(async (req) => {
         day.exercises.forEach((ex, ei) => {
           meInputs.push({
             microcycle_id: mcId, exercise_id: ex.id,
-            order_index:   ei + 1, total_sets: 2, // siempre 2 series: pesada + back-off
+            order_index:   ei + 1, total_sets: prog.sets,
             note:          prog.label,
             _tier: ex.tier, _group: ex.group, _exIndex: ei, _totalEx: totalEx,
           });
@@ -960,25 +977,29 @@ serve(async (req) => {
           const inp   = meInputs[ei];
           const baseR = getBaseRepRanges(inp._tier, experience, inp._group);
           const rr    = applyPhase(baseR, prog.phase);
+          const nSets = prog.sets;
 
-          // Técnica en la última serie (s2) de aislamientos (tier 2+) en semanas de intensidad
+          // Técnica en la ÚLTIMA serie de aislamientos (tier 2+) en semanas de intensidad
           const isTier1 = inp._tier === 1;
-          let tech2 = "";
+          let techLast = "";
           if (!isTier1 && prog.technique) {
             if (prog.technique === "rp") {
-              tech2 = " · R&P";
+              techLast = " · R&P";
             } else if (prog.technique === "rp_drop") {
-              // Último ejercicio de la sesión: Dropset; resto de aislamientos: R&P
-              tech2 = inp._exIndex === inp._totalEx - 1 ? " · Dropset -20%" : " · R&P";
+              // Último ejercicio de la sesión: Dropset; resto: R&P
+              techLast = inp._exIndex === inp._totalEx - 1 ? " · Dropset -20%" : " · R&P";
             }
           }
 
-          return [
-            { microcycle_exercise_id: me.id, set_number: 1, target_reps: rr.s1,
-              target_weight: null, target_rpe: null },
-            { microcycle_exercise_id: me.id, set_number: 2, target_reps: rr.s2 + tech2,
-              target_weight: null, target_rpe: null },
-          ];
+          // Serie 1 = pesada (s1), series 2..N = back-off (s2), técnica solo en la última
+          const sets = [];
+          for (let sn = 1; sn <= nSets; sn++) {
+            const isLast = sn === nSets;
+            const reps   = sn === 1 ? rr.s1 : rr.s2 + (isLast ? techLast : "");
+            sets.push({ microcycle_exercise_id: me.id, set_number: sn,
+                        target_reps: reps, target_weight: null, target_rpe: null });
+          }
+          return sets;
         });
         if (setInserts.length) await supabase.from("exercise_sets").insert(setInserts);
       }
