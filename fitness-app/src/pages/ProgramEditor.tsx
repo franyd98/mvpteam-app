@@ -27,6 +27,11 @@ const REPS_OPTIONS: string[] = [
   "11 a 14 (3)", "11 a 14 (2)", "11 a 14 (1)", "11 a 14 (0)", "11 a 14 (fallo)",
   "12 a 15 (3)", "12 a 15 (2)", "12 a 15 (1)", "12 a 15 (0)", "12 a 15 (fallo)",
   "15 a 20 (3)", "15 a 20 (2)", "15 a 20 (1)", "15 a 20 (0)", "15 a 20 (fallo)",
+  // ── Técnicas especiales ──────────────────────────────────
+  "9 a 12 R&P", "10 a 12 R&P", "12 a 15 R&P", "15 a 20 R&P", "fallo R&P",
+  "9 a 12 R&P + Dropset -20%", "10 a 12 R&P + Dropset -20%",
+  "12 a 15 R&P + Dropset -20%", "15 a 20 R&P + Dropset -20%", "fallo R&P + Dropset -20%",
+  "fallo Dropset -20%",
 ];
 
 export default function ProgramEditor({ programId, onBack }: Props) {
