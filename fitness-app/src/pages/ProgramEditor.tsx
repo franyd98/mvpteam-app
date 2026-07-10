@@ -333,6 +333,44 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     setSaving(false);
   };
 
+  // Guarda la técnica especial (note) en microcycle_exercises.
+  // Si autoSync activo, propaga a TODOS los Mcs del mismo ejercicio (por order_index) en el día.
+  const saveNote = async (ex: EditorEx, note: string | null) => {
+    if (!currentDay) return;
+    setSaving(true);
+
+    // 1. Guardar en el mc actual
+    await supabase.from("microcycle_exercises").update({ note }).eq("id", ex.id);
+
+    // 2. Propagar a todos los Mcs del día (misma posición) si autoSync activo
+    if (autoSync) {
+      for (const mc of currentDay.microcycles) {
+        const same = mc.exercises.find(e => e.order_index === ex.order_index && e.id !== ex.id);
+        if (same) {
+          await supabase.from("microcycle_exercises").update({ note }).eq("id", same.id);
+        }
+      }
+    }
+
+    // 3. Actualizar estado local (todos los Mcs del día con esa posición)
+    setProgram(p => {
+      if (!p) return p;
+      return {
+        ...p,
+        days: p.days.map(d => ({
+          ...d,
+          microcycles: d.microcycles.map(mc => ({
+            ...mc,
+            exercises: mc.exercises.map(e =>
+              e.order_index === ex.order_index ? { ...e, note } : e
+            ),
+          })),
+        })),
+      };
+    });
+    setSaving(false);
+  };
+
   const removeExercise = async (meId: number, exName: string) => {
     if (!confirm(`¿Quitar "${exName}" de este microciclo?`)) return;
     setSaving(true);
@@ -856,19 +894,41 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                       </div>
                     </div>
                   ) : (
-                    /* ── Modo normal: texto ── */
+                    /* ── Modo normal: texto + selector de técnica ── */
                     <>
                       <p className="text-[10px] uppercase tracking-wider text-neutral-500">{ex.muscle_group}</p>
-                      <p className="text-white text-sm font-semibold leading-tight">{ex.name}</p>
-                      {ex.note && (
-                        <p className="mt-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded inline-block"
-                          style={{
-                            background: ex.note.toLowerCase().includes("drop") ? "#2d1a3a" : "#2a1f00",
-                            color: ex.note.toLowerCase().includes("drop") ? "#c084fc" : "#fbbf24",
-                          }}>
-                          {ex.note.toLowerCase().includes("drop") ? "📉" : "🔁"} {ex.note}
-                        </p>
-                      )}
+                      <p className="text-white text-sm font-semibold leading-tight mb-1.5">{ex.name}</p>
+                      {/* Selector de técnica especial (Últ. Serie) */}
+                      <div className="flex flex-wrap gap-1">
+                        {[
+                          { label: "Sin técnica", value: null },
+                          { label: "🔁 R&P", value: "R&P Últ. Serie" },
+                          { label: "📉 Drop Set", value: "DS Últ. Serie" },
+                          { label: "🔁📉 R&P + Drop", value: "R&P + DS Últ. Serie" },
+                        ].map(opt => {
+                          const isActive = opt.value === null
+                            ? !ex.note
+                            : ex.note?.toLowerCase() === opt.value.toLowerCase();
+                          return (
+                            <button
+                              key={opt.label}
+                              disabled={saving}
+                              onClick={() => saveNote(ex, opt.value)}
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded transition-all disabled:opacity-40"
+                              style={{
+                                background: isActive
+                                  ? (opt.value?.includes("Drop") ? "#4a1d6b" : opt.value ? "#1a4a1a" : "#333")
+                                  : "#1a1a1a",
+                                color: isActive
+                                  ? (opt.value?.includes("Drop") ? "#c084fc" : opt.value ? "#86efac" : "#aaa")
+                                  : "#555",
+                                border: isActive ? "1px solid currentColor" : "1px solid #2a2a2a",
+                              }}>
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </>
                   )}
                 </div>

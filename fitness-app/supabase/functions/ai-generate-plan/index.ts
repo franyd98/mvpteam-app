@@ -704,6 +704,33 @@ function isCompound(name: string): boolean {
   return COMPOUND_KW.some(k => name.toLowerCase().includes(k));
 }
 
+// Familias de ejercicios para control de diversidad.
+// Máximo MAX_PER_FAMILY ejercicios de la misma familia por grupo y sesión.
+const FAMILY_KW: [string, string][] = [
+  ["prensa",      "prensa"],
+  ["sentadilla",  "sentadilla"],
+  ["extensión",   "extension"],
+  ["extension",   "extension"],
+  ["femoral",     "femoral"],
+  ["curl",        "curl"],
+  ["hip thrust",  "hip_thrust"],
+  ["hip trust",   "hip_thrust"],
+  ["zancada",     "zancada"],
+  ["estocada",    "zancada"],
+  ["gemelo",      "gemelo"],
+  ["aductor",     "aductor"],
+  ["abductor",    "abductor"],
+];
+const MAX_PER_FAMILY = 1; // máx 1 ejercicio por familia (prensa, curl, etc.)
+
+function getExerciseFamily(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [kw, fam] of FAMILY_KW) {
+    if (lower.includes(kw)) return fam;
+  }
+  return lower.slice(0, 8); // genérico: primeras letras
+}
+
 // ── Alias de grupos musculares ────────────────────────────────────────────────
 // Los nombres en la BD difieren de los nombres del algoritmo.
 // DORSAL y ESPALDA ALTA se tratan por separado para controlar el volumen con precisión.
@@ -817,12 +844,17 @@ function buildWorkoutDays(
       // +1 ejercicio en grupos prioritarios
       const take = count + (prioritySet.has(grp) ? 1 : 0);
       let tierInGroup = 0;
+      const familyCount: Record<string, number> = {}; // Control de diversidad por familia
       for (const ex of pool) {
         if (sessionUsed.has(ex.id)) continue;
         if (tierInGroup >= take) break;
+        // Limitar ejercicios de la misma familia (prensa, curl, extensión…) a MAX_PER_FAMILY
+        const fam = getExerciseFamily(ex.name);
+        if ((familyCount[fam] ?? 0) >= MAX_PER_FAMILY) continue;
         const tier = (tierInGroup === 0 ? 1 : tierInGroup === 1 ? 2 : 3) as 1|2|3;
         exercises.push({ id: ex.id, name: ex.name, tier, group: grp });
         sessionUsed.add(ex.id);
+        familyCount[fam] = (familyCount[fam] ?? 0) + 1;
         tierInGroup++;
       }
     }
@@ -958,10 +990,22 @@ serve(async (req) => {
         const meInputs: MeRow[] = [];
 
         day.exercises.forEach((ex, ei) => {
+          // Calcular la nota de técnica para microcycle_exercises.note
+          // (SetLogger.tsx lee este campo para mostrar los campos R&P / Drop Set)
+          const isTier1 = ex.tier === 1;
+          let noteValue: string | null = null;
+          if (!isTier1 && prog.technique) {
+            if (prog.technique === "rp") {
+              noteValue = "R&P Últ. Serie";
+            } else if (prog.technique === "rp_drop") {
+              // Último ejercicio de la sesión → Drop Set; el resto → R&P
+              noteValue = ei === totalEx - 1 ? "DS Últ. Serie" : "R&P Últ. Serie";
+            }
+          }
           meInputs.push({
             microcycle_id: mcId, exercise_id: ex.id,
             order_index:   ei + 1, total_sets: prog.sets,
-            note:          prog.label,
+            note:          noteValue,
             _tier: ex.tier, _group: ex.group, _exIndex: ei, _totalEx: totalEx,
           });
         });

@@ -64,6 +64,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   const [logs, setLogs] = useState<SetLog[]>([]);
   const [settings, setSettings] = useSettings();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Historial de cargas por ejercicio + panel de stats global
   const [exHistory, setExHistory] = useState<{ name: string; dayId: string; exerciseIndex: number } | null>(null);
@@ -424,22 +425,45 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     if (settings.autoStartRestTimer) startRestTimer();
 
     // ── 2. Persistir en Supabase (awaited) ──
-    if (exerciseSetId) {
-      await supabase.from("set_logs").upsert(
-        {
-          client_id: profile.id,
-          exercise_set_id: exerciseSetId,
-          weight: data.weight,
-          reps: data.reps,
-          rpe: data.rpe,
-          unit: settings.weightUnit,
-          logged_at: new Date().toISOString(),
-          rp_reps:     data.rp_reps     ?? null,
-          drop_weight: data.drop_weight ?? null,
-          drop_reps:   data.drop_reps   ?? null,
-        },
-        { onConflict: "client_id,exercise_set_id" },
+    if (!exerciseSetId) {
+      console.error("❌ exerciseSetId no encontrado para key:", k, "— serie NO guardada en BD");
+      setSaveError("Error interno: no se encontró el ID de la serie. Recarga la página e inténtalo de nuevo.");
+      return;
+    }
+
+    const { error: upsertError } = await supabase.from("set_logs").upsert(
+      {
+        client_id: profile.id,
+        exercise_set_id: exerciseSetId,
+        weight: data.weight,
+        reps: data.reps,
+        rpe: data.rpe,
+        unit: settings.weightUnit,
+        logged_at: new Date().toISOString(),
+        rp_reps:     data.rp_reps     ?? null,
+        drop_weight: data.drop_weight ?? null,
+        drop_reps:   data.drop_reps   ?? null,
+      },
+      { onConflict: "client_id,exercise_set_id" },
+    );
+
+    if (upsertError) {
+      console.error("❌ Error guardando serie en Supabase:", upsertError);
+      setSaveError(`No se pudo guardar: ${upsertError.message}`);
+      // Revertir la UI para que el usuario sepa que no está guardado
+      setLogs((prev) =>
+        prev.filter(
+          (l) =>
+            !(
+              l.dayId === snap.dayId &&
+              l.microcycleNumber === snap.microcycleNumber &&
+              l.exerciseIndex === snap.exerciseIndex &&
+              l.setNumber === snap.setNumber
+            ),
+        ),
       );
+    } else {
+      setSaveError(null);
     }
   };
 
@@ -759,6 +783,18 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   return (
     <div className="h-dvh flex flex-col" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
+
+      {/* ── Banner de error de guardado ── */}
+      {saveError && (
+        <div
+          className="flex items-center gap-3 px-4 py-3 z-50"
+          style={{ background: "#3b0000", borderBottom: "1px solid #600" }}
+        >
+          <i className="ti ti-alert-triangle shrink-0" style={{ fontSize: 15, color: "#f87171" }} />
+          <p className="flex-1 text-xs font-semibold" style={{ color: "#fca5a5" }}>{saveError}</p>
+          <button onClick={() => setSaveError(null)} style={{ color: "#f87171", fontSize: 18, lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {/* ── Área de scroll por tab: se monta fresco en cada cambio ── */}
       <div id="tab-scroll" tabIndex={-1} className="flex-1 overflow-y-auto overscroll-contain outline-none" style={{ WebkitOverflowScrolling: 'touch', overflowAnchor: 'none' }}>

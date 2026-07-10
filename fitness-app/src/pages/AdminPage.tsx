@@ -1698,11 +1698,23 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                                   autoFocus />
                               )}
                             </div>
-                            <input
-                              value={editingEx.video_ref}
-                              onChange={e => setEditingEx(prev => prev ? { ...prev, video_ref: e.target.value } : prev)}
-                              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white"
-                              placeholder="Referencia video (opcional)" />
+                            {/* Campo URL de vídeo con preview del link actual */}
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] uppercase tracking-wider text-neutral-500">URL vídeo</span>
+                                {editingEx.video_ref && editingEx.video_ref !== "-" && (
+                                  <a href={editingEx.video_ref} target="_blank" rel="noopener noreferrer"
+                                    className="text-[10px] text-red-400 hover:text-red-300 underline truncate max-w-[160px]">
+                                    ▶ Ver actual
+                                  </a>
+                                )}
+                              </div>
+                              <input
+                                value={editingEx.video_ref}
+                                onChange={e => setEditingEx(prev => prev ? { ...prev, video_ref: e.target.value } : prev)}
+                                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white font-mono text-xs"
+                                placeholder="https://www.youtube.com/watch?v=..." />
+                            </div>
                             <textarea
                               value={editingEx.coach_note}
                               onChange={e => setEditingEx(prev => prev ? { ...prev, coach_note: e.target.value } : prev)}
@@ -1723,9 +1735,28 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                         ) : (
                           /* ── modo vista ── */
                           <div className="px-3 py-2.5 flex items-center gap-2">
-                            <p className="text-white text-sm flex-1">{ex.name}</p>
-                            {ex.coach_note && <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">📝</span>}
-                            {ex.video_ref && ex.video_ref !== "-" && <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">📹</span>}
+                            <p className="text-white text-sm flex-1 leading-snug">{ex.name}</p>
+                            {ex.coach_note && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 shrink-0">📝</span>
+                            )}
+                            {ex.video_ref && ex.video_ref !== "-" ? (
+                              <a
+                                href={ex.video_ref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm hover:opacity-80 transition-opacity"
+                                style={{ background: "#1A0808", border: "1px solid #CC0000", color: "#FF4444" }}
+                                title={ex.video_ref}>
+                                ▶
+                              </a>
+                            ) : (
+                              <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[10px]"
+                                style={{ background: "#111", border: "1px solid #222", color: "#444" }}
+                                title="Sin vídeo">
+                                —
+                              </span>
+                            )}
                             <button onClick={() => startEditEx(ex)}
                               className="w-7 h-7 rounded-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white text-xs flex items-center justify-center shrink-0">
                               ✏️

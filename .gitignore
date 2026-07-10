@@ -13,3 +13,16 @@ dist/
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Playwright browser profile (cookies y sesión de YouTube)
+scripts/browser_profile/
+
+# Credenciales y tokens Google (¡NO subir nunca!)
+scripts/client_secrets.json
+scripts/client_secret_*.json
+scripts/drive_token.json
+
+# Archivos de progreso y mapeo (datos locales)
+scripts/upload_progress.json
+scripts/update_video_urls.sql
+scripts/mapeo_videos.csv
