@@ -618,35 +618,37 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   if (tab === "dietas" && viewingDietPlan !== null) {
     const planAssigned = dietAssignments.filter(a => a.plan_id === viewingDietPlan.id);
     return (
-      <div className="min-h-screen footer-safe" style={{ background: "linear-gradient(160deg,#0A0A0A 80%,#1A0810 100%)" }}>
-        <header className="px-4 py-3 flex items-center gap-3 sticky top-0 z-20 header-safe"
-          style={{ background: "#0F0F0F", borderBottom: "1px solid #8B1A2F40" }}>
+      <div className="min-h-screen footer-safe" style={{ background: "#0A0A0A" }}>
+        <header className="px-4 flex items-center gap-3 sticky top-0 z-20 header-safe"
+          style={{ background: "#0A0A0A", borderBottom: "1px solid #141414", minHeight: 52 }}>
           <button
             onClick={() => { setViewingDietPlan(null); setDietPlanSubTab("editar"); }}
-            className="w-11 h-11 rounded-xl text-neutral-300 flex items-center justify-center shrink-0 text-xl"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors active:opacity-70"
+            style={{ background: "#141414", border: "1px solid #1E1E1E", color: "#888" }}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 16 }} />
+          </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-bold text-base truncate">{viewingDietPlan.name}</h1>
-            <p className="text-neutral-500 text-xs">
-              {viewingDietPlan.kcal_on ? `🔥 ON ${viewingDietPlan.kcal_on} · OFF ${viewingDietPlan.kcal_off ?? "—"} kcal` : "Sin kcal configuradas"}
+            <h1 className="text-white font-bold text-sm truncate">{viewingDietPlan.name}</h1>
+            <p className="text-[10px]" style={{ color: "#555" }}>
+              {viewingDietPlan.kcal_on ? `${viewingDietPlan.kcal_on} kcal ON · ${viewingDietPlan.kcal_off ?? "—"} OFF` : "Sin kcal"}
               {planAssigned.length > 0 ? ` · ${planAssigned.length} cliente${planAssigned.length > 1 ? "s" : ""}` : ""}
             </p>
           </div>
         </header>
 
         {/* Sub-tabs */}
-        <div className="flex gap-1.5 px-3 py-2.5 border-b max-w-3xl mx-auto"
-          style={{ borderColor: "#1A1A1A" }}>
+        <div className="flex gap-1 px-3 py-2 max-w-3xl mx-auto" style={{ borderBottom: "1px solid #141414" }}>
           {([
-            { id: "editar"  as const, label: "📋 Editar" },
-            { id: "generar" as const, label: "✨ Generar" },
-            { id: "asignar" as const, label: "👥 Asignar" },
-          ]).map(({ id, label }) => (
+            { id: "editar"  as const, icon: "pencil",    label: "Editar"  },
+            { id: "generar" as const, icon: "sparkles",  label: "Generar" },
+            { id: "asignar" as const, icon: "users",     label: "Asignar" },
+          ]).map(({ id, icon, label }) => (
             <button key={id} onClick={() => setDietPlanSubTab(id)}
-              className="flex-1 py-2 rounded-lg text-xs font-semibold transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95"
               style={dietPlanSubTab === id
-                ? { background: "#8B1A2F", color: "#fff", border: "1px solid #A01F38" }
-                : { background: "#1A1A1A", color: "#888", border: "1px solid #2A2A2A" }}>
+                ? { background: "rgba(192,41,43,0.1)", color: "#C0292B", border: "1px solid rgba(192,41,43,0.2)" }
+                : { background: "transparent", color: "#444", border: "1px solid transparent" }}>
+              <i className={`ti ti-${icon}`} style={{ fontSize: 13 }} />
               {label}
             </button>
           ))}
@@ -693,22 +695,23 @@ export default function AdminPage({ profile }: { profile: Profile }) {
               {/* Botón abrir editor de comidas */}
               <button
                 onClick={() => setEditingDietPlanId(viewingDietPlan.id)}
-                className="w-full py-4 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2"
-                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-                ✏️ Editar comidas del plan
+                className="w-full py-3.5 rounded-2xl text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors active:opacity-80"
+                style={{ background: "#161616", border: "1px solid #252525" }}>
+                <i className="ti ti-pencil" style={{ fontSize: 15 }} />
+                Editar comidas del plan
               </button>
 
               {/* Acciones secundarias */}
               <div className="flex gap-2">
                 <button onClick={() => handleDuplicateDiet(viewingDietPlan)}
-                  className="flex-1 py-3 rounded-xl text-neutral-300 text-sm font-medium"
-                  style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-                  📋 Duplicar
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-colors active:opacity-80"
+                  style={{ background: "#141414", border: "1px solid #1E1E1E", color: "#888" }}>
+                  <i className="ti ti-copy" style={{ fontSize: 14 }} /> Duplicar
                 </button>
                 <button onClick={() => handleDeleteDiet(viewingDietPlan)}
-                  className="px-5 py-3 rounded-xl text-red-400 text-sm"
-                  style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
-                  🗑️
+                  className="flex items-center justify-center px-4 py-3 rounded-xl transition-colors active:opacity-80"
+                  style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.15)", color: "#f87171" }}>
+                  <i className="ti ti-trash" style={{ fontSize: 15 }} />
                 </button>
               </div>
             </div>
@@ -787,25 +790,36 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
     return (
       <>
-      <div className="min-h-screen footer-safe" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
-        <header className="px-4 py-3 flex items-center gap-3 sticky top-0 z-20 header-safe"
-          style={{ background: "#0F0F0F", borderBottom: "1px solid #8B1A2F40" }}>
+      <div className="min-h-screen footer-safe" style={{ background: "#0A0A0A" }}>
+        <header className="px-4 flex items-center gap-3 sticky top-0 z-20 header-safe"
+          style={{ background: "#0A0A0A", borderBottom: "1px solid #141414", minHeight: 52 }}>
           <button
             onClick={() => { setViewingClient(null); setSelectedTrainingDay(null); setClientCheckIn(null); }}
-            className="w-11 h-11 rounded-xl text-neutral-300 flex items-center justify-center shrink-0 text-xl"
-            style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>←</button>
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors active:opacity-70"
+            style={{ background: "#141414", border: "1px solid #1E1E1E", color: "#888" }}>
+            <i className="ti ti-arrow-left" style={{ fontSize: 16 }} />
+          </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-bold text-base truncate">{viewingClient.full_name}</h1>
-            <p className="text-neutral-500 text-xs">
-              {clientViewTab === "entreno"
-                ? selectedTrainingDay ? selectedTrainingDay : `${trainingDays.length} días · ${clientLogs.length} registros`
-                : "Punto de Control"}
+            <h1 className="text-white font-bold text-sm leading-tight truncate">{viewingClient.full_name}</h1>
+            <p className="text-[10px] truncate" style={{ color: "#555" }}>
+              {(() => {
+                const act = clientActivities.find(a => a.clientId === viewingClient.id);
+                const asgn = assignments.find(a => a.client_id === viewingClient.id);
+                const parts = [];
+                if (asgn) parts.push(asgn.program_name);
+                if (act?.daysAgo !== null && act?.daysAgo !== undefined) {
+                  parts.push(act.daysAgo === 0 ? "Entrenó hoy" : act.daysAgo === 1 ? "Ayer" : `Hace ${act.daysAgo}d`);
+                }
+                return parts.join(" · ") || "Sin actividad";
+              })()}
             </p>
           </div>
           {clientViewTab === "entreno" && selectedTrainingDay && (
             <button onClick={() => setSelectedTrainingDay(null)}
-              className="text-xs text-neutral-400 px-3 py-2 rounded-lg bg-neutral-800 shrink-0">
-              ← Días
+              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl shrink-0 transition-colors active:opacity-70"
+              style={{ background: "#141414", border: "1px solid #1E1E1E", color: "#666" }}>
+              <i className="ti ti-arrow-left" style={{ fontSize: 11 }} />
+              Días
             </button>
           )}
         </header>
@@ -862,26 +876,29 @@ export default function AdminPage({ profile }: { profile: Profile }) {
         })()}
 
         {/* Sub-tabs + botón Visita Presencial */}
-        <div className="flex items-center gap-1.5 px-3 py-2.5 max-w-3xl mx-auto border-b border-neutral-800 overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-1 px-3 py-2 max-w-3xl mx-auto overflow-x-auto scrollbar-hide"
+          style={{ borderBottom: "1px solid #141414" }}>
           {[
-            { id: "entreno", label: "🏋️ Entreno", action: () => { setClientViewTab("entreno"); setSelectedTrainingDay(null); } },
-            { id: "checkin", label: "📊 Control",  action: () => { setClientViewTab("checkin"); if (!clientCheckIn && !loadingCheckIn) loadClientCheckIn(viewingClient.id); } },
-            { id: "dieta",   label: "🥗 Dieta",    action: () => { setClientViewTab("dieta"); setClientDietSubTab("plan"); } },
-          ].map(({ id, label, action }) => (
+            { id: "entreno", icon: "barbell",   label: "Entreno", action: () => { setClientViewTab("entreno"); setSelectedTrainingDay(null); } },
+            { id: "checkin", icon: "chart-bar", label: "Control",  action: () => { setClientViewTab("checkin"); if (!clientCheckIn && !loadingCheckIn) loadClientCheckIn(viewingClient.id); } },
+            { id: "dieta",   icon: "salad",     label: "Dieta",    action: () => { setClientViewTab("dieta"); setClientDietSubTab("plan"); } },
+          ].map(({ id, icon, label, action }) => (
             <button key={id} onClick={action}
-              className={"px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 " +
-                (clientViewTab === id ? "text-white" : "text-neutral-400")}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 active:scale-95"
               style={clientViewTab === id
-                ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-                : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                ? { background: "rgba(192,41,43,0.1)", color: "#C0292B", border: "1px solid rgba(192,41,43,0.2)" }
+                : { background: "transparent", color: "#444", border: "1px solid transparent" }}>
+              <i className={`ti ti-${icon}`} style={{ fontSize: 14 }} />
               {label}
             </button>
           ))}
           <div className="flex-1" />
           <button
             onClick={() => setShowVisita(true)}
-            className="px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white shrink-0">
-            📋 Visita
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 shrink-0"
+            style={{ background: "rgba(52,211,153,0.1)", color: "#34d399", border: "1px solid rgba(52,211,153,0.2)" }}>
+            <i className="ti ti-clipboard-list" style={{ fontSize: 14 }} />
+            Visita
           </button>
         </div>
 
@@ -1231,46 +1248,58 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   );
 
   return (
-    <div className="min-h-screen footer-safe" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
-      <header className="px-4 py-3 flex items-center justify-between sticky top-0 z-20 header-safe"
-        style={{ background: "#0F0F0F", borderBottom: "1px solid #8B1A2F40" }}>
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen footer-safe" style={{ background: "#0A0A0A" }}>
+      {/* ── Header ── */}
+      <header className="px-4 flex items-center justify-between sticky top-0 z-20 header-safe"
+        style={{ background: "#0A0A0A", borderBottom: "1px solid #141414", minHeight: 52 }}>
+        <div className="flex items-center gap-2.5">
           <MVPWordmark />
-          <div className="h-6 w-px" style={{ background: "#2A2A2A" }} />
-          <div>
-            <p className="text-[11px] uppercase tracking-widest text-neutral-500">Panel Admin</p>
-            <p className="text-xs text-neutral-400">{profile.full_name}</p>
-          </div>
+          <div className="h-4 w-px" style={{ background: "#1E1E1E" }} />
+          <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "#444" }}>
+            Entrenador
+          </span>
         </div>
-        <button onClick={() => supabase.auth.signOut()}
-          className="px-3 py-2.5 rounded-xl text-neutral-400 text-sm"
-          style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-          Salir
-        </button>
+        <div className="flex items-center gap-2">
+          {clients.length > 0 && (
+            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg"
+              style={{ background: "#141414", color: "#555", border: "1px solid #1E1E1E" }}>
+              {clients.length} clientes
+            </span>
+          )}
+          <button onClick={() => supabase.auth.signOut()}
+            className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors active:opacity-70"
+            style={{ background: "#141414", border: "1px solid #1E1E1E", color: "#555" }}
+            title="Cerrar sesión">
+            <i className="ti ti-logout" style={{ fontSize: 16 }} />
+          </button>
+        </div>
       </header>
 
       {toast && (
-        <div className="fixed left-1/2 -translate-x-1/2 z-50 bg-neutral-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg border border-neutral-700 whitespace-nowrap"
-          style={{ top: "max(env(safe-area-inset-top), 16px)" }}>
-          {toast}
+        <div className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-2xl whitespace-nowrap"
+          style={{ top: "max(env(safe-area-inset-top,0px), 16px)", background: "#1C1C1C", border: "1px solid #2A2A2A" }}>
+          <span className="text-white text-sm">{toast}</span>
         </div>
       )}
 
-      <div className="flex gap-1.5 px-3 py-3 max-w-3xl mx-auto overflow-x-auto scrollbar-hide">
+      {/* ── Tab bar con iconos ── */}
+      <div className="flex px-2 py-2 max-w-3xl mx-auto overflow-x-auto scrollbar-hide gap-0.5"
+        style={{ borderBottom: "1px solid #141414" }}>
         {([
-          ["inicio",    "Inicio"],
-          ["clientes",  "Clientes"],
-          ["programas", "Programas"],
-          ["dietas",    "Dietas"],
-          ["alimentos", "Alimentos"],
-          ["ejercicios","Ejercicios"],
-        ] as [Tab, string][]).map(([t, label]) => (
+          { t: "inicio" as Tab,     icon: "home",          label: "Inicio" },
+          { t: "clientes" as Tab,   icon: "users",         label: "Clientes" },
+          { t: "programas" as Tab,  icon: "clipboard-list",label: "Programas" },
+          { t: "dietas" as Tab,     icon: "salad",         label: "Dietas" },
+          { t: "alimentos" as Tab,  icon: "meat",          label: "Alimentos" },
+          { t: "ejercicios" as Tab, icon: "barbell",       label: "Ejercicios" },
+        ]).map(({ t, icon, label }) => (
           <button key={t} onClick={() => setTab(t)}
-            className={"px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 " + (tab === t ? "text-white" : "text-neutral-400")}
+            className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl shrink-0 transition-all active:scale-95"
             style={tab === t
-              ? { background: "#8B1A2F", border: "1px solid #A01F38" }
-              : { background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
-            {label}
+              ? { color: "#C0292B", background: "rgba(192,41,43,0.08)" }
+              : { color: "#3A3A3A", background: "transparent" }}>
+            <i className={`ti ti-${icon}`} style={{ fontSize: 18, lineHeight: 1 }} />
+            <span className="text-[9px] font-semibold tracking-wide">{label}</span>
           </button>
         ))}
       </div>
@@ -1301,17 +1330,18 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           withAct.forEach(x => counts[x.status]++);
 
           return (
-            <div className="space-y-4 pb-8">
+            <div className="space-y-3 pb-8">
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-2 mb-1">
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "Activos", value: counts.ok,       color: "#4ade80", bg: "rgba(74,222,128,0.07)",   border: "rgba(74,222,128,0.15)" },
-                  { label: "Inactivos",  value: counts.warning,  color: "#fbbf24", bg: "rgba(251,191,36,0.07)",  border: "rgba(251,191,36,0.15)"  },
-                  { label: "Sin plan",   value: counts.critical, color: "#f87171", bg: "rgba(248,113,113,0.07)", border: "rgba(248,113,113,0.15)" },
-                ].map(({ label, value, color, bg, border }) => (
-                  <div key={label} className="rounded-xl p-3 flex flex-col items-center gap-0.5"
+                  { label: "Activos",   value: counts.ok,       color: "#4ade80", bg: "rgba(74,222,128,0.06)",   border: "rgba(74,222,128,0.12)",  icon: "circle-check" },
+                  { label: "Inactivos", value: counts.warning,  color: "#fbbf24", bg: "rgba(251,191,36,0.06)",   border: "rgba(251,191,36,0.12)",  icon: "clock-pause"  },
+                  { label: "Sin plan",  value: counts.critical, color: "#f87171", bg: "rgba(248,113,113,0.06)",  border: "rgba(248,113,113,0.12)", icon: "alert-circle" },
+                ].map(({ label, value, color, bg, border, icon }) => (
+                  <div key={label} className="rounded-2xl p-3.5 flex flex-col items-center gap-1"
                     style={{ background: bg, border: `1px solid ${border}` }}>
-                    <span className="text-2xl font-black tabular-nums" style={{ color }}>{value}</span>
+                    <i className={`ti ti-${icon}`} style={{ fontSize: 16, color, opacity: 0.7 }} />
+                    <span className="text-2xl font-black tabular-nums leading-none" style={{ color }}>{value}</span>
                     <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: "#555" }}>{label}</span>
                   </div>
                 ))}
@@ -1378,47 +1408,50 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           const ProgramCard = ({ prog, clientId }: { prog: ProgramRow; clientId?: string }) => {
             const isActive = !!assignments.find(a => a.client_id === clientId && a.program_id === prog.id);
             return (
-              <div className={
-                "rounded-xl p-3 border transition-colors " +
-                (isActive
-                  ? "bg-emerald-950/30 border-emerald-800/50"
-                  : "bg-neutral-800/60 border-neutral-700/50")
-              }>
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="flex-1 text-white text-sm font-medium truncate">{prog.name}</p>
+              <div className="rounded-xl p-3 transition-colors"
+                style={isActive
+                  ? { background: "rgba(52,211,153,0.05)", border: "1px solid rgba(52,211,153,0.15)" }
+                  : { background: "#111", border: "1px solid #1E1E1E" }}>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ background: isActive ? "#34d399" : "#2A2A2A" }} />
+                  <p className="flex-1 text-white text-sm font-semibold truncate">{prog.name}</p>
                   {isActive && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded-full shrink-0">
+                    <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full shrink-0"
+                      style={{ background: "rgba(52,211,153,0.1)", color: "#34d399", border: "1px solid rgba(52,211,153,0.2)" }}>
                       Activo
                     </span>
                   )}
                 </div>
                 <div className="flex gap-1.5">
                   <button onClick={() => setEditingProgramId(prog.id)}
-                    className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
-                    ✏️ Editar
+                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors active:scale-95"
+                    style={{ background: "#1A1A1A", border: "1px solid #252525", color: "#aaa" }}>
+                    <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Editar
                   </button>
                   <button onClick={() => handleDuplicate(prog)}
-                    className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
-                    📋 Duplicar
+                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors active:scale-95"
+                    style={{ background: "#1A1A1A", border: "1px solid #252525", color: "#aaa" }}>
+                    <i className="ti ti-copy" style={{ fontSize: 12 }} /> Copiar
                   </button>
                   {clientId && !isActive && (
                     <button onClick={() => handleAssign(prog.id, clientId, clients.find(c => c.id === clientId)?.full_name ?? "")}
-                      className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                      style={{ background: "#1A2A1A", border: "1px solid #2A4A2A", color: "#6ee7b7" }}>
-                      Activar
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition-colors active:scale-95"
+                      style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", color: "#34d399" }}>
+                      <i className="ti ti-check" style={{ fontSize: 12 }} /> Activar
                     </button>
                   )}
                   {clientId && isActive && (
                     <button onClick={() => handleUnassign(clientId, "", true)}
-                      className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                      style={{ background: "#2A1A1A", border: "1px solid #4A2A2A", color: "#f87171" }}>
-                      Desactivar
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors active:scale-95"
+                      style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171" }}>
+                      <i className="ti ti-x" style={{ fontSize: 12 }} /> Desactivar
                     </button>
                   )}
                   <button onClick={() => handleDeleteProgram(prog)}
-                    className="w-8 py-1.5 rounded-lg text-red-500 text-xs hover:bg-red-950/40 transition-colors shrink-0"
-                    style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
-                    🗑️
+                    className="w-9 flex items-center justify-center py-1.5 rounded-lg transition-colors active:scale-95 shrink-0"
+                    style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.15)", color: "#f87171" }}>
+                    <i className="ti ti-trash" style={{ fontSize: 13 }} />
                   </button>
                 </div>
               </div>
@@ -1462,9 +1495,10 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                       <div className="px-4 pb-4 border-t border-neutral-800 pt-3">
                         <button
                           onClick={() => handleCreateProgram(client.id, client.full_name)}
-                          className="w-full mb-3 py-2 rounded-lg text-xs font-semibold transition-colors"
-                          style={{ background: "#12122A", border: "1px solid #2A2A4A", color: "#a5b4fc" }}>
-                          ➕ Nuevo bloque para {client.full_name}
+                          className="w-full mb-3 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors active:scale-95"
+                          style={{ background: "#111", border: "1px solid #1E1E1E", color: "#666" }}>
+                          <i className="ti ti-plus" style={{ fontSize: 12 }} />
+                          Nuevo bloque
                         </button>
                         {clientProgs.length === 0 ? (
                           <p className="text-neutral-600 text-xs text-center py-2">
@@ -1543,8 +1577,9 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                             <p className="flex-1 text-neutral-200 text-sm font-medium truncate">{prog.name}</p>
                             <button
                               onClick={() => { setRenamingProgId(prog.id); setRenamingName(prog.name); }}
-                              className="text-neutral-500 hover:text-neutral-300 text-xs px-2 py-1 rounded-lg hover:bg-neutral-700 transition-colors shrink-0">
-                              ✏️ Renombrar
+                              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors active:opacity-70 shrink-0"
+                              style={{ color: "#555" }}>
+                              <i className="ti ti-pencil" style={{ fontSize: 11 }} /> Renombrar
                             </button>
                           </div>
                         )}
@@ -1552,17 +1587,19 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                         {/* Acciones */}
                         <div className="flex gap-1.5 mb-3">
                           <button onClick={() => setEditingProgramId(prog.id)}
-                            className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
-                            ✏️ Editar entreno
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors active:scale-95"
+                            style={{ background: "#1A1A1A", border: "1px solid #252525", color: "#aaa" }}>
+                            <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Editar
                           </button>
                           <button onClick={() => handleDuplicate(prog)}
-                            className="flex-1 py-1.5 rounded-lg bg-neutral-700 text-neutral-200 text-xs font-medium hover:bg-neutral-600 transition-colors">
-                            📋 Duplicar
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors active:scale-95"
+                            style={{ background: "#1A1A1A", border: "1px solid #252525", color: "#aaa" }}>
+                            <i className="ti ti-copy" style={{ fontSize: 12 }} /> Copiar
                           </button>
                           <button onClick={() => handleDeleteProgram(prog)}
-                            className="w-8 py-1.5 rounded-lg text-red-500 text-xs hover:bg-red-950/40 transition-colors shrink-0"
-                            style={{ background: "#1A0A0A", border: "1px solid #3A1010" }}>
-                            🗑️
+                            className="w-9 flex items-center justify-center py-1.5 rounded-lg transition-colors active:scale-95 shrink-0"
+                            style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.15)", color: "#f87171" }}>
+                            <i className="ti ti-trash" style={{ fontSize: 13 }} />
                           </button>
                         </div>
 
@@ -1599,20 +1636,26 @@ export default function AdminPage({ profile }: { profile: Profile }) {
         {tab === "clientes" && (
           <div className="space-y-3">
             {/* ── Formulario de invitación ── */}
-            <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
-              <p className="text-white text-sm font-semibold mb-3">➕ Invitar nuevo cliente</p>
+            <div className="rounded-2xl p-4" style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <i className="ti ti-user-plus" style={{ fontSize: 15, color: "#555" }} />
+                <p className="text-white text-sm font-semibold">Invitar nuevo cliente</p>
+              </div>
               <div className="space-y-2">
                 <input type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)}
                   placeholder="Nombre del cliente (opcional)"
-                  className="w-full px-3 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-500" />
+                  className="w-full px-3 py-2.5 rounded-xl text-white placeholder-neutral-600 text-sm focus:outline-none"
+                  style={{ background: "#141414", border: "1px solid #1E1E1E" }} />
                 <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="correo@ejemplo.com"
                   onKeyDown={(e) => e.key === "Enter" && handleInviteClient()}
-                  className="w-full px-3 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-500" />
+                  className="w-full px-3 py-2.5 rounded-xl text-white placeholder-neutral-600 text-sm focus:outline-none"
+                  style={{ background: "#141414", border: "1px solid #1E1E1E" }} />
                 <button onClick={handleInviteClient} disabled={inviting || !inviteEmail.trim()}
-                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-opacity active:scale-95"
-                  style={{ background: "#8B1A2F" }}>
-                  {inviting ? "Enviando invitación…" : "Enviar invitación por email"}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all active:scale-95"
+                  style={{ background: "#C0292B" }}>
+                  <i className="ti ti-send" style={{ fontSize: 14 }} />
+                  {inviting ? "Enviando…" : "Enviar invitación"}
                 </button>
               </div>
               <p className="text-neutral-600 text-xs mt-2">El cliente recibirá un email para crear su contraseña.</p>
@@ -1622,13 +1665,14 @@ export default function AdminPage({ profile }: { profile: Profile }) {
             {clients.length > 0 && (
               <div className="space-y-2">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">🔍</span>
+                  <i className="ti ti-search absolute left-3 top-1/2 -translate-y-1/2" style={{ fontSize: 14, color: "#444" }} />
                   <input
                     type="text"
                     value={clientSearch}
                     onChange={e => setClientSearch(e.target.value)}
                     placeholder="Buscar cliente..."
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-600"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl text-white placeholder-neutral-600 text-sm focus:outline-none"
+                    style={{ background: "#111", border: "1px solid #1E1E1E" }}
                   />
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
@@ -1639,10 +1683,10 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                     { id: "inactive", label: "+7 días sin entrenar" },
                   ] as { id: typeof clientFilter; label: string }[]).map(({ id, label }) => (
                     <button key={id} onClick={() => setClientFilter(id)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
                       style={clientFilter === id
-                        ? { background: "#8B1A2F", color: "#fff", border: "1px solid #A01F38" }
-                        : { background: "#1A1A1A", color: "#666", border: "1px solid #1E1E1E" }}>
+                        ? { background: "rgba(192,41,43,0.1)", color: "#C0292B", border: "1px solid rgba(192,41,43,0.25)" }
+                        : { background: "#111", color: "#555", border: "1px solid #1E1E1E" }}>
                       {label}
                     </button>
                   ))}
@@ -1652,9 +1696,9 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
             {/* ── Lista de clientes ── */}
             {clients.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-4xl mb-3">👥</p>
-                <p className="text-neutral-400">Aún no hay clientes.</p>
+              <div className="text-center py-16">
+                <i className="ti ti-users" style={{ fontSize: 36, color: "#333" }} />
+                <p className="text-neutral-600 text-sm mt-3">Aún no hay clientes.</p>
               </div>
             ) : (() => {
               const filtered = clients.filter(c => {
@@ -1776,28 +1820,33 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
         {/* ── TAB DIETAS ── */}
         {tab === "dietas" && (
-          <div className="space-y-3">
+          <div className="space-y-3 pb-8">
             {/* Botones de acción */}
             <div className="flex gap-2">
               <button onClick={handleCreateDietPlan}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}>
-                + Crear plan vacío
+                className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95"
+                style={{ background: "#111", border: "1px solid #1E1E1E", color: "#777" }}>
+                <i className="ti ti-plus" style={{ fontSize: 14 }} />
+                Plan vacío
               </button>
               <button onClick={() => { setViewingDietPlan({ id: "__new__", name: "", kcal_on: null, kcal_off: null, notes: null }); setDietPlanSubTab("generar"); }}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: "#8B1A2F", border: "1px solid #A01F38", color: "white" }}>
-                ✨ Generar plantilla
+                className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95"
+                style={{ background: "#C0292B", color: "white" }}>
+                <i className="ti ti-sparkles" style={{ fontSize: 14 }} />
+                Generar con IA
               </button>
             </div>
 
             {/* ── SECCIÓN PLANTILLAS ── */}
             <button onClick={() => setDietTemplatesOpen(o => !o)}
               className="w-full flex items-center justify-between px-1 py-1">
-              <span className="text-xs uppercase tracking-widest text-neutral-500 font-semibold">
-                📋 Plantillas ({dietPlans.filter(p => !p.notes?.includes("__CLIENT_GENERATED__")).length})
-              </span>
-              <span className="text-neutral-600 text-sm">{dietTemplatesOpen ? "▲" : "▼"}</span>
+              <div className="flex items-center gap-2">
+                <i className="ti ti-clipboard-list" style={{ fontSize: 13, color: "#444" }} />
+                <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "#555" }}>
+                  Plantillas ({dietPlans.filter(p => !p.notes?.includes("__CLIENT_GENERATED__")).length})
+                </span>
+              </div>
+              <i className={`ti ti-chevron-${dietTemplatesOpen ? "up" : "down"}`} style={{ fontSize: 13, color: "#444" }} />
             </button>
 
             {dietTemplatesOpen && (
@@ -1810,16 +1859,20 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                     return (
                       <button key={plan.id}
                         onClick={() => { setViewingDietPlan(plan); setEditingPlanName(plan.name); setDietPlanSubTab("editar"); }}
-                        className="w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 active:opacity-70"
+                        className="w-full text-left px-4 py-3.5 rounded-2xl flex items-center gap-3 active:opacity-70 transition-opacity"
                         style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: "#1A1A1A", border: "1px solid #252525" }}>
+                          <i className="ti ti-salad" style={{ fontSize: 14, color: "#555" }} />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-white font-semibold text-sm">{plan.name}</p>
-                          <p className="text-neutral-500 text-xs mt-0.5">
-                            {plan.kcal_on ? `🔥 ${plan.kcal_on} / ${plan.kcal_off ?? "—"} kcal` : "Sin kcal"}
-                            {assigned.length > 0 ? ` · Asignada a ${assigned.length} cliente${assigned.length > 1 ? "s" : ""}` : ""}
+                          <p className="text-[10px] mt-0.5" style={{ color: "#555" }}>
+                            {plan.kcal_on ? `${plan.kcal_on} / ${plan.kcal_off ?? "—"} kcal` : "Sin kcal"}
+                            {assigned.length > 0 ? ` · ${assigned.length} cliente${assigned.length > 1 ? "s" : ""}` : ""}
                           </p>
                         </div>
-                        <span className="text-neutral-600 text-lg">›</span>
+                        <i className="ti ti-chevron-right" style={{ fontSize: 14, color: "#333" }} />
                       </button>
                     );
                   })
@@ -1830,10 +1883,13 @@ export default function AdminPage({ profile }: { profile: Profile }) {
             {/* ── SECCIÓN USUARIOS ── */}
             <button onClick={() => setDietUsersOpen(o => !o)}
               className="w-full flex items-center justify-between px-1 py-1 mt-2">
-              <span className="text-xs uppercase tracking-widest text-neutral-500 font-semibold">
-                👥 Usuarios ({clients.length})
-              </span>
-              <span className="text-neutral-600 text-sm">{dietUsersOpen ? "▲" : "▼"}</span>
+              <div className="flex items-center gap-2">
+                <i className="ti ti-users" style={{ fontSize: 13, color: "#444" }} />
+                <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "#555" }}>
+                  Clientes ({clients.length})
+                </span>
+              </div>
+              <i className={`ti ti-chevron-${dietUsersOpen ? "up" : "down"}`} style={{ fontSize: 13, color: "#444" }} />
             </button>
 
             {dietUsersOpen && (
