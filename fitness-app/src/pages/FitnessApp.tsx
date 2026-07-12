@@ -87,6 +87,17 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [settings, setSettings] = useSettings();
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // ── Timer de sesión ──────────────────────────────────────────
+  const [sessionStart, setSessionStart] = useState<number | null>(null);
+  const [sessionTick,  setSessionTick]  = useState(0);
+  useEffect(() => {
+    if (!sessionStart) return;
+    const id = setInterval(() => setSessionTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [sessionStart]);
+  const sessionElapsed = sessionStart ? Math.floor((Date.now() - sessionStart) / 1000) : 0;
+  const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
+
   // Historial de cargas por ejercicio + panel de stats global
   const [exHistory, setExHistory] = useState<{ name: string; dayId: string; exerciseIndex: number } | null>(null);
   const [showStats, setShowStats] = useState(false);
@@ -492,6 +503,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       newLog,
     ]);
     setEditing(null);
+    if (!sessionStart) setSessionStart(Date.now());
     if (settings.autoStartRestTimer) startRestTimer();
 
     // ── 2. Persistir en Supabase (awaited) ──
@@ -1004,7 +1016,17 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             )}
 
             {/* Acciones del header */}
-            <div className="flex gap-1.5 shrink-0">
+            <div className="flex gap-1.5 shrink-0 items-center">
+              {/* Timer de sesión */}
+              {sessionStart && (
+                <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl"
+                  style={{ background: "#111", border: "1px solid #1e1e1e" }}>
+                  <i className="ti ti-clock" style={{ fontSize: 12, color: "var(--mvp-red)" }} />
+                  <span className="text-xs font-bold tabular-nums" style={{ color: "#ddd", letterSpacing: "0.02em" }}>
+                    {fmtTime(sessionElapsed)}
+                  </span>
+                </div>
+              )}
               {[
                 { onClick: () => { setCalYear(new Date().getFullYear()); setCalMonth(new Date().getMonth()); setShowCalendar(true); }, icon: "calendar", title: "Calendario" },
                 { onClick: () => setShowStats(true),    icon: "chart-line", title: "Estadísticas" },
@@ -1038,6 +1060,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               {program.days.map((d, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const isActive = d.id === dayId;
+                void sessionTick; // para que React re-renderice el timer
                 // Nombre corto: quitar la letra final y abreviar
                 const shortName = d.name
                   .replace(/\s+[A-Z]\d*\s*$/, "")
@@ -1133,8 +1156,28 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           )}
 
           {/* Lista de ejercicios — espacio extra para el bottom nav y el rest timer */}
-          {microcycle && (
+          {microcycle && (() => {
+            const totalSetsInDay = microcycle.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+            const completedSetsInDay = microcycle.exercises.reduce((sum, ex, exIdx) =>
+              sum + ex.sets.filter(s => findLatestLog(logs, dayId, microcycleNumber, exIdx, s.number)).length, 0
+            );
+            const allDayDone = totalSetsInDay > 0 && completedSetsInDay === totalSetsInDay;
+            const pct = totalSetsInDay > 0 ? Math.round((completedSetsInDay / totalSetsInDay) * 100) : 0;
+            return (
             <section className="space-y-3" style={{ paddingBottom: rest ? "200px" : "32px" }}>
+              {/* Barra de progreso del día */}
+              {totalSetsInDay > 0 && (
+                <div className="mb-1">
+                  <div className="flex justify-between mb-1.5" style={{ fontSize: 10, color: "#555" }}>
+                    <span>{completedSetsInDay} / {totalSetsInDay} series</span>
+                    <span style={{ color: allDayDone ? "#4ade80" : "#555" }}>{pct}%</span>
+                  </div>
+                  <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: "#1a1a1a" }}>
+                    <div className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${pct}%`, background: allDayDone ? "#4ade80" : "var(--mvp-red)" }} />
+                  </div>
+                </div>
+              )}
               {microcycle.exercises.map((ex, idx) => {
                 const sub = substitutions[subKey(dayId, microcycleNumber, idx)];
                 const displayName = sub?.name ?? ex.name;
@@ -1280,8 +1323,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                                   <span className="ml-1 text-[10px] font-medium" style={{ color: "#777" }}>↓{log.drop_weight}×{log.drop_reps ?? "?"}</span>
                                 )}
                                 {prog && (
-                                  <span className="ml-1 text-sm font-black"
-                                    style={{ color: prog === "↑" ? "var(--mvp-red)" : prog === "=" ? "#555" : "#555" }}>
+                                  <span className="ml-1 text-xs font-black px-1 py-0.5 rounded"
+                                    style={{
+                                      color: prog === "↑" ? "#4ade80" : prog === "↓" ? "#f87171" : "#555",
+                                      background: prog === "↑" ? "rgba(74,222,128,0.1)" : prog === "↓" ? "rgba(248,113,113,0.1)" : "transparent",
+                                    }}>
                                     {prog}
                                   </span>
                                 )}
@@ -1293,12 +1339,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                             )}
                           </button>
                           {!log && validPrevLog && (
-                            <p className="text-[10px] text-neutral-400 px-3 pt-0.5 pb-1">
-                              Mc{validPrevLog.microcycleNumber}: {validPrevLog.weight} {validPrevLog.unit} × {validPrevLog.reps}
-                              {validPrevLog.rpe > 0 ? ` · RPE ${validPrevLog.rpe}` : ""}
-                              {validPrevLog.rp_reps != null ? ` · +${validPrevLog.rp_reps}r` : ""}
-                              {validPrevLog.drop_weight != null ? ` · ↓ ${validPrevLog.drop_weight}×${validPrevLog.drop_reps ?? "?"}` : ""}
-                            </p>
+                            <div className="flex items-center gap-1.5 px-3 pt-0.5 pb-1">
+                              <span className="text-[9px] uppercase tracking-wider font-bold shrink-0"
+                                style={{ color: "var(--mvp-red)", opacity: 0.75 }}>Mc{validPrevLog.microcycleNumber}</span>
+                              <span className="text-[10px]" style={{ color: "#666" }}>
+                                {validPrevLog.weight} {validPrevLog.unit} × {validPrevLog.reps}
+                                {validPrevLog.rpe > 0 ? ` · RPE ${validPrevLog.rpe}` : ""}
+                                {validPrevLog.rp_reps != null ? ` · +${validPrevLog.rp_reps}r` : ""}
+                                {validPrevLog.drop_weight != null ? ` · ↓${validPrevLog.drop_weight}×${validPrevLog.drop_reps ?? "?"}` : ""}
+                              </span>
+                            </div>
                           )}
                         </div>
                       );
@@ -1314,8 +1364,24 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 </article>
                 );
               })}
+              {/* Banner de completado */}
+              {allDayDone && (
+                <div className="mt-2 flex flex-col items-center gap-2 py-6 px-4 rounded-2xl"
+                  style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.14)" }}>
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.18)" }}>
+                    <i className="ti ti-trophy" style={{ fontSize: 22, color: "#4ade80" }} />
+                  </div>
+                  <p className="text-sm font-bold" style={{ color: "#4ade80" }}>¡Entreno completado!</p>
+                  <p className="text-xs text-center" style={{ color: "#666" }}>
+                    {completedSetsInDay} series completadas
+                    {sessionStart ? ` · ${fmtTime(Math.floor((Date.now() - sessionStart) / 1000))}` : ""}
+                  </p>
+                </div>
+              )}
             </section>
-          )}
+            );
+          })()}
         </div>
       )}
 

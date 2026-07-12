@@ -52,8 +52,15 @@ export default function SetLogger({
   const isDrop = hasDrop && isLastSet;
 
   // Estados principales
-  const [weight, setWeight] = useState<string>(existingLog ? String(existingLog.weight) : "");
-  const [reps,   setReps]   = useState<string>(existingLog ? String(existingLog.reps)   : "");
+  // Pre-rellena desde existingLog si ya hay registro; si no, desde previousLog como sugerencia
+  const [weight, setWeight] = useState<string>(
+    existingLog ? String(existingLog.weight) :
+    previousLog ? String(previousLog.weight) : ""
+  );
+  const [reps, setReps] = useState<string>(
+    existingLog ? String(existingLog.reps) :
+    previousLog ? String(previousLog.reps) : ""
+  );
   // Sólo pre-rellenar RPE si se guardó un valor positivo — rpe=0 significa "no introducido"
   const [rpe,    setRpe]    = useState<string>(existingLog && (existingLog.rpe ?? 0) > 0 ? String(existingLog.rpe) : "");
   // Estados extra para R&P y Drop Set
