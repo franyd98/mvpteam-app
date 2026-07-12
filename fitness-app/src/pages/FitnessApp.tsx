@@ -2,6 +2,25 @@
 // Los registros de entrenamiento se guardan en Supabase (set_logs).
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+
+// ── Cola de guardado offline (persistente en localStorage) ───────
+type PendingSaveRow = {
+  exerciseSetId: number; client_id: string;
+  weight: number; reps: number; rpe: number; unit: string; logged_at: string;
+  rp_reps: number | null; drop_weight: number | null; drop_reps: number | null;
+};
+const PENDING_KEY = "mvp_pending_saves_v1";
+const getPending = (): PendingSaveRow[] => { try { return JSON.parse(localStorage.getItem(PENDING_KEY) ?? "[]"); } catch { return []; } };
+const upsertPending = (row: PendingSaveRow) => {
+  try {
+    const list = getPending().filter(r => r.exerciseSetId !== row.exerciseSetId);
+    list.push(row);
+    localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+  } catch {}
+};
+const removePending = (id: number) => {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(getPending().filter(r => r.exerciseSetId !== id))); } catch {}
+};
 import { supabase } from "../lib/supabase";
 import type { Program, SetLog } from "../types";
 import { setKey } from "../types";
@@ -41,6 +60,8 @@ type SetIdEntry = {
 export default function FitnessApp({ profile }: { profile: Profile }) {
   const [program, setProgram] = useState<Program | null>(null);
   const [loadingProgram, setLoadingProgram] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [pendingSaves, setPendingSaves] = useState<number>(() => getPending().length);
   // Todos los programas asignados (activo + anteriores)
   const [allPrograms, setAllPrograms] = useState<{ programId: number; name: string; source: string }[]>([]);
   const [showProgramPicker, setShowProgramPicker] = useState(false);
@@ -154,6 +175,36 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       });
   }, []);
 
+  // Auto-cerrar el banner de error tras 7 segundos
+  useEffect(() => {
+    if (!saveError) return;
+    const t = setTimeout(() => setSaveError(null), 7000);
+    return () => clearTimeout(t);
+  }, [saveError]);
+
+  // Sincronizar cola pendiente al recuperar conexión
+  useEffect(() => {
+    const handleOnline = async () => {
+      const pending = getPending();
+      if (!pending.length) return;
+      let synced = 0;
+      for (const row of pending) {
+        const { error } = await supabase.from("set_logs").upsert(
+          { client_id: row.client_id, exercise_set_id: row.exerciseSetId, weight: row.weight,
+            reps: row.reps, rpe: row.rpe, unit: row.unit, logged_at: row.logged_at,
+            rp_reps: row.rp_reps, drop_weight: row.drop_weight, drop_reps: row.drop_reps },
+          { onConflict: "client_id,exercise_set_id" },
+        );
+        if (!error) { removePending(row.exerciseSetId); synced++; }
+      }
+      const remaining = getPending().length;
+      setPendingSaves(remaining);
+      if (synced > 0 && remaining === 0) setSaveError(null);
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, []);
+
   // ── Helpers de bloqueo ────────────────────────────────────────
   const isLocked = (dId: string, mcNum: number) => lockedMcs.has(lockKey(dId, mcNum));
 
@@ -181,6 +232,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   };
 
   const loadAssignedProgram = async () => {
+    setLoadError(false);
     // Cargar programas para el selector:
     // - Los que están activos ahora, O
     // - Los que pertenecen a este cliente (owner_client_id) aunque estén inactivos (ej: plan IA anterior)
@@ -235,6 +287,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
     if (error || !data) {
       setLoadingProgram(false);
+      if (error) setLoadError(true);
       return;
     }
 
@@ -293,7 +346,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     if (transformed.days.length > 0) setDayId(transformed.days[0].id);
 
     const [logsRes, locksRes] = await Promise.all([
-      supabase.from("set_logs").select("*").eq("client_id", profile.id),
+      supabase.from("set_logs").select("*").eq("client_id", profile.id)
+        .order("logged_at", { ascending: false }).limit(600),
       supabase.from("locked_microcycles").select("day_id,microcycle_number").eq("client_id", profile.id),
     ]);
 
@@ -321,6 +375,22 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
     if (locksRes.data) {
       setLockedMcs(new Set(locksRes.data.map((r: any) => lockKey(String(r.day_id), r.microcycle_number))));
+    }
+
+    // Intentar sincronizar guardados pendientes al cargar
+    const pending = getPending();
+    if (pending.length > 0) {
+      let synced = 0;
+      for (const row of pending) {
+        const { error: pe } = await supabase.from("set_logs").upsert(
+          { client_id: row.client_id, exercise_set_id: row.exerciseSetId, weight: row.weight,
+            reps: row.reps, rpe: row.rpe, unit: row.unit, logged_at: row.logged_at,
+            rp_reps: row.rp_reps, drop_weight: row.drop_weight, drop_reps: row.drop_reps },
+          { onConflict: "client_id,exercise_set_id" },
+        );
+        if (!pe) { removePending(row.exerciseSetId); synced++; }
+      }
+      setPendingSaves(getPending().length);
     }
 
     setLoadingProgram(false);
@@ -449,20 +519,41 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
     if (upsertError) {
       console.error("❌ Error guardando serie en Supabase:", upsertError);
-      setSaveError(`No se pudo guardar: ${upsertError.message}`);
-      // Revertir la UI para que el usuario sepa que no está guardado
-      setLogs((prev) =>
-        prev.filter(
-          (l) =>
-            !(
-              l.dayId === snap.dayId &&
-              l.microcycleNumber === snap.microcycleNumber &&
-              l.exerciseIndex === snap.exerciseIndex &&
-              l.setNumber === snap.setNumber
-            ),
-        ),
-      );
+      const isNetworkError = !navigator.onLine
+        || upsertError.message?.toLowerCase().includes("load failed")
+        || upsertError.message?.toLowerCase().includes("failed to fetch")
+        || (upsertError as any).code === "FETCH_ERROR";
+
+      if (isNetworkError) {
+        // Sin red: guardar en cola local, NO revertir UI (el registro se ve en pantalla)
+        upsertPending({
+          exerciseSetId: exerciseSetId!, client_id: profile.id,
+          weight: data.weight, reps: data.reps, rpe: data.rpe,
+          unit: settings.weightUnit, logged_at: new Date().toISOString(),
+          rp_reps: data.rp_reps ?? null, drop_weight: data.drop_weight ?? null, drop_reps: data.drop_reps ?? null,
+        });
+        const n = getPending().length;
+        setPendingSaves(n);
+        setSaveError(`Sin conexión — ${n} registro${n > 1 ? "s" : ""} pendiente${n > 1 ? "s" : ""}, se sincronizarán al reconectar`);
+      } else {
+        // Error de BD: revertir UI para que el usuario lo vea
+        setSaveError(`No se pudo guardar: ${upsertError.message}`);
+        setLogs((prev) =>
+          prev.filter(
+            (l) =>
+              !(
+                l.dayId === snap.dayId &&
+                l.microcycleNumber === snap.microcycleNumber &&
+                l.exerciseIndex === snap.exerciseIndex &&
+                l.setNumber === snap.setNumber
+              ),
+          ),
+        );
+      }
     } else {
+      // Guardado OK — limpiar de pendientes si estaba en cola
+      removePending(exerciseSetId!);
+      setPendingSaves(getPending().length);
       setSaveError(null);
     }
   };
@@ -473,6 +564,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const snap = { ...editing };
     const k = setKey(snap.dayId, snap.microcycleNumber, snap.exerciseIndex, snap.setNumber);
     const exerciseSetId = setKeyToIdRef.current.get(k);
+
+    // Guardar copia del log antes de borrar (para rollback si falla)
+    const deletedLog = logs.find(
+      (l) => l.dayId === snap.dayId && l.microcycleNumber === snap.microcycleNumber &&
+             l.exerciseIndex === snap.exerciseIndex && l.setNumber === snap.setNumber
+    );
 
     // ── 1. Eliminar de la UI al instante ──
     setLogs((prev) =>
@@ -488,13 +585,19 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     );
     setEditing(null);
 
-    // ── 2. Borrar en Supabase (awaited) ──
+    // ── 2. Borrar en Supabase ──
     if (exerciseSetId) {
-      await supabase
+      const { error: delError } = await supabase
         .from("set_logs")
         .delete()
         .eq("client_id", profile.id)
         .eq("exercise_set_id", exerciseSetId);
+
+      if (delError && deletedLog) {
+        // Revertir UI si el borrado falló
+        setLogs((prev) => [...prev, deletedLog]);
+        setSaveError("No se pudo borrar el registro. Comprueba tu conexión.");
+      }
     }
   };
 
@@ -526,6 +629,25 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       <div className="min-h-dvh flex items-center justify-center"
         style={{ background: "linear-gradient(160deg, #0A0A0A 60%, #1A0810 100%)" }}>
         <p className="text-neutral-500 text-sm">Cargando tu programa...</p>
+      </div>
+    );
+
+  if (loadError)
+    return (
+      <div className="min-h-dvh flex items-center justify-center p-6"
+        style={{ background: "linear-gradient(160deg, #0A0A0A 60%, #1A0810 100%)" }}>
+        <div className="text-center">
+          <i className="ti ti-wifi-off mb-4 block" style={{ fontSize: 40, color: "#555" }} />
+          <p className="text-white font-semibold mb-2">No se pudo cargar el programa</p>
+          <p className="text-neutral-400 text-sm mb-5">Comprueba tu conexión e inténtalo de nuevo.</p>
+          <button
+            onClick={() => { setLoadingProgram(true); loadAssignedProgram(); }}
+            className="px-5 py-2 rounded-xl text-sm font-semibold"
+            style={{ background: "#C8102E", color: "#fff" }}
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     );
 
@@ -784,15 +906,24 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   return (
     <div className="h-dvh flex flex-col" style={{ background: "linear-gradient(160deg, #0A0A0A 80%, #1A0810 100%)" }}>
 
-      {/* ── Banner de error de guardado ── */}
-      {saveError && (
+      {/* ── Banner de error / pendientes offline ── */}
+      {(saveError || pendingSaves > 0) && (
         <div
           className="flex items-center gap-3 px-4 py-3 z-50"
-          style={{ background: "#3b0000", borderBottom: "1px solid #600" }}
+          style={{
+            background: pendingSaves > 0 && !saveError?.includes("No se pudo") ? "#2a1a00" : "#3b0000",
+            borderBottom: `1px solid ${pendingSaves > 0 && !saveError?.includes("No se pudo") ? "#855" : "#600"}`,
+          }}
         >
-          <i className="ti ti-alert-triangle shrink-0" style={{ fontSize: 15, color: "#f87171" }} />
-          <p className="flex-1 text-xs font-semibold" style={{ color: "#fca5a5" }}>{saveError}</p>
-          <button onClick={() => setSaveError(null)} style={{ color: "#f87171", fontSize: 18, lineHeight: 1 }}>×</button>
+          <i
+            className={`ti ${pendingSaves > 0 && !saveError?.includes("No se pudo") ? "ti-wifi-off" : "ti-alert-triangle"} shrink-0`}
+            style={{ fontSize: 15, color: pendingSaves > 0 && !saveError?.includes("No se pudo") ? "#fbbf24" : "#f87171" }}
+          />
+          <p className="flex-1 text-xs font-semibold"
+            style={{ color: pendingSaves > 0 && !saveError?.includes("No se pudo") ? "#fde68a" : "#fca5a5" }}>
+            {saveError ?? `${pendingSaves} registro${pendingSaves > 1 ? "s" : ""} pendiente${pendingSaves > 1 ? "s" : ""} de sincronizar`}
+          </p>
+          <button onClick={() => { setSaveError(null); }} style={{ color: "#f87171", fontSize: 18, lineHeight: 1 }}>×</button>
         </div>
       )}
 
