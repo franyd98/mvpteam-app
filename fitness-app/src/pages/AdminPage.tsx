@@ -15,7 +15,8 @@ type ProgramRow = { id: number; name: string; description: string | null; owner_
 type Assignment = { client_id: string; program_id: number; program_name: string };
 type DietPlan = { id: string; name: string; kcal_on: number | null; kcal_off: number | null; notes: string | null };
 type DietAssignment = { client_id: string; plan_id: string; plan_name: string };
-type Tab = "programas" | "clientes" | "ejercicios" | "dietas" | "alimentos";
+type Tab = "inicio" | "programas" | "clientes" | "ejercicios" | "dietas" | "alimentos";
+type ClientActivity = { clientId: string; lastAt: string | null; sessionsLast30: number; daysAgo: number | null };
 
 type ClientLog = {
   id: number;
@@ -37,7 +38,7 @@ type ClientLog = {
 };
 
 export default function AdminPage({ profile }: { profile: Profile }) {
-  const [tab, setTab] = useState<Tab>("clientes");
+  const [tab, setTab] = useState<Tab>("inicio");
   const [clients, setClients] = useState<Profile[]>([]);
   const [exercises, setExercises] = useState<CatalogEx[]>([]);
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
@@ -108,16 +109,56 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const [editingEx, setEditingEx] = useState<EditingEx | null>(null);
   const [savingEx, setSavingEx] = useState(false);
 
+  // Dashboard: actividad por cliente
+  const [clientActivities, setClientActivities] = useState<ClientActivity[]>([]);
+  // Filtro rápido en tab Clientes
+  const [clientFilter, setClientFilter] = useState<"all" | "noprog" | "nodiet" | "inactive">("all");
+  // Notas privadas del entrenador (localStorage)
+  const getCoachNote = (clientId: string): string => {
+    try { return localStorage.getItem(`mvp_coach_note_${clientId}`) ?? ""; } catch { return ""; }
+  };
+  const [coachNoteEditing, setCoachNoteEditing] = useState<string | null>(null);
+  const [coachNoteDraft, setCoachNoteDraft] = useState("");
+
   useEffect(() => { loadAll(); }, []);
+
+  const loadClientActivities = async (ids: string[]) => {
+    if (ids.length === 0) { setClientActivities([]); return; }
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase.from("set_logs").select("client_id, logged_at")
+      .in("client_id", ids).gte("logged_at", since);
+    const byClient: Record<string, string> = {};
+    const daysSet: Record<string, Set<string>> = {};
+    for (const r of (data ?? []) as { client_id: string; logged_at: string }[]) {
+      if (!byClient[r.client_id] || r.logged_at > byClient[r.client_id]) byClient[r.client_id] = r.logged_at;
+      if (!daysSet[r.client_id]) daysSet[r.client_id] = new Set();
+      daysSet[r.client_id].add(r.logged_at.slice(0, 10));
+    }
+    const now = Date.now();
+    setClientActivities(ids.map(id => ({
+      clientId: id,
+      lastAt: byClient[id] ?? null,
+      sessionsLast30: daysSet[id]?.size ?? 0,
+      daysAgo: byClient[id] ? Math.floor((now - new Date(byClient[id]).getTime()) / 86400000) : null,
+    })));
+  };
 
   const loadAll = async () => {
     setLoading(true);
-    await Promise.all([loadClients(), loadExercises(), loadPrograms(), loadAssignments(), loadDietPlans(), loadDietAssignments()]);
+    const { data: cd } = await supabase.from("profiles").select("*").eq("role", "client").order("full_name");
+    const cl = (cd ?? []) as Profile[];
+    setClients(cl);
+    await Promise.all([
+      loadExercises(), loadPrograms(), loadAssignments(), loadDietPlans(), loadDietAssignments(),
+      loadClientActivities(cl.map(c => c.id)),
+    ]);
     setLoading(false);
   };
   const loadClients = async () => {
     const { data } = await supabase.from("profiles").select("*").eq("role", "client").order("full_name");
-    setClients(data ?? []);
+    const cl = (data ?? []) as Profile[];
+    setClients(cl);
+    await loadClientActivities(cl.map(c => c.id));
   };
   const loadExercises = async () => {
     const { data } = await supabase.from("exercises").select("*").order("muscle_group").order("name");
@@ -769,6 +810,57 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           )}
         </header>
 
+        {/* Nota del entrenador */}
+        <div className="px-4 py-2 max-w-3xl mx-auto" style={{ borderBottom: "1px solid #141414" }}>
+          {coachNoteEditing === viewingClient.id ? (
+            <div className="flex gap-2">
+              <input
+                autoFocus
+                value={coachNoteDraft}
+                onChange={e => setCoachNoteDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") { localStorage.setItem(`mvp_coach_note_${viewingClient.id}`, coachNoteDraft); setCoachNoteEditing(null); }
+                  if (e.key === "Escape") setCoachNoteEditing(null);
+                }}
+                placeholder="Nota interna del entrenador..."
+                className="flex-1 px-3 py-1.5 rounded-lg text-xs text-white focus:outline-none"
+                style={{ background: "#141414", border: "1px solid #2A2A2A" }}
+              />
+              <button onClick={() => { localStorage.setItem(`mvp_coach_note_${viewingClient.id}`, coachNoteDraft); setCoachNoteEditing(null); }}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "#8B1A2F" }}>✓</button>
+              <button onClick={() => setCoachNoteEditing(null)}
+                className="px-2 py-1.5 rounded-lg text-xs text-neutral-500" style={{ background: "#1A1A1A" }}>✕</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setCoachNoteDraft(getCoachNote(viewingClient.id)); setCoachNoteEditing(viewingClient.id); }}
+              className="w-full text-left text-xs py-1 px-1"
+              style={{ color: getCoachNote(viewingClient.id) ? "#888" : "#383838" }}>
+              <i className="ti ti-pencil mr-1.5" style={{ fontSize: 10 }} />
+              {getCoachNote(viewingClient.id) || "Añadir nota interna..."}
+            </button>
+          )}
+        </div>
+
+        {/* Strip adherencia — últimos 14 días */}
+        {clientLogs.length > 0 && (() => {
+          const trainedDates = new Set(clientLogs.map(l => l.logged_at.slice(0, 10)));
+          const today = new Date();
+          const days = Array.from({ length: 14 }, (_, i) => {
+            const d = new Date(today); d.setDate(d.getDate() - 13 + i);
+            return d.toISOString().slice(0, 10);
+          });
+          return (
+            <div className="flex gap-1 px-4 py-2 max-w-3xl mx-auto">
+              {days.map(day => (
+                <div key={day} className="flex-1 rounded-sm transition-all"
+                  style={{ height: 5, background: trainedDates.has(day) ? "#8B1A2F" : "#1E1E1E" }}
+                  title={day} />
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Sub-tabs + botón Visita Presencial */}
         <div className="flex items-center gap-1.5 px-3 py-2.5 max-w-3xl mx-auto border-b border-neutral-800 overflow-x-auto scrollbar-hide">
           {[
@@ -932,22 +1024,56 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                       <div key={exName} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
                         <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">{group}</p>
                         <p className="text-white font-semibold text-sm mb-3 leading-snug">{exName}</p>
+                        {/* Mini gráfico progresión de peso por microciclo */}
+                        {mcNums.length > 1 && (() => {
+                          const maxPerMc = mcNums.map(mc =>
+                            Math.max(...byMc[mc].map(l => l.weight), 0)
+                          );
+                          const globalMax = Math.max(...maxPerMc, 1);
+                          const first = maxPerMc[0];
+                          const last = maxPerMc[maxPerMc.length - 1];
+                          const trend = last > first + 0.5 ? "↑" : last < first - 0.5 ? "↓" : "=";
+                          const trendColor = trend === "↑" ? "#4ade80" : trend === "↓" ? "#f87171" : "#888";
+                          return (
+                            <div className="mb-3">
+                              <div className="flex items-end gap-0.5" style={{ height: 32 }}>
+                                {mcNums.map((mc, i) => (
+                                  <div key={mc} className="flex-1 flex flex-col justify-end items-center gap-0.5">
+                                    <div className="w-full rounded-sm"
+                                      style={{
+                                        height: Math.max(3, Math.round((maxPerMc[i] / globalMax) * 28)),
+                                        background: i === mcNums.length - 1 ? "#8B1A2F" : "#2A2A2A",
+                                        transition: "height 0.3s ease",
+                                      }} />
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex justify-between items-center mt-1">
+                                <span className="text-[9px]" style={{ color: "#444" }}>Mc{mcNums[0]} → Mc{mcNums[mcNums.length - 1]}</span>
+                                <span className="text-[10px] font-bold tabular-nums" style={{ color: trendColor }}>
+                                  {maxPerMc[maxPerMc.length - 1]}kg {trend}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                         <div className="space-y-2">
                           {mcNums.map(mcNum => {
                             const sets = byMc[mcNum].sort((a, b) =>
                               (a.exercise_sets?.set_number ?? 0) - (b.exercise_sets?.set_number ?? 0));
                             return (
                               <div key={mcNum}>
-                                <p className="text-[10px] uppercase tracking-wider text-neutral-600 mb-1">Microciclo {mcNum}</p>
-                                <div className="flex flex-wrap gap-2">
+                                <p className="text-[10px] uppercase tracking-wider text-neutral-600 mb-1">Mc {mcNum}</p>
+                                <div className="flex flex-wrap gap-1.5">
                                   {sets.map(log => (
-                                    <div key={log.id} className="bg-neutral-800 rounded-lg px-3 py-1.5 text-xs">
-                                      <span className="text-neutral-500 mr-1.5">S{log.exercise_sets?.set_number}</span>
-                                      <span className="text-emerald-300 font-bold tabular-nums">
-                                        {log.weight}{log.unit} × {log.reps}
+                                    <div key={log.id} className="rounded-lg px-2.5 py-1.5 text-xs"
+                                      style={{ background: "#1A1A1A", border: "1px solid #252525" }}>
+                                      <span className="mr-1" style={{ color: "#444" }}>S{log.exercise_sets?.set_number}</span>
+                                      <span className="font-bold tabular-nums" style={{ color: "#4ade80" }}>
+                                        {log.weight}{log.unit}×{log.reps}
                                       </span>
                                       {log.rpe > 0 && (
-                                        <span className="text-neutral-500 ml-1">RPE {log.rpe}</span>
+                                        <span className="ml-1" style={{ color: "#555" }}>RPE{log.rpe}</span>
                                       )}
                                     </div>
                                   ))}
@@ -1131,7 +1257,14 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       )}
 
       <div className="flex gap-1.5 px-3 py-3 max-w-3xl mx-auto overflow-x-auto scrollbar-hide">
-        {([["clientes", "👥 Clientes"], ["programas", "📋 Programas"], ["dietas", "🥗 Dietas"], ["alimentos", "🍗 Alimentos"], ["ejercicios", "🏋️ Ejercicios"]] as [Tab, string][]).map(([t, label]) => (
+        {([
+          ["inicio",    "Inicio"],
+          ["clientes",  "Clientes"],
+          ["programas", "Programas"],
+          ["dietas",    "Dietas"],
+          ["alimentos", "Alimentos"],
+          ["ejercicios","Ejercicios"],
+        ] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={"px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 " + (tab === t ? "text-white" : "text-neutral-400")}
             style={tab === t
@@ -1143,6 +1276,97 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       </div>
 
       <div className="max-w-3xl mx-auto px-4">
+
+        {/* ── TAB INICIO ── */}
+        {tab === "inicio" && (() => {
+          const withAct = clients.map(c => {
+            const act = clientActivities.find(a => a.clientId === c.id);
+            const asgn = assignments.find(a => a.client_id === c.id);
+            const diet = dietAssignments.find(a => a.client_id === c.id);
+            const daysAgo = act?.daysAgo ?? null;
+            const status: "ok" | "warning" | "critical" =
+              !asgn ? "critical"
+              : daysAgo === null || daysAgo > 7 ? "warning"
+              : "ok";
+            return { c, act, asgn, diet, daysAgo, status };
+          });
+          const sorted = [...withAct].sort((a, b) => {
+            const ord = { critical: 0, warning: 1, ok: 2 };
+            if (ord[a.status] !== ord[b.status]) return ord[a.status] - ord[b.status];
+            if (a.daysAgo === null && b.daysAgo !== null) return -1;
+            if (b.daysAgo === null && a.daysAgo !== null) return 1;
+            return (b.daysAgo ?? 0) - (a.daysAgo ?? 0);
+          });
+          const counts = { ok: 0, warning: 0, critical: 0 };
+          withAct.forEach(x => counts[x.status]++);
+
+          return (
+            <div className="space-y-4 pb-8">
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-2 mb-1">
+                {[
+                  { label: "Activos", value: counts.ok,       color: "#4ade80", bg: "rgba(74,222,128,0.07)",   border: "rgba(74,222,128,0.15)" },
+                  { label: "Inactivos",  value: counts.warning,  color: "#fbbf24", bg: "rgba(251,191,36,0.07)",  border: "rgba(251,191,36,0.15)"  },
+                  { label: "Sin plan",   value: counts.critical, color: "#f87171", bg: "rgba(248,113,113,0.07)", border: "rgba(248,113,113,0.15)" },
+                ].map(({ label, value, color, bg, border }) => (
+                  <div key={label} className="rounded-xl p-3 flex flex-col items-center gap-0.5"
+                    style={{ background: bg, border: `1px solid ${border}` }}>
+                    <span className="text-2xl font-black tabular-nums" style={{ color }}>{value}</span>
+                    <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: "#555" }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {clients.length === 0 ? (
+                <p className="text-neutral-600 text-sm text-center py-12">Sin clientes todavía.</p>
+              ) : (
+                <div className="space-y-2">
+                  {sorted.map(({ c, act, asgn, diet, daysAgo, status }) => {
+                    const dotColor = status === "ok" ? "#4ade80" : status === "warning" ? "#fbbf24" : "#f87171";
+                    const lastText = daysAgo === null ? "Sin actividad" : daysAgo === 0 ? "Hoy" : daysAgo === 1 ? "Ayer" : `Hace ${daysAgo}d`;
+                    const coachNote = getCoachNote(c.id);
+                    return (
+                      <button key={c.id}
+                        onClick={() => openClientProgress(c)}
+                        className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 active:opacity-70 transition-opacity"
+                        style={{ background: "#111", border: "1px solid #1E1E1E" }}>
+                        {/* Avatar + dot */}
+                        <div className="relative shrink-0">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black"
+                            style={{ background: "#1E1E1E", color: "#888" }}>
+                            {c.full_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full"
+                            style={{ background: dotColor, border: "2px solid #111" }} />
+                        </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-semibold text-sm">{c.full_name}</p>
+                          <p className="text-[10px] truncate" style={{ color: "#555" }}>
+                            {asgn ? asgn.program_name : "Sin programa"}
+                            {diet ? "" : " · Sin dieta"}
+                          </p>
+                          {coachNote && (
+                            <p className="text-[10px] truncate mt-0.5" style={{ color: "#666", fontStyle: "italic" }}>
+                              {coachNote}
+                            </p>
+                          )}
+                        </div>
+                        {/* Activity */}
+                        <div className="shrink-0 text-right">
+                          <p className="text-xs font-bold" style={{ color: dotColor }}>{lastText}</p>
+                          {act && act.sessionsLast30 > 0 && (
+                            <p className="text-[10px]" style={{ color: "#555" }}>{act.sessionsLast30}d / 30d</p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── TAB PROGRAMAS ── */}
         {tab === "programas" && (() => {
@@ -1394,17 +1618,35 @@ export default function AdminPage({ profile }: { profile: Profile }) {
               <p className="text-neutral-600 text-xs mt-2">El cliente recibirá un email para crear su contraseña.</p>
             </div>
 
-            {/* ── Buscador ── */}
+            {/* ── Buscador + filtros ── */}
             {clients.length > 0 && (
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">🔍</span>
-                <input
-                  type="text"
-                  value={clientSearch}
-                  onChange={e => setClientSearch(e.target.value)}
-                  placeholder="Buscar cliente..."
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-600"
-                />
+              <div className="space-y-2">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">🔍</span>
+                  <input
+                    type="text"
+                    value={clientSearch}
+                    onChange={e => setClientSearch(e.target.value)}
+                    placeholder="Buscar cliente..."
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-600 text-sm focus:outline-none focus:border-neutral-600"
+                  />
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {([
+                    { id: "all",      label: "Todos" },
+                    { id: "noprog",   label: "Sin programa" },
+                    { id: "nodiet",   label: "Sin dieta" },
+                    { id: "inactive", label: "+7 días sin entrenar" },
+                  ] as { id: typeof clientFilter; label: string }[]).map(({ id, label }) => (
+                    <button key={id} onClick={() => setClientFilter(id)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      style={clientFilter === id
+                        ? { background: "#8B1A2F", color: "#fff", border: "1px solid #A01F38" }
+                        : { background: "#1A1A1A", color: "#666", border: "1px solid #1E1E1E" }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -1415,50 +1657,103 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                 <p className="text-neutral-400">Aún no hay clientes.</p>
               </div>
             ) : (() => {
-              const filtered = clients.filter(c =>
-                c.full_name.toLowerCase().includes(clientSearch.toLowerCase())
-              );
+              const filtered = clients.filter(c => {
+                if (!c.full_name.toLowerCase().includes(clientSearch.toLowerCase())) return false;
+                const act = clientActivities.find(a => a.clientId === c.id);
+                if (clientFilter === "noprog")   return !assignments.find(a => a.client_id === c.id);
+                if (clientFilter === "nodiet")   return !dietAssignments.find(a => a.client_id === c.id);
+                if (clientFilter === "inactive") return act?.daysAgo === null || (act?.daysAgo ?? 999) > 7;
+                return true;
+              });
               return filtered.length === 0 ? (
-                <p className="text-neutral-500 text-sm text-center py-6">Sin resultados para "{clientSearch}"</p>
+                <p className="text-neutral-500 text-sm text-center py-6">Sin resultados</p>
               ) : (
                 <div className="space-y-2">
                   {filtered.map((c) => {
                     const isOpen = expandedClientCardId === c.id;
                     const assignment = assignments.find(a => a.client_id === c.id);
                     const dietAssignment = dietAssignments.find(a => a.client_id === c.id);
+                    const act = clientActivities.find(a => a.clientId === c.id);
+                    const daysAgo = act?.daysAgo ?? null;
+                    const dotColor = !assignment ? "#f87171" : daysAgo === null || daysAgo > 7 ? "#fbbf24" : "#4ade80";
+                    const lastText = daysAgo === null ? "Sin actividad" : daysAgo === 0 ? "Hoy" : daysAgo === 1 ? "Ayer" : `${daysAgo}d`;
+                    const coachNote = getCoachNote(c.id);
                     return (
                       <div key={c.id} className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
                         {/* Header colapsable */}
                         <button
                           onClick={() => setExpandedClientCardId(isOpen ? null : c.id)}
                           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-800/50 transition-colors text-left">
-                          <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-bold text-white shrink-0">
-                            {c.full_name.charAt(0).toUpperCase()}
+                          {/* Avatar + dot */}
+                          <div className="relative shrink-0">
+                            <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-bold text-white">
+                              {c.full_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full"
+                              style={{ background: dotColor, border: "2px solid #171717" }} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-medium">{c.full_name}</p>
-                            <p className="text-xs truncate">
-                              {assignment
-                                ? <span className="text-emerald-500">📋 {assignment.program_name}</span>
-                                : <span className="text-neutral-600">Sin programa</span>}
-                              {dietAssignment && <span className="text-orange-400 ml-2">🥗 {dietAssignment.plan_name}</span>}
+                            <div className="flex items-baseline gap-2">
+                              <p className="text-white text-sm font-semibold">{c.full_name}</p>
+                              <span className="text-[10px] font-semibold" style={{ color: dotColor }}>{lastText}</span>
+                            </div>
+                            <p className="text-[11px] truncate" style={{ color: "#555" }}>
+                              {assignment ? assignment.program_name : "Sin programa"}
+                              {dietAssignment ? "" : " · Sin dieta"}
                             </p>
+                            {coachNote && (
+                              <p className="text-[10px] truncate" style={{ color: "#666", fontStyle: "italic" }}>{coachNote}</p>
+                            )}
                           </div>
-                          <span className="text-neutral-500 text-xs shrink-0">{isOpen ? "▲" : "▼"}</span>
+                          <span className="text-neutral-600 text-xs shrink-0">{isOpen ? "▲" : "▼"}</span>
                         </button>
 
                         {/* Acciones expandidas */}
                         {isOpen && (
                           <div className="px-4 pb-3 pt-1 border-t border-neutral-800 space-y-2">
+                            {/* Nota del entrenador */}
+                            {coachNoteEditing === c.id ? (
+                              <div className="flex gap-2">
+                                <input
+                                  autoFocus
+                                  value={coachNoteDraft}
+                                  onChange={e => setCoachNoteDraft(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") { localStorage.setItem(`mvp_coach_note_${c.id}`, coachNoteDraft); setCoachNoteEditing(null); }
+                                    if (e.key === "Escape") setCoachNoteEditing(null);
+                                  }}
+                                  placeholder="Nota interna..."
+                                  className="flex-1 px-3 py-1.5 rounded-lg text-xs text-white focus:outline-none"
+                                  style={{ background: "#141414", border: "1px solid #2A2A2A" }}
+                                />
+                                <button onClick={() => { localStorage.setItem(`mvp_coach_note_${c.id}`, coachNoteDraft); setCoachNoteEditing(null); }}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "#8B1A2F" }}>✓</button>
+                                <button onClick={() => setCoachNoteEditing(null)}
+                                  className="px-2 py-1.5 rounded-lg text-xs text-neutral-500" style={{ background: "#1A1A1A" }}>✕</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => { setCoachNoteDraft(getCoachNote(c.id)); setCoachNoteEditing(c.id); }}
+                                className="w-full text-left text-xs px-3 py-2 rounded-lg"
+                                style={{ background: "#141414", border: "1px solid #222", color: coachNote ? "#888" : "#444" }}>
+                                {coachNote || "＋ Nota interna del entrenador..."}
+                              </button>
+                            )}
                             <div className="flex flex-wrap gap-2">
                               <button onClick={() => openClientProgress(c)}
-                                className="flex-1 py-2 rounded-lg bg-neutral-800 text-neutral-300 text-xs hover:bg-neutral-700 transition-colors">
-                                📊 Progreso
+                                className="flex-1 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                style={{ background: "#1A1A2A", border: "1px solid #2A2A4A", color: "#a5b4fc" }}>
+                                Ver progreso
+                              </button>
+                              <button onClick={() => { setTab("programas"); setExpandedClientId(c.id); setExpandedClientCardId(null); }}
+                                className="flex-1 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#ccc" }}>
+                                Programa
                               </button>
                               {assignment && (
                                 <button onClick={() => handleUnassign(c.id, c.full_name)}
-                                  className="flex-1 py-2 rounded-lg bg-red-950/40 text-red-400 border border-red-900/40 text-xs hover:bg-red-950/70 transition-colors">
-                                  Desasignar programa
+                                  className="flex-1 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                  style={{ background: "#1A0808", border: "1px solid #3A1010", color: "#f87171" }}>
+                                  Desasignar
                                 </button>
                               )}
                             </div>
@@ -1466,7 +1761,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
                               onClick={() => handleDeleteClient(c.id, c.full_name)}
                               className="w-full py-2 rounded-lg text-xs font-semibold transition-colors"
                               style={{ background: "#1A0808", border: "1px solid #3A1515", color: "#F87171" }}>
-                              🗑 Eliminar cliente permanentemente
+                              Eliminar cliente permanentemente
                             </button>
                           </div>
                         )}
