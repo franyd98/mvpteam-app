@@ -12,11 +12,11 @@
         <string>/Users/fran/Documents/ProyectoAPPWEB/scripts/run_upload.sh</string>
     </array>
 
-    <!-- Ejecutar cada día a las 19:00 -->
+    <!-- Ejecutar cada día a las 16:00 -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>19</integer>
+        <integer>16</integer>
         <key>Minute</key>
         <integer>0</integer>
     </dict>

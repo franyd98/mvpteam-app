@@ -637,7 +637,14 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const editingExistingLog = editing
     ? findLatestLog(logs, editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
     : undefined;
-  const editingPreviousLog = editing
+  // Solo mostrar log anterior si el ejercicio del microciclo anterior es el mismo que el actual
+  // (si hubo sustitución en el Mc anterior, esos datos pertenecen a otro ejercicio)
+  const editingPrevMcSub = editing
+    ? substitutions[subKey(editing.dayId, editing.microcycleNumber - 1, editing.exerciseIndex)]
+    : null;
+  const editingCurrExName = editingSub?.name ?? editingExercise?.name ?? "";
+  const editingPrevExName = editingPrevMcSub?.name ?? editingExercise?.name ?? "";
+  const editingPreviousLog = editing && editingCurrExName === editingPrevExName
     ? findPreviousMicrocycleLog(logs, editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
     : undefined;
 
@@ -1654,7 +1661,13 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         program.days.forEach(d => {
           const exList = d.microcycles[0]?.exercises ?? [];
           exList.forEach((ex, exIdx) => {
-            const exLogs = logs.filter(l => l.dayId === d.id && l.exerciseIndex === exIdx);
+            // Excluir microciclos donde el slot estaba sustituido por un ejercicio diferente
+            const exLogs = logs.filter(l => {
+              if (l.dayId !== d.id || l.exerciseIndex !== exIdx) return false;
+              const mcSub = substitutions[subKey(d.id, l.microcycleNumber, l.exerciseIndex)];
+              const mcExName = mcSub?.name ?? ex.name;
+              return mcExName === ex.name;
+            });
             const byMc: Record<number, number> = {};
             exLogs.forEach(l => {
               if (!byMc[l.microcycleNumber] || l.weight > byMc[l.microcycleNumber])
