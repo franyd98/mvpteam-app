@@ -154,14 +154,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  // Función reutilizable de sync (botón manual + online + visibilitychange + interval)
+  // Función reutilizable de sync (online + visibilitychange + interval)
   // useCallback con [] porque solo usa setters estables y el cliente supabase (module-level)
   const flushPending = useCallback(async () => {
     const pending = getPending();
     if (!pending.length || !navigator.onLine) return;
-    setIsSyncing(true);
     let synced = 0;
     for (const row of pending) {
       const { error } = await supabase.from("set_logs").upsert(
@@ -175,7 +172,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const remaining = getPending().length;
     setPendingSaves(remaining);
     if (synced > 0 && remaining === 0) setSaveError(null);
-    setIsSyncing(false);
   }, []);
 
   // Lista completa de ejercicios para el modal de sustitución:
@@ -993,16 +989,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             style={{ color: pendingSaves > 0 && !saveError?.includes("No se pudo") ? "#fde68a" : "#fca5a5" }}>
             {saveError ?? `${pendingSaves} registro${pendingSaves > 1 ? "s" : ""} pendiente${pendingSaves > 1 ? "s" : ""} de sincronizar`}
           </p>
-          {/* Botón reintentar sync si hay conexión y hay pendientes */}
-          {pendingSaves > 0 && navigator.onLine && (
-            <button
-              onClick={flushPending}
-              disabled={isSyncing}
-              className="text-[11px] font-bold px-2.5 py-1 rounded-lg shrink-0 transition-all active:scale-95 disabled:opacity-50"
-              style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}>
-              {isSyncing ? "…" : "Subir"}
-            </button>
-          )}
           <button onClick={() => { setSaveError(null); }} style={{ color: "#f87171", fontSize: 18, lineHeight: 1 }}>×</button>
         </div>
       )}
