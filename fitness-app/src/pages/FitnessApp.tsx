@@ -1,7 +1,7 @@
 // Vista del cliente: carga el programa asignado desde Supabase.
 // Los registros de entrenamiento se guardan en Supabase (set_logs).
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 // ── Cola de guardado offline (persistente en localStorage) ───────
 type PendingSaveRow = {
@@ -154,6 +154,29 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Función reutilizable de sync (botón manual + online + visibilitychange + interval)
+  // useCallback con [] porque solo usa setters estables y el cliente supabase (module-level)
+  const flushPending = useCallback(async () => {
+    const pending = getPending();
+    if (!pending.length || !navigator.onLine) return;
+    setIsSyncing(true);
+    let synced = 0;
+    for (const row of pending) {
+      const { error } = await supabase.from("set_logs").upsert(
+        { client_id: row.client_id, exercise_set_id: row.exerciseSetId, weight: row.weight,
+          reps: row.reps, rpe: row.rpe, unit: row.unit, logged_at: row.logged_at,
+          rp_reps: row.rp_reps, drop_weight: row.drop_weight, drop_reps: row.drop_reps },
+        { onConflict: "client_id,exercise_set_id" },
+      );
+      if (!error) { removePending(row.exerciseSetId); synced++; }
+    }
+    const remaining = getPending().length;
+    setPendingSaves(remaining);
+    if (synced > 0 && remaining === 0) setSaveError(null);
+    setIsSyncing(false);
+  }, []);
 
   // Lista completa de ejercicios para el modal de sustitución:
   // usa la BD si está cargada; si no, cae al programa asignado.
@@ -196,28 +219,19 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     return () => clearTimeout(t);
   }, [saveError]);
 
-  // Sincronizar cola pendiente al recuperar conexión
+  // Sincronizar cola pendiente al recuperar conexión (online, visibilitychange, retry periódico)
   useEffect(() => {
-    const handleOnline = async () => {
-      const pending = getPending();
-      if (!pending.length) return;
-      let synced = 0;
-      for (const row of pending) {
-        const { error } = await supabase.from("set_logs").upsert(
-          { client_id: row.client_id, exercise_set_id: row.exerciseSetId, weight: row.weight,
-            reps: row.reps, rpe: row.rpe, unit: row.unit, logged_at: row.logged_at,
-            rp_reps: row.rp_reps, drop_weight: row.drop_weight, drop_reps: row.drop_reps },
-          { onConflict: "client_id,exercise_set_id" },
-        );
-        if (!error) { removePending(row.exerciseSetId); synced++; }
-      }
-      const remaining = getPending().length;
-      setPendingSaves(remaining);
-      if (synced > 0 && remaining === 0) setSaveError(null);
+    const handleVisibility = () => { if (document.visibilityState === "visible") flushPending(); };
+    // Retry periódico cada 30 s mientras haya pendientes
+    const interval = setInterval(() => { if (getPending().length > 0) flushPending(); }, 30_000);
+    window.addEventListener("online", flushPending);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("online", flushPending);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      clearInterval(interval);
     };
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, []);
+  }, [flushPending]);
 
   // ── Helpers de bloqueo ────────────────────────────────────────
   const isLocked = (dId: string, mcNum: number) => lockedMcs.has(lockKey(dId, mcNum));
@@ -408,7 +422,37 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         );
         if (!pe) { removePending(row.exerciseSetId); synced++; }
       }
-      setPendingSaves(getPending().length);
+      const remaining = getPending();
+      setPendingSaves(remaining.length);
+      // Aunque la sincronización falle, mostrar los registros pendientes en la UI
+      // para que el usuario sepa que sus datos están guardados localmente
+      if (remaining.length > 0) {
+        const extraLogs: SetLog[] = remaining.flatMap(row => {
+          const entry = idToEntryRef.current.get(row.exerciseSetId);
+          if (!entry) return [];
+          return [{
+            dayId: entry.dayId,
+            microcycleNumber: entry.microcycleNumber,
+            exerciseIndex: entry.exerciseIndex,
+            setNumber: entry.setNumber,
+            weight: row.weight,
+            reps: row.reps,
+            rpe: row.rpe,
+            unit: row.unit as "kg" | "lb",
+            loggedAt: row.logged_at,
+            rp_reps: row.rp_reps,
+            drop_weight: row.drop_weight,
+            drop_reps: row.drop_reps,
+          } as SetLog];
+        });
+        if (extraLogs.length > 0) {
+          // Fusionar: los pendientes tienen prioridad sobre lo que hay en BD (pueden ser más recientes)
+          setLogs(prev => {
+            const pendingKeys = new Set(extraLogs.map(l => setKey(l.dayId, l.microcycleNumber, l.exerciseIndex, l.setNumber)));
+            return [...prev.filter(l => !pendingKeys.has(setKey(l.dayId, l.microcycleNumber, l.exerciseIndex, l.setNumber))), ...extraLogs];
+          });
+        }
+      }
     }
 
     setLoadingProgram(false);
@@ -949,6 +993,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             style={{ color: pendingSaves > 0 && !saveError?.includes("No se pudo") ? "#fde68a" : "#fca5a5" }}>
             {saveError ?? `${pendingSaves} registro${pendingSaves > 1 ? "s" : ""} pendiente${pendingSaves > 1 ? "s" : ""} de sincronizar`}
           </p>
+          {/* Botón reintentar sync si hay conexión y hay pendientes */}
+          {pendingSaves > 0 && navigator.onLine && (
+            <button
+              onClick={flushPending}
+              disabled={isSyncing}
+              className="text-[11px] font-bold px-2.5 py-1 rounded-lg shrink-0 transition-all active:scale-95 disabled:opacity-50"
+              style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}>
+              {isSyncing ? "…" : "Subir"}
+            </button>
+          )}
           <button onClick={() => { setSaveError(null); }} style={{ color: "#f87171", fontSize: 18, lineHeight: 1 }}>×</button>
         </div>
       )}
