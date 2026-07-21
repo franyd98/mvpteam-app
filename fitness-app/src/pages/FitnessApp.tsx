@@ -375,7 +375,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
     const [logsRes, locksRes] = await Promise.all([
       supabase.from("set_logs").select("*").eq("client_id", profile.id)
-        .order("logged_at", { ascending: false }).limit(600),
+        .order("logged_at", { ascending: false }).limit(2000),
       supabase.from("locked_microcycles").select("day_id,microcycle_number").eq("client_id", profile.id),
     ]);
 

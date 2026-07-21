@@ -300,7 +300,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       `)
       .eq("client_id", client.id)
       .order("logged_at", { ascending: false })
-      .limit(300);
+      .limit(2000);
     setClientLogs((data as unknown as ClientLog[]) ?? []);
     setLoadingLogs(false);
   };
