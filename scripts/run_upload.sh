@@ -22,8 +22,9 @@ fi
 
 echo "$(date '+%H:%M:%S') ✅ Disco encontrado. Lanzando script..." >> "$LOG"
 
+# caffeinate -i impide que el Mac duerma mientras dura la subida
 # Ejecutar el script de subida con límite de 13 vídeos
-python3 "$SCRIPT_DIR/upload_youtube_playwright.py" \
+caffeinate -i python3 "$SCRIPT_DIR/upload_youtube_playwright.py" \
     --disco "/Volumes/Nuevo vol" \
     --max-videos 13 >> "$LOG" 2>&1
 

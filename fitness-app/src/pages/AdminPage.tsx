@@ -350,29 +350,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       ? `¿Eliminar "${prog.name}"? Está asignado a ${clientsAssigned.length} cliente(s). Se eliminará todo el contenido.`
       : `¿Eliminar "${prog.name}"? Se eliminará todo su contenido permanentemente.`;
     if (!confirm(msg)) return;
-
-    // Borrar en orden para respetar FK sin necesitar CASCADE en la BD:
-    // exercise_sets → microcycle_exercises → microcycles → program_days → assignments → program
-    const { data: days } = await supabase.from("program_days").select("id").eq("program_id", prog.id);
-    const dayIds = (days ?? []).map((d: any) => d.id);
-    if (dayIds.length > 0) {
-      const { data: mcs } = await supabase.from("microcycles").select("id").in("day_id", dayIds);
-      const mcIds = (mcs ?? []).map((m: any) => m.id);
-      if (mcIds.length > 0) {
-        const { data: mexs } = await supabase.from("microcycle_exercises").select("id").in("microcycle_id", mcIds);
-        const mexIds = (mexs ?? []).map((m: any) => m.id);
-        if (mexIds.length > 0) {
-          await supabase.from("exercise_sets").delete().in("microcycle_exercise_id", mexIds);
-        }
-        await supabase.from("microcycle_exercises").delete().in("microcycle_id", mcIds);
-      }
-      await supabase.from("microcycles").delete().in("day_id", dayIds);
-      await supabase.from("locked_microcycles").delete().in("day_id", dayIds.map(String));
-    }
-    await supabase.from("program_days").delete().eq("program_id", prog.id);
-    await supabase.from("program_assignments").delete().eq("program_id", prog.id);
-    const { error } = await supabase.from("programs").delete().eq("id", prog.id);
-    if (error) { showToast("❌ Error al eliminar"); return; }
+    const { error } = await supabase.rpc("delete_program", { p_program_id: prog.id });
+    if (error) { showToast(`❌ Error: ${error.message}`); return; }
     await Promise.all([loadPrograms(), loadAssignments()]);
     showToast(`✅ "${prog.name}" eliminado`);
   };

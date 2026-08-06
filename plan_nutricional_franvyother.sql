@@ -47,18 +47,18 @@ Nunca añadas sal a un plato que ya lleve sazonador, soja, pavo o salsa.
 -- Usaremos un DO block para capturar el ID generado y crear comidas y opciones
 DO $$
 DECLARE
-  plan_id uuid;
+  v_plan_id uuid;
   meal_id uuid;
 BEGIN
 
   -- Obtener el ID del plan recién creado
-  SELECT id INTO plan_id FROM diet_plans
+  SELECT id INTO v_plan_id FROM diet_plans
     WHERE name = 'Plan 26.0 · RECOMP — Fran Villar'
     ORDER BY created_at DESC LIMIT 1;
 
   -- Meal: Desayuno (on)
   INSERT INTO diet_meals (plan_id, name, emoji, day_type, sort_order)
-    VALUES (plan_id, 'Desayuno', '🌅', 'on', 0)
+    VALUES (v_plan_id, 'Desayuno', '🌅', 'on', 0)
     RETURNING id INTO meal_id;
 
   INSERT INTO diet_options (meal_id, name, content, sort_order)
@@ -72,7 +72,7 @@ BEGIN
 
   -- Meal: Desayuno (off)
   INSERT INTO diet_meals (plan_id, name, emoji, day_type, sort_order)
-    VALUES (plan_id, 'Desayuno', '🌅', 'off', 1)
+    VALUES (v_plan_id, 'Desayuno', '🌅', 'off', 1)
     RETURNING id INTO meal_id;
 
   INSERT INTO diet_options (meal_id, name, content, sort_order)
@@ -86,7 +86,7 @@ BEGIN
 
   -- Meal: Almuerzo (both)
   INSERT INTO diet_meals (plan_id, name, emoji, day_type, sort_order)
-    VALUES (plan_id, 'Almuerzo', '☕', 'both', 2)
+    VALUES (v_plan_id, 'Almuerzo', '☕', 'both', 2)
     RETURNING id INTO meal_id;
 
   INSERT INTO diet_options (meal_id, name, content, sort_order)
@@ -100,7 +100,7 @@ BEGIN
 
   -- Meal: Comida Principal (on)
   INSERT INTO diet_meals (plan_id, name, emoji, day_type, sort_order)
-    VALUES (plan_id, 'Comida Principal', '🍽️', 'on', 3)
+    VALUES (v_plan_id, 'Comida Principal', '🍽️', 'on', 3)
     RETURNING id INTO meal_id;
 
   INSERT INTO diet_options (meal_id, name, content, sort_order)
@@ -111,7 +111,7 @@ BEGIN
 
   -- Meal: Comida Principal (off)
   INSERT INTO diet_meals (plan_id, name, emoji, day_type, sort_order)
-    VALUES (plan_id, 'Comida Principal', '🍽️', 'off', 4)
+    VALUES (v_plan_id, 'Comida Principal', '🍽️', 'off', 4)
     RETURNING id INTO meal_id;
 
   INSERT INTO diet_options (meal_id, name, content, sort_order)
@@ -122,7 +122,7 @@ BEGIN
 
   -- Meal: Merienda (on)
   INSERT INTO diet_meals (plan_id, name, emoji, day_type, sort_order)
-    VALUES (plan_id, 'Merienda', '🫐', 'on', 5)
+    VALUES (v_plan_id, 'Merienda', '🫐', 'on', 5)
     RETURNING id INTO meal_id;
 
   INSERT INTO diet_options (meal_id, name, content, sort_order)
@@ -133,7 +133,7 @@ BEGIN
 
   -- Meal: Merienda (off)
   INSERT INTO diet_meals (plan_id, name, emoji, day_type, sort_order)
-    VALUES (plan_id, 'Merienda', '🫐', 'off', 6)
+    VALUES (v_plan_id, 'Merienda', '🫐', 'off', 6)
     RETURNING id INTO meal_id;
 
   INSERT INTO diet_options (meal_id, name, content, sort_order)
@@ -144,7 +144,7 @@ BEGIN
 
   -- Meal: Cena (on)
   INSERT INTO diet_meals (plan_id, name, emoji, day_type, sort_order)
-    VALUES (plan_id, 'Cena', '🌙', 'on', 7)
+    VALUES (v_plan_id, 'Cena', '🌙', 'on', 7)
     RETURNING id INTO meal_id;
 
   INSERT INTO diet_options (meal_id, name, content, sort_order)
@@ -155,7 +155,7 @@ BEGIN
 
   -- Meal: Cena (off)
   INSERT INTO diet_meals (plan_id, name, emoji, day_type, sort_order)
-    VALUES (plan_id, 'Cena', '🌙', 'off', 8)
+    VALUES (v_plan_id, 'Cena', '🌙', 'off', 8)
     RETURNING id INTO meal_id;
 
   INSERT INTO diet_options (meal_id, name, content, sort_order)
@@ -170,11 +170,10 @@ BEGIN
     WHERE client_id = (SELECT id FROM profiles WHERE full_name ILIKE '%franvyother%' OR full_name ILIKE '%franvyother%' LIMIT 1);
 
   INSERT INTO diet_assignments (plan_id, client_id, active)
-    SELECT plan_id, p.id, true
+    SELECT v_plan_id, p.id, true
     FROM profiles p
-    WHERE p.full_name ILIKE '%franvyother%' OR p.email ILIKE '%franvyother%'
-    LIMIT 1
-    ON CONFLICT (client_id, plan_id) DO UPDATE SET active = true;
+    WHERE p.full_name ILIKE '%franvyother%' OR p.full_name ILIKE '%franvyother%'
+    LIMIT 1;
 
 END $$;
 
@@ -183,14 +182,14 @@ SELECT dp.name, dp.kcal_on, dp.kcal_off, da.active
 FROM diet_plans dp
 JOIN diet_assignments da ON da.plan_id = dp.id
 JOIN profiles p ON p.id = da.client_id
-WHERE p.full_name ILIKE '%franvyother%' OR p.email ILIKE '%franvyother%'
+WHERE p.full_name ILIKE '%franvyother%' OR p.full_name ILIKE '%franvyother%'
 ORDER BY da.active DESC;
 
 -- Diagnóstico: comprobar si existen logs de mayo
 SELECT DATE(logged_at) as dia, COUNT(*) as series
 FROM set_logs sl
 JOIN profiles p ON p.id = sl.client_id
-WHERE (p.full_name ILIKE '%franvyother%' OR p.email ILIKE '%franvyother%')
+WHERE (p.full_name ILIKE '%franvyother%' OR p.full_name ILIKE '%franvyother%')
   AND logged_at >= '2026-05-01' AND logged_at < '2026-06-01'
 GROUP BY DATE(logged_at) ORDER BY dia;
 
