@@ -463,7 +463,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     await loadAssignedProgram();
   };
 
-  // Borrar programa IA (solo programas con source = 'ai')
+  // Borrar programa (cualquier source)
   const deleteAIProgram = async (programId: number) => {
     setShowProgramPicker(false);
     setLoadingProgram(true);
@@ -1048,18 +1048,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                         <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
                       )}
                     </button>
-                    {p.source === "ai" && (
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`¿Borrar "${p.name}"? Esta acción no se puede deshacer.`)) {
-                            deleteAIProgram(p.programId);
-                          }
-                        }}
-                        className="px-4 py-3 active:opacity-60 shrink-0"
-                        title="Borrar plan IA">
-                        <i className="ti ti-trash" style={{ fontSize: 16, color: "#555" }} />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`¿Borrar "${p.name}"? Esta acción no se puede deshacer.`)) {
+                          deleteAIProgram(p.programId);
+                        }
+                      }}
+                      className="px-4 py-3 active:opacity-60 shrink-0"
+                      title="Borrar programa">
+                      <i className="ti ti-trash" style={{ fontSize: 16, color: "#555" }} />
+                    </button>
                   </div>
                 ))}
                 <button onClick={() => setShowProgramPicker(false)}
