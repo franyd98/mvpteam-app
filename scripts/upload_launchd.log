@@ -54602,3 +54602,1471 @@ Traceback (most recent call last):
   File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/selectors.py", line 562, in select
     kev_list = self._selector.control(None, max_ev, timeout)
 KeyboardInterrupt
+
+======================================
+2026-08-06 19:00:00 — Iniciando subida
+19:00:00 ✅ Disco encontrado. Lanzando script...
+
+🎬 Subida a YouTube Studio (modo simulado)
+   Disco : /Volumes/Nuevo vol
+   Temp  : /Users/fran/Desktop/temp_videos_upload
+   Ya subidos: 336
+
+✅ Sesión activa en YouTube Studio
+
+📦 31 ZIP(s) encontrado(s) en el disco.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 1/31: 1. Videoteca Ejercicios-20260513T120409Z-3-001.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 2/31: 1. Videoteca Ejercicios-20260513T120409Z-3-002.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 3/31: 1. Videoteca Ejercicios-20260513T120409Z-3-003.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 4/31: 1. Videoteca Ejercicios-20260513T120409Z-3-004.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 5/31: 1. Videoteca Ejercicios-20260513T120409Z-3-005.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 6/31: 1. Videoteca Ejercicios-20260513T120409Z-3-006.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 7/31: 1. Videoteca Ejercicios-20260513T120409Z-3-007.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 8/31: 1. Videoteca Ejercicios-20260513T120409Z-3-008.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 9/31: 1. Videoteca Ejercicios-20260513T120409Z-3-009.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 10/31: 1. Videoteca Ejercicios-20260513T120409Z-3-010.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 11/31: 1. Videoteca Ejercicios-20260513T120409Z-3-011.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 12/31: 1. Videoteca Ejercicios-20260513T120409Z-3-012.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 13/31: 1. Videoteca Ejercicios-20260513T120409Z-3-013.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 14/31: 1. Videoteca Ejercicios-20260513T120409Z-3-014.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 15/31: 1. Videoteca Ejercicios-20260513T120409Z-3-015.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 16/31: 1. Videoteca Ejercicios-20260513T120409Z-3-016.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 17/31: 1. Videoteca Ejercicios-20260513T120409Z-3-017.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 18/31: 1. Videoteca Ejercicios-20260513T120409Z-3-018.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 19/31: 1. Videoteca Ejercicios-20260513T120409Z-3-019.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 20/31: 1. Videoteca Ejercicios-20260513T120409Z-3-020.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 21/31: 1. Videoteca Ejercicios-20260513T120409Z-3-021.zip
+   ⏭️  Todos ya subidos, saltando.
+
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 22/31: 1. Videoteca Ejercicios-20260513T120409Z-3-022.zip
+   ✅ 11 vídeo(s) extraído(s).
+   🎥 1 pendiente(s).
+
+  [1/1 · ZIP 22/31] Zancada en multipower pie elevado sobre step
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 23/31: 1. Videoteca Ejercicios-20260513T120409Z-3-023.zip
+   ✅ 10 vídeo(s) extraído(s).
+   🎥 10 pendiente(s).
+
+  [1/10 · ZIP 23/31] HIP TRUST UNILATERAL EN EL SUELO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [2/10 · ZIP 23/31] PATADA DE GLÚTEO ACOSTADA DESDE POLEA BAJA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [3/10 · ZIP 23/31] PATADA DE GLÚTEO DESDE POLEA BAJA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [4/10 · ZIP 23/31] PATADA DE GLÚTEO EN CUADRUPEDIA SOBRE BANCO DESDE POLEA BAJA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [5/10 · ZIP 23/31] PULL THROUGH ARRODILLADA DESDE POLEA BAJA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [6/10 · ZIP 23/31] PULL THROUGH DESDE POLEA BAJA CON CUERDA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [7/10 · ZIP 23/31] SENTADILLA BÚLGARA CON MANCUERNA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [8/10 · ZIP 23/31] SENTADILLA GLOBET
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [9/10 · ZIP 23/31] Elevación unilateral desde atrás
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [10/10 · ZIP 23/31] Rotador externo
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 24/31: 1. Videoteca Ejercicios-20260513T120409Z-3-024.zip
+   ✅ 20 vídeo(s) extraído(s).
+   🎥 12 pendiente(s).
+
+  [1/12 · ZIP 24/31] SENTADILLA SUMO MANCUERNA PIES ELEVADOS SOBRE STEP
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [2/12 · ZIP 24/31] Elevaciones frontales bilateral con mancuerna de pie
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [3/12 · ZIP 24/31] Elevaciones frontales de pie con mancuerna
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [4/12 · ZIP 24/31] Elevaciones frontales desde polea baja con cuerda
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [5/12 · ZIP 24/31] Elevaciones laterales acostado en el suelo
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [6/12 · ZIP 24/31] Elevaciones laterales con banco a 75
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [7/12 · ZIP 24/31] Elevaciones laterales cruzadas desde atrás polea media
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [8/12 · ZIP 24/31] Elevaciones laterales polea estrecha
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [9/12 · ZIP 24/31] Elevaciones laterales sentado en máquina de placas 
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [10/12 · ZIP 24/31] Elevación lateral unilateral con mancuerna de pie
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [11/12 · ZIP 24/31] H- PRESS MILITAR EN MÁQUINA DE PALANCA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [12/12 · ZIP 24/31] H-PRESS MILITAR MÁQUINA DE PALANCA AGARRE NEUTRO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 25/31: 1. Videoteca Ejercicios-20260513T120409Z-3-025.zip
+   ✅ 11 vídeo(s) extraído(s).
+   🎥 1 pendiente(s).
+
+  [1/1 · ZIP 25/31] Elevacion lateral sentado maquina de palanca
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 26/31: 1. Videoteca Ejercicios-20260513T120409Z-3-026.zip
+   ✅ 17 vídeo(s) extraído(s).
+   🎥 5 pendiente(s).
+
+  [1/5 · ZIP 26/31] Dorsal- Jalón al pecho unilateral en máquina de placas
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [2/5 · ZIP 26/31] HOMBRO LATERAL DESDE POLEA BAJA CON RESTRICCIÓN EN BANCO A 60°
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [3/5 · ZIP 26/31] HOMBRO LATERAL TUMBADO EN BANCO A 45° DESDE POLEA MEDIA CON MUÑEQUERAS
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [4/5 · ZIP 26/31] PRESS MILITAR EN MÁQUINA DE PLACAS
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [5/5 · ZIP 26/31] SIX WAY DE PIE CON MANCUERNAS
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 27/31: 1. Videoteca Ejercicios-20260513T120409Z-3-027.zip
+   ✅ 16 vídeo(s) extraído(s).
+   🎥 16 pendiente(s).
+
+  [1/16 · ZIP 27/31] D- REMO DE PIE BILATERAL EN MÁQUINA DE PALANCA DE PIE
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [2/16 · ZIP 27/31] Dor- Jalón al pecho agarre neutro en máquina de placas
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [3/16 · ZIP 27/31] Dorsal- Jalón bilateral en máquina de palanca con manerales 
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [4/16 · ZIP 27/31] Dorsal- Jalón unilateral en máquina de palanca con maneral
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [5/16 · ZIP 27/31] Jalón unilateral desde polea alta sentado de lado
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [6/16 · ZIP 27/31] Jalón unilateral sentado en la multiestación
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [7/16 · ZIP 27/31] Pullover de espaldas a la polea alta banco a 60 
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [8/16 · ZIP 27/31] Remo de pie en máquina de palanca
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [9/16 · ZIP 27/31] remo unilateral multiestación
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [10/16 · ZIP 27/31] ELEVACIONES LATERALES CON MANCUERNAS DE PIE
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [11/16 · ZIP 27/31] ELEVACIONES LATERALES CRUZADAS DESDE POLEA BAJA A DOS BRAZOS
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [12/16 · ZIP 27/31] ELEVACIONES LATERALES SENTADO CON MANCUERNA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [13/16 · ZIP 27/31] HOMBRO LATERAL ACOSTADO DE LADO CON MANCUERNA EN BANCO INCLINADO A 45°
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [14/16 · ZIP 27/31] PRESS MILITAR CON MANCUERNAS BANCO A 75°
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [15/16 · ZIP 27/31] PRESS MILITAR SENTADO DEL REVÉS EN MÁQUINA DE PALANCA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [16/16 · ZIP 27/31] SIX WAY SENTADO CON MANCUERNAS
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 28/31: 1. Videoteca Ejercicios-20260513T120409Z-3-028.zip
+   ✅ 12 vídeo(s) extraído(s).
+   🎥 12 pendiente(s).
+
+  [1/12 · ZIP 28/31] D- JALÓN AL PECHO AGARRE NEUTRO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [2/12 · ZIP 28/31] D- JALÓN AL PECHO AGARRE SUPINO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [3/12 · ZIP 28/31] D- JALÓN AL PECHO NEUTRO CON MANERALES
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [4/12 · ZIP 28/31] D- REMO UNILATERAL DE PIE EN MÁQUINA DE PALANCA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [5/12 · ZIP 28/31] D- REMO UNILATERAL SENTADO EN MÁQUINA DE PALANCA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [6/12 · ZIP 28/31] D-JALÓN AL PECHO AGARRE PRONO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [7/12 · ZIP 28/31] JALÓN AL PECHO AGARRE NEUTRO EN MULTIESTACIÓN
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [8/12 · ZIP 28/31] JALÓN AL PECHO AGARRE PRONO EN MÁQUINA DE PALANCA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [9/12 · ZIP 28/31] REMO EN T AGARRE NEUTRO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [10/12 · ZIP 28/31] REMO MEADOWS UNILATERAL
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [11/12 · ZIP 28/31] REMO NEUTRO EN PUNTA UNILATERAL
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [12/12 · ZIP 28/31] PRESS MILITAR UNILATERAL SENTADO DE LADO EN MULTIPOWER
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 29/31: 1. Videoteca Ejercicios-20260513T120409Z-3-029.zip
+   ✅ 13 vídeo(s) extraído(s).
+   🎥 13 pendiente(s).
+
+  [1/13 · ZIP 29/31] JALÓN AL PECHO AGARRE PRONO ANCHO EN MULTIESTACIÓN
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [2/13 · ZIP 29/31] JALÓN AL PECHO UNILATERAL EN LA MULTIESTACIÓN ARRODILLADO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [3/13 · ZIP 29/31] JALÓN UNILATERAL EN MÁQUINA DE PALANCA AGARRE SUPINO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [4/13 · ZIP 29/31] Jalón unilateral sentado de lado banco a 60
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [5/13 · ZIP 29/31] PULLOVER CON CUERDA DESDE POLEA ALTA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [6/13 · ZIP 29/31] PULLOVER UNILATERAL CON MUÑEQUERA DESDE POLEA ALTA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [7/13 · ZIP 29/31] REMO DE PIE EN MÁQUINA DE PALANCA UNILATERAL
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [8/13 · ZIP 29/31] REMO EN T AGARRE PRONO DORSAL
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [9/13 · ZIP 29/31] REMO GIRONDA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [10/13 · ZIP 29/31] REMO NEUTRO ANCHURA HOMBROS EN MULTIESTACIÓN
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [11/13 · ZIP 29/31] Remo máq palanca bilateral
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [12/13 · ZIP 29/31] Remo unilateral sentado de lado en multiestación
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [13/13 · ZIP 29/31] Remo unilateral sentado de lado maq palanca
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 30/31: 1. Videoteca Ejercicios-20260513T120409Z-3-030.zip
+   ✅ 12 vídeo(s) extraído(s).
+   🎥 11 pendiente(s).
+
+  [1/11 · ZIP 30/31] JALÓN AL PECHO AGARRE SUPINO EN MÁQUINA DE PALANCA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [2/11 · ZIP 30/31] JALÓN AL PECHO UNILATERAL BANCO INCLINADO A 60° DESDE POLEA ALTA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [3/11 · ZIP 30/31] JALÓN UNILATERAL EN MÁQUINA DE PALANCA AGARRE NEUTRO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [4/11 · ZIP 30/31] PULLOVER ARRODILLADO EN BANCO A 60° DESDE POLEA ALTA CON BARRA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [5/11 · ZIP 30/31] PULLOVER ARRODILLADO EN BANCO A 60° DESDE POLEA ALTA CON CUERDA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [6/11 · ZIP 30/31] PULLOVER CON BARRA DESDE POLEA ALTA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [7/11 · ZIP 30/31] PULLOVER UNILATERAL CON CUERDA DESDE POLEA ALTA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [8/11 · ZIP 30/31] REMO CON MANCUERNA
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [9/11 · ZIP 30/31] REMO PRONO EN MULTIPOWER DORSAL
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [10/11 · ZIP 30/31] REMO UNILATERAL NEUTRO DESDE POLEA MEDIA BANCO INCLINADO A 60°
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [11/11 · ZIP 30/31] SEAL ROW CON MANCUERNAS BANCO A 45° AGARRE PRONO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+────────────────────────────────────────────────────────────
+📂 ZIP 31/31: 1. Videoteca Ejercicios-20260513T120409Z-3-031.zip
+   ✅ 3 vídeo(s) extraído(s).
+   🎥 3 pendiente(s).
+
+  [1/3 · ZIP 31/31] DOMINADAS AGARRE NEUTRO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [2/3 · ZIP 31/31] REMO UNILATERAL EN MÁQUINA DE PALANCA NEUTRO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+
+  [3/3 · ZIP 31/31] SEAL ROW CON MANCUERNAS BANCO A 45° AGARRE NEUTRO
+    ⏳ Esperando formulario...
+    ✔ No es para niños (JS)
+    ✔ Sin restricción de edad (JS)
+    ✔ Siguiente (1/3) (JS:id)
+    ✔ Siguiente (2/3) (JS:id)
+    ✔ Siguiente (3/3) (JS:id)
+    ⏳ Esperando página de visibilidad...
+    🔍 Radios encontrados: ['TP-YT-PAPER-RADIO-BUTTON|PRIVATE||Privado', 'TP-YT-PAPER-RADIO-BUTTON|UNLISTED||Oculto', 'TP-YT-PAPER-RADIO-BUTTON|PUBLIC||Público']
+    🔍 Botones encontrados: [':Cerrar', 'action-1:Empezar', ':Empezar', 'action-2:Cerrar', ':Saltar navegación', ':Crear', 'avatar-btn:', 'upload-button:Subir vídeos', ':Subir vídeos', ':Ir a las estadísticas del cana']
+    ✔ 'No listado' (name) (JS)
+    ⚠ Botón Guardar deshabilitado — esperando 15s y reintentando
+    ⚠ Enviando Enter como último recurso
+  ❌ Error: No se pudo obtener el ID del vídeo
+   🗑️  Carpeta temporal eliminada.
+
+
+============================================================
+✅ Subidos correctamente : 336
+❌ Con errores           : 84
+   ['Zancada en multipower pie elevado sobre step', 'HIP TRUST UNILATERAL EN EL SUELO', 'PATADA DE GLÚTEO ACOSTADA DESDE POLEA BAJA', 'PATADA DE GLÚTEO DESDE POLEA BAJA', 'PATADA DE GLÚTEO EN CUADRUPEDIA SOBRE BANCO DESDE POLEA BAJA', 'PULL THROUGH ARRODILLADA DESDE POLEA BAJA', 'PULL THROUGH DESDE POLEA BAJA CON CUERDA', 'SENTADILLA BÚLGARA CON MANCUERNA', 'SENTADILLA GLOBET', 'Elevación unilateral desde atrás', 'Rotador externo', 'SENTADILLA SUMO MANCUERNA PIES ELEVADOS SOBRE STEP', 'Elevaciones frontales bilateral con mancuerna de pie', 'Elevaciones frontales de pie con mancuerna', 'Elevaciones frontales desde polea baja con cuerda', 'Elevaciones laterales acostado en el suelo', 'Elevaciones laterales con banco a 75', 'Elevaciones laterales cruzadas desde atrás polea media', 'Elevaciones laterales polea estrecha', 'Elevaciones laterales sentado en máquina de placas ', 'Elevación lateral unilateral con mancuerna de pie', 'H- PRESS MILITAR EN MÁQUINA DE PALANCA', 'H-PRESS MILITAR MÁQUINA DE PALANCA AGARRE NEUTRO', 'Elevacion lateral sentado maquina de palanca', 'Dorsal- Jalón al pecho unilateral en máquina de placas', 'HOMBRO LATERAL DESDE POLEA BAJA CON RESTRICCIÓN EN BANCO A 60°', 'HOMBRO LATERAL TUMBADO EN BANCO A 45° DESDE POLEA MEDIA CON MUÑEQUERAS', 'PRESS MILITAR EN MÁQUINA DE PLACAS', 'SIX WAY DE PIE CON MANCUERNAS', 'D- REMO DE PIE BILATERAL EN MÁQUINA DE PALANCA DE PIE', 'Dor- Jalón al pecho agarre neutro en máquina de placas', 'Dorsal- Jalón bilateral en máquina de palanca con manerales ', 'Dorsal- Jalón unilateral en máquina de palanca con maneral', 'Jalón unilateral desde polea alta sentado de lado', 'Jalón unilateral sentado en la multiestación', 'Pullover de espaldas a la polea alta banco a 60 ', 'Remo de pie en máquina de palanca', 'remo unilateral multiestación', 'ELEVACIONES LATERALES CON MANCUERNAS DE PIE', 'ELEVACIONES LATERALES CRUZADAS DESDE POLEA BAJA A DOS BRAZOS', 'ELEVACIONES LATERALES SENTADO CON MANCUERNA', 'HOMBRO LATERAL ACOSTADO DE LADO CON MANCUERNA EN BANCO INCLINADO A 45°', 'PRESS MILITAR CON MANCUERNAS BANCO A 75°', 'PRESS MILITAR SENTADO DEL REVÉS EN MÁQUINA DE PALANCA', 'SIX WAY SENTADO CON MANCUERNAS', 'D- JALÓN AL PECHO AGARRE NEUTRO', 'D- JALÓN AL PECHO AGARRE SUPINO', 'D- JALÓN AL PECHO NEUTRO CON MANERALES', 'D- REMO UNILATERAL DE PIE EN MÁQUINA DE PALANCA', 'D- REMO UNILATERAL SENTADO EN MÁQUINA DE PALANCA', 'D-JALÓN AL PECHO AGARRE PRONO', 'JALÓN AL PECHO AGARRE NEUTRO EN MULTIESTACIÓN', 'JALÓN AL PECHO AGARRE PRONO EN MÁQUINA DE PALANCA', 'REMO EN T AGARRE NEUTRO', 'REMO MEADOWS UNILATERAL', 'REMO NEUTRO EN PUNTA UNILATERAL', 'PRESS MILITAR UNILATERAL SENTADO DE LADO EN MULTIPOWER', 'JALÓN AL PECHO AGARRE PRONO ANCHO EN MULTIESTACIÓN', 'JALÓN AL PECHO UNILATERAL EN LA MULTIESTACIÓN ARRODILLADO', 'JALÓN UNILATERAL EN MÁQUINA DE PALANCA AGARRE SUPINO', 'Jalón unilateral sentado de lado banco a 60', 'PULLOVER CON CUERDA DESDE POLEA ALTA', 'PULLOVER UNILATERAL CON MUÑEQUERA DESDE POLEA ALTA', 'REMO DE PIE EN MÁQUINA DE PALANCA UNILATERAL', 'REMO EN T AGARRE PRONO DORSAL', 'REMO GIRONDA', 'REMO NEUTRO ANCHURA HOMBROS EN MULTIESTACIÓN', 'Remo máq palanca bilateral', 'Remo unilateral sentado de lado en multiestación', 'Remo unilateral sentado de lado maq palanca', 'JALÓN AL PECHO AGARRE SUPINO EN MÁQUINA DE PALANCA', 'JALÓN AL PECHO UNILATERAL BANCO INCLINADO A 60° DESDE POLEA ALTA', 'JALÓN UNILATERAL EN MÁQUINA DE PALANCA AGARRE NEUTRO', 'PULLOVER ARRODILLADO EN BANCO A 60° DESDE POLEA ALTA CON BARRA', 'PULLOVER ARRODILLADO EN BANCO A 60° DESDE POLEA ALTA CON CUERDA', 'PULLOVER CON BARRA DESDE POLEA ALTA', 'PULLOVER UNILATERAL CON CUERDA DESDE POLEA ALTA', 'REMO CON MANCUERNA', 'REMO PRONO EN MULTIPOWER DORSAL', 'REMO UNILATERAL NEUTRO DESDE POLEA MEDIA BANCO INCLINADO A 60°', 'SEAL ROW CON MANCUERNAS BANCO A 45° AGARRE PRONO', 'DOMINADAS AGARRE NEUTRO', 'REMO UNILATERAL EN MÁQUINA DE PALANCA NEUTRO', 'SEAL ROW CON MANCUERNAS BANCO A 45° AGARRE NEUTRO']
+
+📄 CSV y SQL exportados.
+00:35:02 — Subida finalizada
