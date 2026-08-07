@@ -350,7 +350,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       ? `¿Eliminar "${prog.name}"? Está asignado a ${clientsAssigned.length} cliente(s). Se eliminará todo el contenido.`
       : `¿Eliminar "${prog.name}"? Se eliminará todo su contenido permanentemente.`;
     if (!confirm(msg)) return;
-    const { error } = await supabase.rpc("delete_program", { p_program_id: prog.id });
+    const { error } = await supabase.from("programs").delete().eq("id", prog.id);
     if (error) { showToast(`❌ Error: ${error.message}`); return; }
     await Promise.all([loadPrograms(), loadAssignments()]);
     showToast(`✅ "${prog.name}" eliminado`);
