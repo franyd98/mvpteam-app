@@ -64,6 +64,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [pendingSaves, setPendingSaves] = useState<number>(() => getPending().length);
   // Todos los programas asignados (activo + anteriores)
   const [allPrograms, setAllPrograms] = useState<{ programId: number; name: string; source: string }[]>([]);
+  const [activeProgramId, setActiveProgramId] = useState<number | null>(null);
   const [showProgramPicker, setShowProgramPicker] = useState(false);
   const [dayId, setDayId] = useState<string>("");
   const [microcycleNumber, setMicrocycleNumber] = useState<number>(1);
@@ -320,6 +321,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     }
 
     const raw = (data as any).programs;
+    setActiveProgramId(raw.id);
 
     setKeyToIdRef.current.clear();
     idToEntryRef.current.clear();
@@ -1035,8 +1037,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   <div key={p.programId} className="flex items-center border-t" style={{ borderColor: "#222" }}>
                     <button
                       onClick={() => switchToProgram(p.programId)}
-                      className="flex-1 flex items-center gap-3 px-4 py-3 active:opacity-60">
-                      <i className={`ti ${p.source === "ai" ? "ti-sparkles" : "ti-barbell"}`}
+                      className="flex-1 flex items-center gap-3 px-4 py-3 active:opacity-60 min-w-0">
+                      <i className={`ti ${p.source === "ai" ? "ti-sparkles" : "ti-barbell"} shrink-0`}
                         style={{ fontSize: 16, color: p.source === "ai" ? "var(--mvp-red)" : "#555" }} />
                       <div className="flex-1 text-left min-w-0">
                         <p className="text-sm text-white font-medium truncate">{p.name}</p>
@@ -1044,20 +1046,22 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                           {p.source === "ai" ? "Generado con IA" : "Asignado por coach"}
                         </p>
                       </div>
-                      {program.programName === p.name && (
-                        <i className="ti ti-check shrink-0" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
+                    </button>
+                    <div className="flex items-center shrink-0 pr-1">
+                      {activeProgramId === p.programId && (
+                        <i className="ti ti-check px-2" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
                       )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`¿Borrar "${p.name}"? Esta acción no se puede deshacer.`)) {
-                          deleteAIProgram(p.programId);
-                        }
-                      }}
-                      className="px-4 py-3 active:opacity-60 shrink-0"
-                      title="Borrar programa">
-                      <i className="ti ti-trash" style={{ fontSize: 16, color: "#555" }} />
-                    </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`¿Borrar "${p.name}"? Esta acción no se puede deshacer.`)) {
+                            deleteAIProgram(p.programId);
+                          }
+                        }}
+                        className="px-3 py-3 active:opacity-60"
+                        title="Borrar programa">
+                        <i className="ti ti-trash" style={{ fontSize: 16, color: "#555" }} />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <button onClick={() => setShowProgramPicker(false)}
