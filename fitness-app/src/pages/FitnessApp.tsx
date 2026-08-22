@@ -135,13 +135,13 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   // Clave localStorage: mvp_subs_v1_{profileId}
   // Clave de cada entrada: "{dayId}:{mcNum}:{exIdx}" → solo aplica al microciclo concreto
   const subsStorageKey = `mvp_subs_v1_${profile.id}`;
-  const [substitutions, setSubstitutions] = useState<Record<string, { name: string; muscleGroup: string }>>(() => {
+  const [substitutions, setSubstitutions] = useState<Record<string, { name: string; muscleGroup: string; videoRef?: string | null }>>(() => {
     try {
       const s = localStorage.getItem(`mvp_subs_v1_${profile.id}`);
       return s ? JSON.parse(s) : {};
     } catch { return {}; }
   });
-  const updateSubstitutions = (updater: (prev: Record<string, { name: string; muscleGroup: string }>) => Record<string, { name: string; muscleGroup: string }>) => {
+  const updateSubstitutions = (updater: (prev: Record<string, { name: string; muscleGroup: string; videoRef?: string | null }>) => Record<string, { name: string; muscleGroup: string; videoRef?: string | null }>) => {
     setSubstitutions(prev => {
       const next = updater(prev);
       try { localStorage.setItem(subsStorageKey, JSON.stringify(next)); } catch {}
@@ -151,7 +151,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [swapTarget, setSwapTarget] = useState<{ dayId: string; mcNum: number; exIdx: number; origName: string } | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
   // Lista completa de ejercicios de la BD (para el buscador de sustitución)
-  const [dbExercises, setDbExercises] = useState<{ name: string; muscleGroup: string }[]>([]);
+  const [dbExercises, setDbExercises] = useState<{ name: string; muscleGroup: string; videoRef: string | null }[]>([]);
 
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
@@ -181,12 +181,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     if (dbExercises.length > 0) return dbExercises;
     if (!program) return [];
     const seen = new Set<string>();
-    const list: { name: string; muscleGroup: string }[] = [];
+    const list: { name: string; muscleGroup: string; videoRef: string | null }[] = [];
     program.days.forEach(d => {
       d.microcycles[0]?.exercises.forEach(ex => {
         if (!seen.has(ex.name)) {
           seen.add(ex.name);
-          list.push({ name: ex.name, muscleGroup: ex.muscleGroup });
+          list.push({ name: ex.name, muscleGroup: ex.muscleGroup, videoRef: ex.videoRef ?? null });
         }
       });
     });
@@ -200,11 +200,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     // Cargar todos los ejercicios de la BD para el buscador de sustitución
     supabase
       .from("exercises")
-      .select("name, muscle_group")
+      .select("name, muscle_group, video_ref")
       .order("muscle_group")
       .then(({ data }) => {
         if (data) {
-          setDbExercises(data.map((e: any) => ({ name: e.name, muscleGroup: e.muscle_group ?? "" })));
+          setDbExercises(data.map((e: any) => ({ name: e.name, muscleGroup: e.muscle_group ?? "", videoRef: e.video_ref ?? null })));
         }
       });
   }, []);
@@ -1283,10 +1283,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                         title="Cambiar ejercicio">
                         <i className="ti ti-refresh" style={{ fontSize: 16 }} />
                       </button>
-                      {ex.videoRef && ex.videoRef !== "-" && (
-                        ex.videoRef.startsWith("http") ? (
+                      {(() => {
+                        const displayVideoRef = sub?.videoRef ?? ex.videoRef;
+                        if (!displayVideoRef || displayVideoRef === "-") return null;
+                        return displayVideoRef.startsWith("http") ? (
                           <button
-                            onClick={() => openVideo(ex.videoRef!)}
+                            onClick={() => openVideo(displayVideoRef)}
                             className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
                             style={{ background: "#161616", border: "1px solid #222", color: "#888" }}
                             title="Ver vídeo">
@@ -1297,8 +1299,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                             style={{ background: "#161616" }}>
                             <i className="ti ti-player-play" style={{ fontSize: 15 }} />
                           </span>
-                        )
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="space-y-1.5">
@@ -2003,7 +2005,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                               if (e.name === swapTarget.origName) {
                                 updateSubstitutions(prev => { const n = { ...prev }; delete n[subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]; return n; });
                               } else {
-                                updateSubstitutions(prev => ({ ...prev, [subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]: { name: e.name, muscleGroup: e.muscleGroup } }));
+                                updateSubstitutions(prev => ({ ...prev, [subKey(swapTarget.dayId, swapTarget.mcNum, swapTarget.exIdx)]: { name: e.name, muscleGroup: e.muscleGroup, videoRef: e.videoRef ?? null } }));
                               }
                               setSwapTarget(null);
                             }}
