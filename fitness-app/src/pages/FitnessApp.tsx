@@ -1101,6 +1101,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 { onClick: () => { setCalYear(new Date().getFullYear()); setCalMonth(new Date().getMonth()); setShowCalendar(true); }, icon: "calendar", title: "Calendario" },
                 { onClick: () => setShowStats(true),    icon: "chart-line", title: "Estadísticas" },
                 { onClick: startRestTimer,              icon: "stopwatch",      title: "Cronómetro" },
+                { onClick: () => { setLoadingProgram(true); loadAssignedProgram(); }, icon: "refresh", title: "Actualizar programa" },
                 { onClick: () => setShowSettings(true), icon: "settings",   title: "Ajustes" },
               ].map(({ onClick, icon, title }) => (
                 <button key={icon}
