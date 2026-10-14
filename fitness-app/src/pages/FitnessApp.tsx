@@ -69,6 +69,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [dayId, setDayId] = useState<string>("");
   const [microcycleNumber, setMicrocycleNumber] = useState<number>(1);
   const [editing, setEditing] = useState<EditingTarget>(null);
+  useEffect(() => { editingRef.current = editing; }, [editing]);
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("workout");
 
@@ -155,6 +156,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
+  const editingRef = useRef<EditingTarget>(null);
   // Función reutilizable de sync (online + visibilitychange + interval)
   // useCallback con [] porque solo usa setters estables y el cliente supabase (module-level)
   const flushPending = useCallback(async () => {
@@ -218,7 +220,13 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   // Sincronizar cola pendiente al recuperar conexión (online, visibilitychange, retry periódico)
   useEffect(() => {
-    const handleVisibility = () => { if (document.visibilityState === "visible") flushPending(); };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        flushPending();
+        // Recargar el programa si el admin ha hecho cambios (solo cuando no se está editando una serie)
+        if (!editingRef.current) loadAssignedProgram();
+      }
+    };
     // Retry periódico cada 30 s mientras haya pendientes
     const interval = setInterval(() => { if (getPending().length > 0) flushPending(); }, 30_000);
     window.addEventListener("online", flushPending);
