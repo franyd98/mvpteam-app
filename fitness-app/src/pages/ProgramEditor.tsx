@@ -49,6 +49,9 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   // Drag & drop de días
   const [dragFromIdx, setDragFromIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  // Drag & drop de ejercicios dentro de un microciclo
+  const [exDragFromId, setExDragFromId] = useState<number | null>(null);
+  const [exDragOverId, setExDragOverId] = useState<number | null>(null);
   const [showExPicker, setShowExPicker] = useState(false);
   const [exSearch, setExSearch] = useState("");
 
@@ -495,6 +498,31 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     }
   };
 
+  // Reordena ejercicios dentro del microciclo actual arrastrando.
+  // Propaga el nuevo order_index a TODOS los microciclos del día.
+  const moveExercise = async (fromId: number, toId: number) => {
+    if (!currentDay || !currentMc || fromId === toId) return;
+    const fromEx = currentMc.exercises.find(e => e.id === fromId);
+    const toEx   = currentMc.exercises.find(e => e.id === toId);
+    if (!fromEx || !toEx) return;
+
+    const fromOrder = fromEx.order_index;
+    const toOrder   = toEx.order_index;
+
+    setSaving(true);
+
+    // Actualizar todos los microciclos del día por posición
+    for (const mc of currentDay.microcycles) {
+      const a = mc.exercises.find(e => e.order_index === fromOrder);
+      const b = mc.exercises.find(e => e.order_index === toOrder);
+      if (a) await supabase.from("microcycle_exercises").update({ order_index: toOrder }).eq("id", a.id);
+      if (b) await supabase.from("microcycle_exercises").update({ order_index: fromOrder }).eq("id", b.id);
+    }
+
+    await loadAll();
+    setSaving(false);
+  };
+
   // Guarda reps/RIR de una serie.
   // Puede recibir valores directos (desde el select) o leerlos del estado (al perder foco).
   // Si autoSync está activo, propaga el valor al mismo ejercicio+serie en los Mcs POSTERIORES del día.
@@ -855,8 +883,20 @@ export default function ProgramEditor({ programId, onBack }: Props) {
           const swapGroupExercises = isSwapping
             ? catalog.filter(c => c.muscle_group.trim().toLowerCase() === swapping.selectedGroup.trim().toLowerCase())
             : [];
+          const isDraggingEx = exDragFromId === ex.id;
+          const isOverEx     = exDragOverId === ex.id && exDragFromId !== ex.id;
           return (
-            <div key={ex.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+            <div key={ex.id}
+              draggable
+              onDragStart={() => setExDragFromId(ex.id)}
+              onDragEnd={() => { setExDragFromId(null); setExDragOverId(null); }}
+              onDragOver={e => { e.preventDefault(); setExDragOverId(ex.id); }}
+              onDrop={e => { e.preventDefault(); if (exDragFromId !== null) moveExercise(exDragFromId, ex.id); setExDragFromId(null); setExDragOverId(null); }}
+              className="bg-neutral-900 border rounded-xl p-4 transition-all cursor-grab active:cursor-grabbing"
+              style={{
+                borderColor: isOverEx ? "#fff" : isDraggingEx ? "#555" : "#262626",
+                opacity: isDraggingEx ? 0.5 : 1,
+              }}>
               {/* Cabecera: grupo + nombre + botones */}
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="flex-1 min-w-0">
