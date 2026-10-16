@@ -344,10 +344,10 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     // 1. Guardar en el mc actual
     await supabase.from("microcycle_exercises").update({ note }).eq("id", ex.id);
 
-    // 2. Propagar a todos los Mcs del día (misma posición) si autoSync activo
+    // 2. Propagar a todos los Mcs del día (mismo ejercicio por exercise_id) si autoSync activo
     if (autoSync) {
       for (const mc of currentDay.microcycles) {
-        const same = mc.exercises.find(e => e.order_index === ex.order_index && e.id !== ex.id);
+        const same = mc.exercises.find(e => e.exercise_id === ex.exercise_id && e.id !== ex.id);
         if (same) {
           await supabase.from("microcycle_exercises").update({ note }).eq("id", same.id);
         }
@@ -468,12 +468,18 @@ export default function ProgramEditor({ programId, onBack }: Props) {
       return;
     }
 
-    // 3. Propagar a TODOS los demás microciclos por posición (order_index)
+    // 3. Propagar a TODOS los demás microciclos (mismo exercise_id)
+    // Primero obtener el exercise_id del ejercicio que se está cambiando
+    let origExerciseId: number | null = null;
+    for (const mc of currentDay.microcycles) {
+      const found = mc.exercises.find(e => e.id === swapping.meId);
+      if (found) { origExerciseId = found.exercise_id; break; }
+    }
     let synced = 0;
-    if (orderIndex !== null) {
+    if (origExerciseId !== null) {
       for (const mc of currentDay.microcycles) {
         const atSamePosition = mc.exercises.find(
-          e => e.order_index === orderIndex && e.id !== swapping.meId
+          e => e.exercise_id === origExerciseId && e.id !== swapping.meId
         );
         if (atSamePosition) {
           const { error } = await supabase.from("microcycle_exercises")
