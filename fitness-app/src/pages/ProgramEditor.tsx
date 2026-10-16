@@ -49,9 +49,6 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   // Drag & drop de días
   const [dragFromIdx, setDragFromIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  // Drag & drop de ejercicios dentro de un microciclo
-  const [exDragFromId, setExDragFromId] = useState<number | null>(null);
-  const [exDragOverId, setExDragOverId] = useState<number | null>(null);
   const [showExPicker, setShowExPicker] = useState(false);
   const [exSearch, setExSearch] = useState("");
 
@@ -883,20 +880,10 @@ export default function ProgramEditor({ programId, onBack }: Props) {
           const swapGroupExercises = isSwapping
             ? catalog.filter(c => c.muscle_group.trim().toLowerCase() === swapping.selectedGroup.trim().toLowerCase())
             : [];
-          const isDraggingEx = exDragFromId === ex.id;
-          const isOverEx     = exDragOverId === ex.id && exDragFromId !== ex.id;
+          const exIdx = currentMc.exercises.indexOf(ex);
           return (
             <div key={ex.id}
-              draggable
-              onDragStart={() => setExDragFromId(ex.id)}
-              onDragEnd={() => { setExDragFromId(null); setExDragOverId(null); }}
-              onDragOver={e => { e.preventDefault(); setExDragOverId(ex.id); }}
-              onDrop={e => { e.preventDefault(); if (exDragFromId !== null) moveExercise(exDragFromId, ex.id); setExDragFromId(null); setExDragOverId(null); }}
-              className="bg-neutral-900 border rounded-xl p-4 transition-all cursor-grab active:cursor-grabbing"
-              style={{
-                borderColor: isOverEx ? "#fff" : isDraggingEx ? "#555" : "#262626",
-                opacity: isDraggingEx ? 0.5 : 1,
-              }}>
+              className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
               {/* Cabecera: grupo + nombre + botones */}
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="flex-1 min-w-0">
@@ -974,6 +961,23 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                 </div>
                 {!isSwapping && (
                   <div className="flex gap-1.5 shrink-0">
+                    {/* Botones mover arriba / abajo */}
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => { const prev = currentMc!.exercises[exIdx - 1]; if (prev) moveExercise(ex.id, prev.id); }}
+                        disabled={saving || exIdx === 0}
+                        className="w-7 h-[13px] rounded-t-md bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white flex items-center justify-center disabled:opacity-20"
+                        title="Subir">
+                        <i className="ti ti-chevron-up" style={{ fontSize: 11 }} />
+                      </button>
+                      <button
+                        onClick={() => { const next = currentMc!.exercises[exIdx + 1]; if (next) moveExercise(ex.id, next.id); }}
+                        disabled={saving || exIdx === (currentMc?.exercises.length ?? 1) - 1}
+                        className="w-7 h-[13px] rounded-b-md bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white flex items-center justify-center disabled:opacity-20"
+                        title="Bajar">
+                        <i className="ti ti-chevron-down" style={{ fontSize: 11 }} />
+                      </button>
+                    </div>
                     {/* Botón cambiar ejercicio */}
                     <button
                       onClick={() => setSwapping({ meId: ex.id, selectedGroup: ex.muscle_group, selectedExId: ex.exercise_id })}
