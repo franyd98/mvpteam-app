@@ -496,17 +496,18 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   };
 
   // Reordena ejercicios: actualiza estado local inmediatamente y persiste en BD.
-  // Propaga el cambio de order_index a TODOS los microciclos del día.
-  const moveExercise = async (fromId: number, toId: number) => {
-    if (!currentDay || !currentMc || fromId === toId) return;
-    const fromEx = currentMc.exercises.find(e => e.id === fromId);
-    const toEx   = currentMc.exercises.find(e => e.id === toId);
+  // Usa posición en el array (más robusto que order_index entre microciclos).
+  const moveExercise = async (fromPos: number, toPos: number) => {
+    if (!currentDay || !currentMc || fromPos === toPos) return;
+    const sorted = [...currentMc.exercises].sort((a, b) => a.order_index - b.order_index);
+    const fromEx = sorted[fromPos];
+    const toEx   = sorted[toPos];
     if (!fromEx || !toEx) return;
 
     const fromOrder = fromEx.order_index;
     const toOrder   = toEx.order_index;
 
-    // 1. Actualizar estado local inmediatamente (feedback visual instantáneo)
+    // 1. Actualizar estado local inmediatamente
     setProgram(p => {
       if (!p) return p;
       return {
@@ -527,11 +528,12 @@ export default function ProgramEditor({ programId, onBack }: Props) {
       };
     });
 
-    // 2. Persistir en Supabase (en paralelo para todos los microciclos)
+    // 2. Persistir en Supabase usando posición en el array de cada microciclo
     const updates: Promise<unknown>[] = [];
     for (const mc of currentDay.microcycles) {
-      const a = mc.exercises.find(e => e.order_index === fromOrder);
-      const b = mc.exercises.find(e => e.order_index === toOrder);
+      const mcSorted = [...mc.exercises].sort((a, b) => a.order_index - b.order_index);
+      const a = mcSorted[fromPos];
+      const b = mcSorted[toPos];
       if (a) updates.push(supabase.from("microcycle_exercises").update({ order_index: toOrder  }).eq("id", a.id));
       if (b) updates.push(supabase.from("microcycle_exercises").update({ order_index: fromOrder }).eq("id", b.id));
     }
@@ -982,18 +984,18 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                     {/* Botones mover arriba / abajo */}
                     <div className="flex flex-col gap-0.5">
                       <button
-                        onClick={() => { const prev = currentMc!.exercises[exIdx - 1]; if (prev) moveExercise(ex.id, prev.id); }}
+                        onClick={() => moveExercise(exIdx, exIdx - 1)}
                         disabled={saving || exIdx === 0}
-                        className="w-7 h-[13px] rounded-t-md bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white flex items-center justify-center disabled:opacity-20"
+                        className="w-7 h-7 rounded-t-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white flex items-center justify-center disabled:opacity-20 transition-colors"
                         title="Subir">
-                        <i className="ti ti-chevron-up" style={{ fontSize: 11 }} />
+                        <i className="ti ti-chevron-up" style={{ fontSize: 14 }} />
                       </button>
                       <button
-                        onClick={() => { const next = currentMc!.exercises[exIdx + 1]; if (next) moveExercise(ex.id, next.id); }}
+                        onClick={() => moveExercise(exIdx, exIdx + 1)}
                         disabled={saving || exIdx === (currentMc?.exercises.length ?? 1) - 1}
-                        className="w-7 h-[13px] rounded-b-md bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white flex items-center justify-center disabled:opacity-20"
+                        className="w-7 h-7 rounded-b-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white flex items-center justify-center disabled:opacity-20 transition-colors"
                         title="Bajar">
-                        <i className="ti ti-chevron-down" style={{ fontSize: 11 }} />
+                        <i className="ti ti-chevron-down" style={{ fontSize: 14 }} />
                       </button>
                     </div>
                     {/* Botón cambiar ejercicio */}
