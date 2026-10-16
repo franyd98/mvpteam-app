@@ -63,6 +63,8 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   const [autoSync, setAutoSync] = useState(true);
   // Feedback visual breve tras sincronizar
   const [syncFlash, setSyncFlash] = useState(false);
+  // Toast de debug temporal para mover ejercicios
+  const [moveToast, setMoveToast] = useState<string | null>(null);
 
   useEffect(() => { setLoading(true); loadAll().finally(() => setLoading(false)); }, []);
 
@@ -362,7 +364,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
           microcycles: d.microcycles.map(mc => ({
             ...mc,
             exercises: mc.exercises.map(e =>
-              e.order_index === ex.order_index ? { ...e, note } : e
+              e.id === ex.id ? { ...e, note } : e
             ),
           })),
         })),
@@ -495,19 +497,24 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     }
   };
 
-  // Reordena ejercicios: actualiza estado local inmediatamente y persiste en BD.
-  // Usa posición en el array (más robusto que order_index entre microciclos).
+  // Reordena ejercicios: reasigna order_index secuencial para evitar duplicados.
   const moveExercise = async (fromPos: number, toPos: number) => {
-    console.log(`[moveExercise CLICK] fromPos=${fromPos} toPos=${toPos} currentDay=${!!currentDay} currentMc=${!!currentMc} exCount=${currentMc?.exercises.length}`);
+    console.log(`[moveExercise] fromPos=${fromPos} toPos=${toPos} exCount=${currentMc?.exercises.length}`);
+    setMoveToast(`↕ ${fromPos} → ${toPos}`);
+    setTimeout(() => setMoveToast(null), 2000);
     if (!currentDay || !currentMc || fromPos === toPos) return;
-    const sorted = [...currentMc.exercises].sort((a, b) => a.order_index - b.order_index);
-    const fromEx = sorted[fromPos];
-    const toEx   = sorted[toPos];
-    console.log(`[moveExercise] from="${fromEx?.name}" to="${toEx?.name}"`);
-    if (!fromEx || !toEx) { console.error("[moveExercise] ejercicio no encontrado en pos", fromPos, toPos); return; }
 
-    const fromOrder = fromEx.order_index;
-    const toOrder   = toEx.order_index;
+    // Helper: aplica el movimiento a un array ordenado y devuelve nuevos order_index por id
+    const computeNewOrder = (exercises: typeof currentMc.exercises): Map<number, number> => {
+      const sorted = [...exercises].sort((a, b) => a.order_index - b.order_index);
+      // Mover elemento de fromPos a toPos
+      const [moved] = sorted.splice(fromPos, 1);
+      sorted.splice(toPos, 0, moved);
+      // Asignar índices 0, 1, 2, ...
+      const map = new Map<number, number>();
+      sorted.forEach((e, i) => map.set(e.id, i));
+      return map;
+    };
 
     // 1. Actualizar estado local inmediatamente
     setProgram(p => {
@@ -516,28 +523,31 @@ export default function ProgramEditor({ programId, onBack }: Props) {
         ...p,
         days: p.days.map((d, i) => i !== selectedDayIdx ? d : {
           ...d,
-          microcycles: d.microcycles.map(mc => ({
-            ...mc,
-            exercises: mc.exercises
-              .map(e => {
-                if (e.order_index === fromOrder) return { ...e, order_index: toOrder };
-                if (e.order_index === toOrder)   return { ...e, order_index: fromOrder };
-                return e;
-              })
-              .sort((a, b) => a.order_index - b.order_index),
-          })),
+          microcycles: d.microcycles.map(mc => {
+            const newOrderMap = computeNewOrder(mc.exercises);
+            return {
+              ...mc,
+              exercises: mc.exercises
+                .map(e => ({ ...e, order_index: newOrderMap.get(e.id) ?? e.order_index }))
+                .sort((a, b) => a.order_index - b.order_index),
+            };
+          }),
         }),
       };
     });
 
-    // 2. Persistir en Supabase usando posición en el array de cada microciclo
+    // 2. Persistir en Supabase: actualizar todos los ejercicios afectados en todos los Mc del día
     const updates: Promise<unknown>[] = [];
     for (const mc of currentDay.microcycles) {
-      const mcSorted = [...mc.exercises].sort((a, b) => a.order_index - b.order_index);
-      const a = mcSorted[fromPos];
-      const b = mcSorted[toPos];
-      if (a) updates.push(supabase.from("microcycle_exercises").update({ order_index: toOrder  }).eq("id", a.id));
-      if (b) updates.push(supabase.from("microcycle_exercises").update({ order_index: fromOrder }).eq("id", b.id));
+      const newOrderMap = computeNewOrder(mc.exercises);
+      for (const [id, newIdx] of newOrderMap.entries()) {
+        const ex = mc.exercises.find(e => e.id === id);
+        if (ex && ex.order_index !== newIdx) {
+          updates.push(
+            supabase.from("microcycle_exercises").update({ order_index: newIdx }).eq("id", id)
+          );
+        }
+      }
     }
     await Promise.all(updates);
   };
@@ -1068,6 +1078,13 @@ export default function ProgramEditor({ programId, onBack }: Props) {
           + Añadir ejercicio del catálogo
         </button>
       </div>
+
+      {/* Toast debug: mueve ejercicio */}
+      {moveToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white text-black text-xs font-bold px-4 py-2 rounded-full shadow-xl pointer-events-none">
+          {moveToast}
+        </div>
+      )}
 
       {/* Modal selector de ejercicio */}
       {showExPicker && (
