@@ -381,7 +381,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     };
 
     setProgram(transformed);
-    if (transformed.days.length > 0) setDayId(transformed.days[0].id);
+    // Solo resetear el día seleccionado si es la primera carga (dayId vacío)
+    setDayId(prev => prev || (transformed.days[0]?.id ?? ""));
 
     const [logsRes, locksRes] = await Promise.all([
       supabase.from("set_logs").select("*").eq("client_id", profile.id)
