@@ -502,7 +502,8 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     const sorted = [...currentMc.exercises].sort((a, b) => a.order_index - b.order_index);
     const fromEx = sorted[fromPos];
     const toEx   = sorted[toPos];
-    if (!fromEx || !toEx) return;
+    console.log(`[moveExercise] fromPos=${fromPos} toPos=${toPos} total=${sorted.length}`, fromEx?.name, toEx?.name);
+    if (!fromEx || !toEx) { console.error("[moveExercise] ejercicio no encontrado"); return; }
 
     const fromOrder = fromEx.order_index;
     const toOrder   = toEx.order_index;
