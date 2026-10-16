@@ -543,7 +543,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     });
 
     // 2. Persistir en Supabase: actualizar todos los ejercicios afectados en todos los Mc del día
-    const updates: Promise<unknown>[] = [];
+    const updates: PromiseLike<unknown>[] = [];
     for (const mc of currentDay.microcycles) {
       const newOrderMap = computeNewOrder(mc.exercises);
       for (const [id, newIdx] of newOrderMap.entries()) {

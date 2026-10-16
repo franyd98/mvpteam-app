@@ -89,20 +89,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [settings, setSettings] = useSettings();
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // ── Timer de sesión ──────────────────────────────────────────
-  const [sessionStart,     setSessionStart]     = useState<number | null>(null);
-  const [sessionFinalTime, setSessionFinalTime] = useState<number | null>(null); // segundos, cuando se bloquea
-  const [sessionTick,      setSessionTick]      = useState(0);
-  useEffect(() => {
-    if (!sessionStart) return;
-    const id = setInterval(() => setSessionTick(t => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [sessionStart]);
-  const sessionElapsed = sessionStart ? Math.floor((Date.now() - sessionStart) / 1000) : 0;
-  const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
-  // Tiempo a mostrar: si está parado (bloqueado) usa el final, si corre usa el elapsed
-  const displayTime = sessionFinalTime !== null ? sessionFinalTime : sessionElapsed;
-
   // Historial de cargas por ejercicio + panel de stats global
   const [exHistory, setExHistory] = useState<{ name: string; dayId: string; exerciseIndex: number } | null>(null);
   const [showStats, setShowStats] = useState(false);
@@ -254,11 +240,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         .eq("microcycle_number", mcNum);
       setLockedMcs(prev => { const s = new Set(prev); s.delete(key); return s; });
     } else {
-      // Bloquear — detener el timer de sesión y guardar el tiempo final
-      if (sessionStart) {
-        setSessionFinalTime(Math.floor((Date.now() - sessionStart) / 1000));
-        setSessionStart(null);
-      }
       await supabase
         .from("locked_microcycles")
         .upsert({ client_id: profile.id, day_id: dId, microcycle_number: mcNum },
@@ -561,7 +542,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       newLog,
     ]);
     setEditing(null);
-    if (!sessionStart) setSessionStart(Date.now());
     if (settings.autoStartRestTimer) startRestTimer();
 
     // ── 2. Persistir en Supabase (awaited) ──
@@ -1082,22 +1062,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
             {/* Acciones del header */}
             <div className="flex gap-1.5 shrink-0 items-center">
-              {/* Timer de sesión */}
-              {(sessionStart || sessionFinalTime !== null) && (
-                <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl"
-                  style={{
-                    background: "#111",
-                    border: `1px solid ${sessionFinalTime !== null ? "rgba(74,222,128,0.2)" : "#1e1e1e"}`,
-                  }}>
-                  <i className="ti ti-clock" style={{
-                    fontSize: 12,
-                    color: sessionFinalTime !== null ? "#4ade80" : "var(--mvp-red)",
-                  }} />
-                  <span className="text-xs font-bold tabular-nums" style={{ color: sessionFinalTime !== null ? "#4ade80" : "#ddd", letterSpacing: "0.02em" }}>
-                    {fmtTime(displayTime)}
-                  </span>
-                </div>
-              )}
               {[
                 { onClick: () => { setCalYear(new Date().getFullYear()); setCalMonth(new Date().getMonth()); setShowCalendar(true); }, icon: "calendar", title: "Calendario" },
                 { onClick: () => setShowStats(true),    icon: "chart-line", title: "Estadísticas" },
@@ -1132,7 +1096,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               {program.days.map((d, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const isActive = d.id === dayId;
-                void sessionTick; // para que React re-renderice el timer
                 // Nombre corto: quitar la letra final y abreviar
                 const shortName = d.name
                   .replace(/\s+[A-Z]\d*\s*$/, "")
@@ -1449,7 +1412,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   <p className="text-sm font-bold" style={{ color: "#4ade80" }}>¡Entreno completado!</p>
                   <p className="text-xs text-center" style={{ color: "#666" }}>
                     {completedSetsInDay} series completadas
-                    {(sessionFinalTime !== null || sessionStart) ? ` · ${fmtTime(displayTime)}` : ""}
                   </p>
                 </div>
               )}
