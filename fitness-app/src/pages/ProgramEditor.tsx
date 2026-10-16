@@ -498,12 +498,13 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   // Reordena ejercicios: actualiza estado local inmediatamente y persiste en BD.
   // Usa posición en el array (más robusto que order_index entre microciclos).
   const moveExercise = async (fromPos: number, toPos: number) => {
+    console.log(`[moveExercise CLICK] fromPos=${fromPos} toPos=${toPos} currentDay=${!!currentDay} currentMc=${!!currentMc} exCount=${currentMc?.exercises.length}`);
     if (!currentDay || !currentMc || fromPos === toPos) return;
     const sorted = [...currentMc.exercises].sort((a, b) => a.order_index - b.order_index);
     const fromEx = sorted[fromPos];
     const toEx   = sorted[toPos];
-    console.log(`[moveExercise] fromPos=${fromPos} toPos=${toPos} total=${sorted.length}`, fromEx?.name, toEx?.name);
-    if (!fromEx || !toEx) { console.error("[moveExercise] ejercicio no encontrado"); return; }
+    console.log(`[moveExercise] from="${fromEx?.name}" to="${toEx?.name}"`);
+    if (!fromEx || !toEx) { console.error("[moveExercise] ejercicio no encontrado en pos", fromPos, toPos); return; }
 
     const fromOrder = fromEx.order_index;
     const toOrder   = toEx.order_index;
@@ -896,12 +897,11 @@ export default function ProgramEditor({ programId, onBack }: Props) {
         {currentMc?.exercises.length === 0 && (
           <p className="text-neutral-600 text-sm text-center py-6">Este microciclo no tiene ejercicios todavía.</p>
         )}
-        {currentMc?.exercises.map((ex) => {
+        {[...(currentMc?.exercises ?? [])].sort((a, b) => a.order_index - b.order_index).map((ex, exIdx) => {
           const isSwapping = swapping?.meId === ex.id;
           const swapGroupExercises = isSwapping
             ? catalog.filter(c => c.muscle_group.trim().toLowerCase() === swapping.selectedGroup.trim().toLowerCase())
             : [];
-          const exIdx = currentMc.exercises.indexOf(ex);
           return (
             <div key={ex.id}
               className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
@@ -986,14 +986,14 @@ export default function ProgramEditor({ programId, onBack }: Props) {
                     <div className="flex flex-col gap-0.5">
                       <button
                         onClick={() => moveExercise(exIdx, exIdx - 1)}
-                        disabled={saving || exIdx === 0}
+                        disabled={exIdx === 0}
                         className="w-7 h-7 rounded-t-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white flex items-center justify-center disabled:opacity-20 transition-colors"
                         title="Subir">
                         <i className="ti ti-chevron-up" style={{ fontSize: 14 }} />
                       </button>
                       <button
                         onClick={() => moveExercise(exIdx, exIdx + 1)}
-                        disabled={saving || exIdx === (currentMc?.exercises.length ?? 1) - 1}
+                        disabled={exIdx === (currentMc?.exercises.length ?? 1) - 1}
                         className="w-7 h-7 rounded-b-lg bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white flex items-center justify-center disabled:opacity-20 transition-colors"
                         title="Bajar">
                         <i className="ti ti-chevron-down" style={{ fontSize: 14 }} />
