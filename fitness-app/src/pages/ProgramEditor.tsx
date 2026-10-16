@@ -495,8 +495,8 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     }
   };
 
-  // Reordena ejercicios dentro del microciclo actual arrastrando.
-  // Propaga el nuevo order_index a TODOS los microciclos del día.
+  // Reordena ejercicios: actualiza estado local inmediatamente y persiste en BD.
+  // Propaga el cambio de order_index a TODOS los microciclos del día.
   const moveExercise = async (fromId: number, toId: number) => {
     if (!currentDay || !currentMc || fromId === toId) return;
     const fromEx = currentMc.exercises.find(e => e.id === fromId);
@@ -506,18 +506,36 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     const fromOrder = fromEx.order_index;
     const toOrder   = toEx.order_index;
 
-    setSaving(true);
+    // 1. Actualizar estado local inmediatamente (feedback visual instantáneo)
+    setProgram(p => {
+      if (!p) return p;
+      return {
+        ...p,
+        days: p.days.map((d, i) => i !== selectedDayIdx ? d : {
+          ...d,
+          microcycles: d.microcycles.map(mc => ({
+            ...mc,
+            exercises: mc.exercises
+              .map(e => {
+                if (e.order_index === fromOrder) return { ...e, order_index: toOrder };
+                if (e.order_index === toOrder)   return { ...e, order_index: fromOrder };
+                return e;
+              })
+              .sort((a, b) => a.order_index - b.order_index),
+          })),
+        }),
+      };
+    });
 
-    // Actualizar todos los microciclos del día por posición
+    // 2. Persistir en Supabase (en paralelo para todos los microciclos)
+    const updates: Promise<unknown>[] = [];
     for (const mc of currentDay.microcycles) {
       const a = mc.exercises.find(e => e.order_index === fromOrder);
       const b = mc.exercises.find(e => e.order_index === toOrder);
-      if (a) await supabase.from("microcycle_exercises").update({ order_index: toOrder }).eq("id", a.id);
-      if (b) await supabase.from("microcycle_exercises").update({ order_index: fromOrder }).eq("id", b.id);
+      if (a) updates.push(supabase.from("microcycle_exercises").update({ order_index: toOrder  }).eq("id", a.id));
+      if (b) updates.push(supabase.from("microcycle_exercises").update({ order_index: fromOrder }).eq("id", b.id));
     }
-
-    await loadAll();
-    setSaving(false);
+    await Promise.all(updates);
   };
 
   // Guarda reps/RIR de una serie.
