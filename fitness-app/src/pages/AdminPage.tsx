@@ -336,8 +336,10 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     // 3. Desactivar los que quedan (planes propios del cliente, como planes IA)
     await supabase.from("program_assignments").update({ active: false }).eq("client_id", clientId);
 
-    // 4. Insertar el nuevo assignment activo
-    const { error } = await supabase.from("program_assignments").insert({ program_id: programId, client_id: clientId, active: true });
+    // 4. Activar el programa: si ya estuvo asignado antes, se reactiva esa misma fila
+    //    (antes se creaba otra y quedaban asignaciones duplicadas)
+    const { error } = await supabase.from("program_assignments")
+      .upsert({ program_id: programId, client_id: clientId, active: true }, { onConflict: "client_id,program_id" });
     showToast(error ? "Error al asignar" : `✅ Asignado a ${clientName}`);
     setAssigning(null);
     await loadAssignments();
