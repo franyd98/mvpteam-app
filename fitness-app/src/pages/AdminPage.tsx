@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { fetchAllRows } from "../lib/fetchAll";
 import ProgramEditor from "./ProgramEditor";
 import { AntroTable } from "./CheckInPage";
 import VisitaPresencial from "./VisitaPresencial";
@@ -125,8 +126,12 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const loadClientActivities = async (ids: string[]) => {
     if (ids.length === 0) { setClientActivities([]); return; }
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { data } = await supabase.from("set_logs").select("client_id, logged_at")
-      .in("client_id", ids).gte("logged_at", since);
+    // Por tandas: con varios clientes se pasa de 1.000 registros en 30 días y
+    // Supabase cortaba el resto (sesiones y "días sin entrenar" salían mal).
+    const { data } = await fetchAllRows<{ client_id: string; logged_at: string }>((from, to) =>
+      supabase.from("set_logs").select("id, client_id, logged_at")
+        .in("client_id", ids).gte("logged_at", since)
+        .order("id", { ascending: true }).range(from, to));
     const byClient: Record<string, string> = {};
     const daysSet: Record<string, Set<string>> = {};
     for (const r of (data ?? []) as { client_id: string; logged_at: string }[]) {
@@ -283,7 +288,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   const openClientLogs = async (client: Profile) => {
     setViewingClient(client);
     setLoadingLogs(true);
-    const { data } = await supabase
+    const { data } = await fetchAllRows<ClientLog>((from, to) => supabase
       .from("set_logs")
       .select(`
         id, weight, reps, rpe, unit, logged_at,
@@ -300,8 +305,9 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       `)
       .eq("client_id", client.id)
       .order("logged_at", { ascending: false })
-      .limit(2000);
-    setClientLogs((data as unknown as ClientLog[]) ?? []);
+      .order("id", { ascending: true })
+      .range(from, to) as unknown as PromiseLike<{ data: ClientLog[] | null; error: { message: string } | null }>);
+    setClientLogs(data);
     setLoadingLogs(false);
   };
 

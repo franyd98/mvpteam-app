@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { buildVideoFinder, fixVideoUrl } from "../lib/videoMatch";
+import { fetchAllRows } from "../lib/fetchAll";
 import VIDEO_CATALOG from "../data/videoCatalog.json";
 
 // ── Cola de guardado offline (persistente en localStorage) ───────
@@ -170,6 +171,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const setKeyToIdRef = useRef(new Map<string, number>());
   const idToEntryRef = useRef(new Map<number, SetIdEntry>());
   const editingRef = useRef<EditingTarget>(null);
+  // Control de cargas del programa
+  const loadInFlightRef     = useRef(false);            // evita dos cargas a la vez
+  const lastLoadAtRef       = useRef(0);                // ms de la última carga completa
+  const loadedProgramIdRef  = useRef<number | null>(null);
+  const lastProgramJsonRef  = useRef<string>("");       // para no repintar si no cambia
+  const deletedAtRef        = useRef(new Map<string, number>()); // series borradas (clave → ms)
   // Función reutilizable de sync (online + visibilitychange + interval)
   // useCallback con [] porque solo usa setters estables y el cliente supabase (module-level)
   const flushPending = useCallback(async () => {
@@ -246,12 +253,17 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   // Sincronizar cola pendiente al recuperar conexión (online, visibilitychange, retry periódico)
   useEffect(() => {
+    // Al volver a la app (desde Spotify, WhatsApp…): sincronizar lo pendiente y,
+    // solo si han pasado ≥ 3 min desde la última carga, refrescar en segundo plano.
+    // Antes se descargaba TODO el programa cada vez que volvías, lo que en el
+    // gimnasio pasaba cada pocos minutos y causaba tirones.
+    const REFRESH_AFTER_MS = 3 * 60 * 1000;
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        flushPending();
-        // Recargar el programa si el admin ha hecho cambios (solo cuando no se está editando una serie)
-        if (!editingRef.current) loadAssignedProgram();
-      }
+      if (document.visibilityState !== "visible") return;
+      flushPending();
+      if (editingRef.current) return;                       // no molestar mientras apunta una serie
+      if (Date.now() - lastLoadAtRef.current < REFRESH_AFTER_MS) return;
+      loadAssignedProgram({ background: true });
     };
     // Retry periódico cada 30 s mientras haya pendientes
     const interval = setInterval(() => { if (getPending().length > 0) flushPending(); }, 30_000);
@@ -289,8 +301,27 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     setLockingSaving(false);
   };
 
-  const loadAssignedProgram = async () => {
-    setLoadError(false);
+  // background = recarga silenciosa (al volver a la app): no muestra carga ni
+  // errores, no repinta si nada ha cambiado y respeta las series recién guardadas.
+  const loadAssignedProgram = async (opts: { background?: boolean } = {}) => {
+    const background = !!opts.background;
+    if (loadInFlightRef.current) {
+      if (background) return;          // ya hay una carga en marcha
+    }
+    loadInFlightRef.current = true;
+    const loadStartIso = new Date().toISOString();
+    const loadStartMs = Date.now();
+    try {
+      await loadAssignedProgramInner(background, loadStartIso, loadStartMs);
+    } finally {
+      loadInFlightRef.current = false;
+      lastLoadAtRef.current = Date.now();
+      if (!background) setLoadingProgram(false);
+    }
+  };
+
+  const loadAssignedProgramInner = async (background: boolean, loadStartIso: string, loadStartMs: number) => {
+    if (!background) setLoadError(false);
     // Cargar programas para el selector:
     // - Los que están activos ahora, O
     // - Los que pertenecen a este cliente (owner_client_id) aunque estén inactivos (ej: plan IA anterior)
@@ -344,12 +375,13 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       .single();
 
     if (error || !data) {
-      setLoadingProgram(false);
-      if (error) setLoadError(true);
+      if (error && !background) setLoadError(true);
       return;
     }
 
     const raw = (data as any).programs;
+    const programChanged = raw.id !== loadedProgramIdRef.current;
+    loadedProgramIdRef.current = raw.id;
     setActiveProgramId(raw.id);
 
     setKeyToIdRef.current.clear();
@@ -401,18 +433,30 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         })),
     };
 
-    setProgram(transformed);
+    // Solo repintar si el programa ha cambiado de verdad (evita tirones al volver a la app)
+    const programJson = JSON.stringify(transformed);
+    if (programJson !== lastProgramJsonRef.current) {
+      lastProgramJsonRef.current = programJson;
+      setProgram(transformed);
+    }
     // Solo resetear el día seleccionado si es la primera carga (dayId vacío)
     setDayId(prev => prev || (transformed.days[0]?.id ?? ""));
 
+    // Todos los registros (por tandas: Supabase corta en 1.000 por petición)
     const [logsRes, locksRes] = await Promise.all([
-      supabase.from("set_logs").select("*").eq("client_id", profile.id)
-        .order("logged_at", { ascending: false }).limit(2000),
+      fetchAllRows<any>((from, to) =>
+        supabase.from("set_logs").select("*").eq("client_id", profile.id)
+          .order("exercise_set_id", { ascending: true }).range(from, to)),
       supabase.from("locked_microcycles").select("day_id,microcycle_number").eq("client_id", profile.id),
     ]);
 
-    if (logsRes.data) {
-      const converted = logsRes.data.flatMap((row) => {
+    if (logsRes.error) {
+      console.error("Error cargando registros:", logsRes.error);
+      if (!background) setSaveError("No se pudieron cargar todos tus registros. Tira hacia abajo o pulsa ↺ para reintentar.");
+    }
+
+    if (logsRes.data && !(logsRes.error && background)) {
+      const converted: SetLog[] = logsRes.data.flatMap((row: any) => {
         const entry = idToEntryRef.current.get(row.exercise_set_id);
         if (!entry) return [];
         return [{
@@ -430,11 +474,52 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           drop_reps:   row.drop_reps   ?? null,
         } as SetLog];
       });
-      setLogs(converted);
+
+      if (!background || programChanged) {
+        setLogs(converted);
+      } else {
+        // Fusión segura: los datos del servidor pueden ser de ANTES de una serie
+        // que el usuario acaba de guardar o borrar mientras se descargaban.
+        const keyOf = (l: SetLog) => setKey(l.dayId, l.microcycleNumber, l.exerciseIndex, l.setNumber);
+        setLogs(prev => {
+          const server = new Map<string, SetLog>();
+          for (const l of converted) {
+            const k = keyOf(l);
+            const deletedAt = deletedAtRef.current.get(k);
+            if (deletedAt && deletedAt >= loadStartMs) continue;   // borrada durante la descarga
+            server.set(k, l);
+          }
+          for (const l of prev) {
+            const k = keyOf(l);
+            const s = server.get(k);
+            if (!s) {
+              // Solo en local: conservar si se guardó durante la descarga
+              if (l.loggedAt >= loadStartIso) server.set(k, l);
+            } else if (l.loggedAt > s.loggedAt) {
+              server.set(k, l);                                     // la local es más reciente
+            }
+          }
+          const next = [...server.values()];
+          // Si no cambia nada, devolver el mismo array para no repintar
+          if (next.length === prev.length) {
+            const prevMap = new Map(prev.map(l => [keyOf(l), l]));
+            const same = next.every(l => {
+              const p = prevMap.get(keyOf(l));
+              return p && p.loggedAt === l.loggedAt && p.weight === l.weight && p.reps === l.reps
+                && p.rpe === l.rpe && p.rp_reps === l.rp_reps && p.drop_weight === l.drop_weight
+                && p.drop_reps === l.drop_reps && p.unit === l.unit;
+            });
+            if (same) return prev;
+          }
+          return next;
+        });
+      }
     }
 
     if (locksRes.data) {
-      setLockedMcs(new Set(locksRes.data.map((r: any) => lockKey(String(r.day_id), r.microcycle_number))));
+      const nextLocks = new Set<string>(locksRes.data.map((r: any) => lockKey(String(r.day_id), r.microcycle_number)));
+      setLockedMcs(prev =>
+        prev.size === nextLocks.size && [...nextLocks].every(k => prev.has(k)) ? prev : nextLocks);
     }
 
     // Intentar sincronizar guardados pendientes al cargar
@@ -482,8 +567,6 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         }
       }
     }
-
-    setLoadingProgram(false);
   };
 
   // Cambiar entre programa del coach y programa IA
@@ -556,6 +639,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const snap = { ...editing };
     const k = setKey(snap.dayId, snap.microcycleNumber, snap.exerciseIndex, snap.setNumber);
     const exerciseSetId = setKeyToIdRef.current.get(k);
+    deletedAtRef.current.delete(k);
 
     // ── 1. Actualizar UI al instante (cierra modal, muestra la serie) ──
     const newLog: SetLog = {
@@ -662,6 +746,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     );
 
     // ── 1. Eliminar de la UI al instante ──
+    deletedAtRef.current.set(k, Date.now());
     setLogs((prev) =>
       prev.filter(
         (l) =>
