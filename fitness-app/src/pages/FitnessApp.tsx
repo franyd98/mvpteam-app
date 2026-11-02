@@ -2,6 +2,7 @@
 // Los registros de entrenamiento se guardan en Supabase (set_logs).
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { buildVideoFinder, fixVideoUrl } from "../lib/videoMatch";
 
 // ── Cola de guardado offline (persistente en localStorage) ───────
 type PendingSaveRow = {
@@ -182,6 +183,14 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   }, [dbExercises, program]);
 
   const subKey = (dId: string, mcNum: number, exIdx: number) => `${dId}:${mcNum}:${exIdx}`;
+
+  // Vídeo de un ejercicio: el suyo si lo tiene; si no, el del ejercicio del
+  // catálogo con el nombre equivalente (mayúsculas, acentos, prefijos, etc.).
+  const findVideo = useMemo(() => buildVideoFinder(dbExercises), [dbExercises]);
+  const resolveVideo = useCallback(
+    (ref: string | null | undefined, name: string) => fixVideoUrl(ref) ?? findVideo(name),
+    [findVideo],
+  );
 
   useEffect(() => {
     loadAssignedProgram();
@@ -1257,8 +1266,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                         <i className="ti ti-refresh" style={{ fontSize: 16 }} />
                       </button>
                       {(() => {
-                        const displayVideoRef = sub?.videoRef ?? ex.videoRef;
-                        if (!displayVideoRef || displayVideoRef === "-") return null;
+                        const displayVideoRef = sub
+                          ? resolveVideo(sub.videoRef, sub.name)
+                          : resolveVideo(ex.videoRef, ex.name);
+                        if (!displayVideoRef) return null;
                         return displayVideoRef.startsWith("http") ? (
                           <button
                             onClick={() => openVideo(displayVideoRef)}
