@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { supabase } from "../lib/supabase";
-import heic2any from "heic2any";
 import MiniChart from "../components/MiniChart";
 import type { ChartPoint } from "../components/MiniChart";
 type Profile = { id: string; full_name: string; role: string };
@@ -535,7 +534,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
       || /\.(heic|heif)$/i.test(raw.name);
 
     if (isHeic) {
-      // heic2any convierte en JS puro, sin depender del soporte del navegador
+      // heic2any convierte en JS puro, sin depender del soporte del navegador.
+      // Se descarga SOLO aquí (1,3 MB): antes se bajaba al abrir la app aunque nadie subiera fotos.
+      const { default: heic2any } = await import("heic2any");
       const result = await heic2any({ blob: raw, toType: "image/jpeg", quality: 0.85 });
       const blob = Array.isArray(result) ? result[0] : result;
       return new File([blob], "photo.jpg", { type: "image/jpeg" });

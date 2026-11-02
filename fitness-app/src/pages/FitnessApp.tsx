@@ -1,7 +1,7 @@
 // Vista del cliente: carga el programa asignado desde Supabase.
 // Los registros de entrenamiento se guardan en Supabase (set_logs).
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { buildVideoFinder, fixVideoUrl } from "../lib/videoMatch";
 import { fetchAllRows } from "../lib/fetchAll";
 import { currentMicrocycleForDay, resumePosition } from "../lib/resumePosition";
@@ -32,9 +32,14 @@ import { buildLogIndex, useSettings } from "../storage";
 import SetLogger from "../components/SetLogger";
 import SettingsPanel from "../components/SettingsPanel";
 import RestTimer from "../components/RestTimer";
-import CheckInPage from "./CheckInPage";
-import DietPage from "./DietPage";
-import AIPlanWizard from "../components/AIPlanWizard";
+// Pestañas secundarias: se descargan aparte para que el entreno abra antes.
+// Se precargan en segundo plano a los pocos segundos (ver useEffect de precarga).
+const importCheckIn = () => import("./CheckInPage");
+const importDiet    = () => import("./DietPage");
+const importAIPlan  = () => import("../components/AIPlanWizard");
+const CheckInPage  = lazy(importCheckIn);
+const DietPage     = lazy(importDiet);
+const AIPlanWizard = lazy(importAIPlan);
 import { MVPWordmark } from "../components/MVPLogo";
 import MiniChart from "../components/MiniChart";
 import type { ChartPoint } from "../components/MiniChart";
@@ -246,6 +251,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           setDbExercises(data.map((e: any) => ({ name: e.name, muscleGroup: e.muscle_group ?? "", videoRef: e.video_ref ?? null })));
         }
       });
+  }, []);
+
+  // Precarga en segundo plano de las pestañas secundarias (cuando el entreno ya está pintado)
+  useEffect(() => {
+    const t = setTimeout(() => { importCheckIn(); importDiet(); importAIPlan(); }, 4000);
+    return () => clearTimeout(t);
   }, []);
 
   // Auto-cerrar el banner de error tras 7 segundos
@@ -1574,6 +1585,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         </div>
       )}
 
+      <Suspense fallback={
+        <div className="flex justify-center py-16">
+          <span className="w-5 h-5 rounded-full border-2 border-neutral-700 border-t-neutral-300 animate-spin" />
+        </div>
+      }>
       {/* ── Tab: Dieta ── */}
       {activeTab === "diet" && (
         <DietPage profile={profile} onBack={() => setActiveTab("workout")} />
@@ -1593,6 +1609,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           onPlanGenerated={loadAssignedProgram}
         />
       )}
+      </Suspense>
 
       </div>{/* fin scroll container */}
 
