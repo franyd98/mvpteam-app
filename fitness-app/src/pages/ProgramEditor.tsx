@@ -63,8 +63,6 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   const [autoSync, setAutoSync] = useState(true);
   // Feedback visual breve tras sincronizar
   const [syncFlash, setSyncFlash] = useState(false);
-  // Toast de debug temporal para mover ejercicios
-  const [moveToast, setMoveToast] = useState<string | null>(null);
 
   useEffect(() => { setLoading(true); loadAll().finally(() => setLoading(false)); }, []);
 
@@ -505,9 +503,6 @@ export default function ProgramEditor({ programId, onBack }: Props) {
 
   // Reordena ejercicios: reasigna order_index secuencial para evitar duplicados.
   const moveExercise = async (fromPos: number, toPos: number) => {
-    console.log(`[moveExercise] fromPos=${fromPos} toPos=${toPos} exCount=${currentMc?.exercises.length}`);
-    setMoveToast(`↕ ${fromPos} → ${toPos}`);
-    setTimeout(() => setMoveToast(null), 2000);
     if (!currentDay || !currentMc || fromPos === toPos) return;
 
     // Helper: aplica el movimiento a un array ordenado y devuelve nuevos order_index por id
@@ -1091,12 +1086,6 @@ export default function ProgramEditor({ programId, onBack }: Props) {
         </button>
       </div>
 
-      {/* Toast debug: mueve ejercicio */}
-      {moveToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white text-black text-xs font-bold px-4 py-2 rounded-full shadow-xl pointer-events-none">
-          {moveToast}
-        </div>
-      )}
 
       {/* Modal selector de ejercicio */}
       {showExPicker && (

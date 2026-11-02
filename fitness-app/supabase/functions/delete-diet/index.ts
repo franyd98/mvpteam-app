@@ -23,6 +23,25 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // 0. Seguridad: la app ya NO usa esta función (borra la dieta directamente con
+    //    sus permisos). Si sigue desplegada, solo puede usarla el propio cliente o un admin:
+    //    antes se fiaba del client_id recibido y cualquiera podía borrar dietas ajenas.
+    const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    const { data: { user } } = token ? await supabase.auth.getUser(token) : { data: { user: null } };
+    if (!user) {
+      return new Response(JSON.stringify({ error: "No autorizado" }), {
+        status: 200, headers: { ...corsHeaders, "content-type": "application/json" },
+      });
+    }
+    if (user.id !== client_id) {
+      const { data: caller } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      if ((caller as { role?: string } | null)?.role !== "admin") {
+        return new Response(JSON.stringify({ error: "No autorizado" }), {
+          status: 200, headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+    }
+
     // 1. Verificar que la asignación pertenece a este cliente
     const { data: asgn, error: chkErr } = await supabase
       .from("diet_assignments")

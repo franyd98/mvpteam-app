@@ -454,6 +454,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       `)
       .eq("client_id", profile.id)
       .eq("active", true)
+      // Si por error hubiera dos activos, coger siempre el más reciente
+      // (sin orden, Supabase devolvía uno cualquiera y podía cambiar entre recargas)
+      .order("program_id", { ascending: false })
       .limit(1)
       .single();
 
@@ -680,18 +683,24 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     await loadAssignedProgram();
   };
 
-  // Borrar programa (cualquier source)
+  // Borrar un programa generado con IA por el propio cliente.
+  // Los programas asignados por el coach NO se pueden borrar desde aquí: borrar un
+  // programa elimina en cascada días, microciclos y series (y puede arrastrar el historial).
   const deleteAIProgram = async (programId: number) => {
+    const prog = allPrograms.find(p => p.programId === programId);
+    if (!prog || prog.source !== "ai") return;
+    const wasActive = programId === activeProgramId;
     setShowProgramPicker(false);
     setLoadingProgram(true);
     // Eliminar assignment
     await supabase.from("program_assignments").delete().eq("client_id", profile.id).eq("program_id", programId);
     // Eliminar el programa (cascade borra días, microciclos, ejercicios, series)
     await supabase.from("programs").delete().eq("id", programId);
-    // Si era el activo, activar el primero que quede
+    // Solo si el borrado era el activo, activar otro (antes podía dejar DOS activos)
     const remaining = allPrograms.filter(p => p.programId !== programId);
-    if (remaining.length > 0) {
-      await supabase.from("program_assignments").update({ active: true }).eq("client_id", profile.id).eq("program_id", remaining[0].programId);
+    if (wasActive && remaining.length > 0) {
+      await supabase.from("program_assignments").update({ active: true })
+        .eq("client_id", profile.id).eq("program_id", remaining[0].programId);
     }
     await loadAssignedProgram();
   };
@@ -1270,16 +1279,19 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                       {activeProgramId === p.programId && (
                         <i className="ti ti-check px-2" style={{ fontSize: 14, color: "var(--mvp-red)" }} />
                       )}
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`¿Borrar "${p.name}"? Esta acción no se puede deshacer.`)) {
-                            deleteAIProgram(p.programId);
-                          }
-                        }}
-                        className="px-3 py-3 active:opacity-60"
-                        title="Borrar programa">
-                        <i className="ti ti-trash" style={{ fontSize: 16, color: "#555" }} />
-                      </button>
+                      {/* Solo se pueden borrar los planes generados con IA, nunca los del coach */}
+                      {p.source === "ai" && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`¿Borrar "${p.name}"? Esta acción no se puede deshacer.`)) {
+                              deleteAIProgram(p.programId);
+                            }
+                          }}
+                          className="px-3 py-3 active:opacity-60"
+                          title="Borrar programa">
+                          <i className="ti ti-trash" style={{ fontSize: 16, color: "#555" }} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

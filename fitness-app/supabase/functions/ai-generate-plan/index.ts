@@ -891,6 +891,25 @@ const PROG_MATRIX: readonly {
 
 const N_WEEKS = PROG_MATRIX.length; // 16
 
+// ── Seguridad ─────────────────────────────────────────────────────────────────
+// Comprueba la sesión de quien llama (cabecera Authorization que envía la app)
+// y que solo actúe sobre sí mismo, salvo que sea admin.
+async function authorizeCaller(
+  supabase: ReturnType<typeof createClient>,
+  req: Request,
+  clientId: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (typeof clientId !== "string" || !clientId) return { ok: false, error: "Falta client_id" };
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!token) return { ok: false, error: "No autorizado: inicia sesión de nuevo" };
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return { ok: false, error: "No autorizado: sesión no válida" };
+  if (user.id === clientId) return { ok: true };
+  const { data: caller } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if ((caller as { role?: string } | null)?.role === "admin") return { ok: true };
+  return { ok: false, error: "No autorizado: solo puedes generar tu propio plan" };
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -905,6 +924,17 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // ── 0. Seguridad: ¿quién llama y sobre quién quiere actuar? ────────────
+    // Esta función usa la clave maestra (se salta los permisos), así que NO podemos
+    // fiarnos del client_id que llega en la petición: antes cualquier cliente podía
+    // cambiar el programa y la dieta de otro. Solo se permite actuar sobre uno mismo,
+    // o sobre cualquiera si quien llama es admin.
+    const auth = await authorizeCaller(supabase, req, client_id);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const { sex, age, height, weight, activity_factor, goal } = personal_data;
     const { days_per_week, equipment, experience, injuries } = training_prefs;
