@@ -5,6 +5,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { buildVideoFinder, fixVideoUrl } from "../lib/videoMatch";
 import { fetchAllRows } from "../lib/fetchAll";
 import { currentMicrocycleForDay, resumePosition } from "../lib/resumePosition";
+import { fetchDayMarks, fetchSubs, saveDayMark, saveSub } from "../lib/clientPrefs";
 import VIDEO_CATALOG from "../data/videoCatalog.json";
 
 // ── Cola de guardado offline (persistente en localStorage) ───────
@@ -113,26 +114,26 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [statsMuscle,      setStatsMuscle]      = useState<string>("Todos");
   const [statsExpandedKey, setStatsExpandedKey] = useState<string | null>(null);
 
-  // Días de descanso marcados manualmente (persist en localStorage)
-  const [manualRestDays, setManualRestDays] = useState<Set<string>>(() => {
+  // ── Días marcados (entrenado / descanso) ──────────────────────────
+  // Copia local por cliente (abre al instante y sin cobertura) + Supabase
+  // (sobrevive a cambiar de móvil y el coach lo ve). Ver lib/clientPrefs.ts.
+  const trainKey = `mvp_train_days_${profile.id}`;
+  const restKey  = `mvp_rest_days_${profile.id}`;
+  const readSet = (key: string, legacyKey: string): Set<string> => {
     try {
-      const s = localStorage.getItem("mvp_manual_rest_days");
+      const s = localStorage.getItem(key) ?? localStorage.getItem(legacyKey); // legacy: antes no iba por cliente
       return s ? new Set(JSON.parse(s)) : new Set();
     } catch { return new Set(); }
-  });
+  };
+  const [manualRestDays,  setManualRestDays]  = useState<Set<string>>(() => readSet(restKey,  "mvp_manual_rest_days"));
   // Días entrenados marcados manualmente (Pole, cardio, entreno sin apuntar…)
-  const [manualTrainDays, setManualTrainDays] = useState<Set<string>>(() => {
-    try {
-      const s = localStorage.getItem("mvp_manual_train_days");
-      return s ? new Set(JSON.parse(s)) : new Set();
-    } catch { return new Set(); }
-  });
+  const [manualTrainDays, setManualTrainDays] = useState<Set<string>>(() => readSet(trainKey, "mvp_manual_train_days"));
   const saveDaySets = (train: Set<string>, rest: Set<string>) => {
     setManualTrainDays(train);
     setManualRestDays(rest);
     try {
-      localStorage.setItem("mvp_manual_train_days", JSON.stringify([...train]));
-      localStorage.setItem("mvp_manual_rest_days",  JSON.stringify([...rest]));
+      localStorage.setItem(trainKey, JSON.stringify([...train]));
+      localStorage.setItem(restKey,  JSON.stringify([...rest]));
     } catch {}
   };
   // Al tocar un día:
@@ -152,24 +153,89 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       train.add(ds);                        // vacío → entrenado
     }
     saveDaySets(train, rest);
+    saveDayMark(profile.id, ds, rest.has(ds) ? "rest" : train.has(ds) ? "trained" : null);
   };
 
-  // Sustituciones de ejercicio — persisten en localStorage por cliente
-  // Clave localStorage: mvp_subs_v1_{profileId}
-  // Clave de cada entrada: "{dayId}:{mcNum}:{exIdx}" → solo aplica al microciclo concreto
+  // Sincronizar días marcados con Supabase al abrir.
+  // La primera vez sube lo que hubiera solo en el móvil; después manda Supabase.
+  useEffect(() => {
+    let cancelled = false;
+    fetchDayMarks(profile.id).then(async (res) => {
+      if (cancelled || !res.ok) return;
+      const migratedKey = `mvp_marks_migrated_${profile.id}`;
+      const marks = new Map(res.marks);
+      if (!localStorage.getItem(migratedKey)) {
+        const uploads: Promise<void>[] = [];
+        for (const d of manualTrainDays) if (!marks.has(d)) { marks.set(d, "trained"); uploads.push(saveDayMark(profile.id, d, "trained")); }
+        for (const d of manualRestDays)  if (!marks.has(d)) { marks.set(d, "rest");    uploads.push(saveDayMark(profile.id, d, "rest")); }
+        await Promise.all(uploads);
+        try { localStorage.setItem(migratedKey, "1"); } catch {}
+      }
+      if (cancelled) return;
+      const train = new Set<string>(), rest = new Set<string>();
+      for (const [d, st] of marks) (st === "rest" ? rest : train).add(d);
+      saveDaySets(train, rest);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id]);
+
+  // ── Cambios de ejercicio del cliente ──────────────────────────────
+  // En pantalla se usan por posición "{dayId}:{mcNum}:{exIdx}"; en Supabase se guardan
+  // ligados a la fila concreta del programa (microcycle_exercise_id), que no cambia si
+  // el coach reordena. meIdByKeyRef traduce entre ambas (se rellena al cargar el programa).
+  type SubValue = { name: string; muscleGroup: string; videoRef?: string | null };
   const subsStorageKey = `mvp_subs_v1_${profile.id}`;
-  const [substitutions, setSubstitutions] = useState<Record<string, { name: string; muscleGroup: string; videoRef?: string | null }>>(() => {
+  const meIdByKeyRef = useRef(new Map<string, number>());
+  const [substitutions, setSubstitutions] = useState<Record<string, SubValue>>(() => {
     try {
       const s = localStorage.getItem(`mvp_subs_v1_${profile.id}`);
       return s ? JSON.parse(s) : {};
     } catch { return {}; }
   });
-  const updateSubstitutions = (updater: (prev: Record<string, { name: string; muscleGroup: string; videoRef?: string | null }>) => Record<string, { name: string; muscleGroup: string; videoRef?: string | null }>) => {
-    setSubstitutions(prev => {
-      const next = updater(prev);
-      try { localStorage.setItem(subsStorageKey, JSON.stringify(next)); } catch {}
-      return next;
-    });
+  const writeSubsLocal = (next: Record<string, SubValue>) => {
+    setSubstitutions(next);
+    try { localStorage.setItem(subsStorageKey, JSON.stringify(next)); } catch {}
+  };
+  const updateSubstitutions = (updater: (prev: Record<string, SubValue>) => Record<string, SubValue>) => {
+    const prev = substitutions;
+    const next = updater(prev);
+    writeSubsLocal(next);
+    // Guardar en Supabase solo lo que ha cambiado
+    for (const k of new Set([...Object.keys(prev), ...Object.keys(next)])) {
+      if (prev[k] === next[k]) continue;
+      const meId = meIdByKeyRef.current.get(k);
+      if (meId != null) saveSub(profile.id, meId, next[k] ?? null);
+    }
+  };
+  // Sincronizar cambios de ejercicio con Supabase (tras cargar el programa)
+  const subsSyncedForProgramRef = useRef<number | null>(null);
+  const syncSubstitutions = async (programId: number) => {
+    if (subsSyncedForProgramRef.current === programId) return;
+    subsSyncedForProgramRef.current = programId;
+    const res = await fetchSubs(profile.id);
+    if (!res.ok) { subsSyncedForProgramRef.current = null; return; }  // reintentar en la próxima carga
+    const keyByMeId = new Map<number, string>();
+    for (const [k, id] of meIdByKeyRef.current) keyByMeId.set(id, k);
+    const migratedKey = `mvp_subs_migrated_${profile.id}`;
+    const next: Record<string, SubValue> = {};
+    for (const [meId, sub] of res.subs) {
+      const k = keyByMeId.get(meId);
+      if (k) next[k] = sub;                 // solo los del programa activo
+    }
+    if (!localStorage.getItem(migratedKey)) {
+      const local: Record<string, SubValue> = (() => {
+        try { return JSON.parse(localStorage.getItem(subsStorageKey) ?? "{}"); } catch { return {}; }
+      })();
+      const uploads: Promise<void>[] = [];
+      for (const [k, sub] of Object.entries(local)) {
+        const meId = meIdByKeyRef.current.get(k);
+        if (meId != null && !res.subs.has(meId)) { next[k] = sub; uploads.push(saveSub(profile.id, meId, sub)); }
+      }
+      await Promise.all(uploads);
+      try { localStorage.setItem(migratedKey, "1"); } catch {}
+    }
+    writeSubsLocal(next);
   };
   const [swapTarget, setSwapTarget] = useState<{ dayId: string; mcNum: number; exIdx: number; origName: string } | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
@@ -328,6 +394,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const loadStartMs = Date.now();
     try {
       await loadAssignedProgramInner(background, loadStartIso, loadStartMs);
+      // Cambios de ejercicio guardados en Supabase (una vez por programa)
+      if (loadedProgramIdRef.current != null) syncSubstitutions(loadedProgramIdRef.current);
     } finally {
       loadInFlightRef.current = false;
       lastLoadAtRef.current = Date.now();
@@ -401,6 +469,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
     setKeyToIdRef.current.clear();
     idToEntryRef.current.clear();
+    meIdByKeyRef.current.clear();
 
     const transformed: Program = {
       programName: raw.name,
@@ -418,7 +487,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
               number: mc.number,
               exercises: (mc.microcycle_exercises ?? [])
                 .sort((a: any, b: any) => a.order_index - b.order_index)
-                .map((me: any, exIdx: number) => ({
+                .map((me: any, exIdx: number) => {
+                  meIdByKeyRef.current.set(subKey(String(day.id), mc.number, exIdx), me.id);
+                  return {
                   muscleGroup: me.exercises?.muscle_group ?? "",
                   name: me.exercises?.name ?? "",
                   videoRef: me.exercises?.video_ref ?? null,
@@ -443,7 +514,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                         targetRpe: s.target_rpe ?? null,
                       };
                     }),
-                })),
+                  };
+                }),
             })),
         })),
     };

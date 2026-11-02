@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import MVPLogo from "./components/MVPLogo";
+import DbErrorToast from "./components/DbErrorToast";
 
 // Cada pantalla principal se descarga solo cuando hace falta:
 // el cliente no baja el panel de admin y el admin no baja la app de cliente.
@@ -74,5 +75,10 @@ export default function App() {
     screen = <FitnessApp profile={profile} />;
   }
 
-  return <Suspense fallback={<Spinner />}>{screen}</Suspense>;
+  return (
+    <>
+      <Suspense fallback={<Spinner />}>{screen}</Suspense>
+      <DbErrorToast />
+    </>
+  );
 }
