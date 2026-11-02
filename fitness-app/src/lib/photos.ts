@@ -10,20 +10,12 @@
 // de él sacamos la ruta del archivo. Así las fotos antiguas funcionan sin migrar nada.
 
 import { DB_ERROR_EVENT, supabase } from "./supabase";
+import { PHOTO_BUCKET, photoPath } from "./photoPath";
 
-export const PHOTO_BUCKET = "checkin-photos";
+export { PHOTO_BUCKET, photoPath };
+
 const SIGNED_URL_SECONDS = 60 * 60; // 1 hora
 
-/** Ruta del archivo dentro del bucket a partir de la URL guardada (o la propia ruta). */
-export function photoPath(urlOrPath: string | null | undefined): string | null {
-  if (!urlOrPath) return null;
-  const marker = `/${PHOTO_BUCKET}/`;
-  if (urlOrPath.includes(marker)) {
-    const path = urlOrPath.split(marker)[1]?.split("?")[0];
-    return path ? decodeURIComponent(path) : null;
-  }
-  return /^https?:\/\//i.test(urlOrPath) ? null : urlOrPath; // ya es una ruta
-}
 
 /**
  * Sustituye la url de cada foto por un enlace temporal firmado.

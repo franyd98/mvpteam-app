@@ -31,3 +31,6 @@ scripts/mapeo_videos.csv
 __pycache__/
 *.pyc
 revision_videos.csv
+
+# Compilación de las pruebas automáticas
+.test-build/
