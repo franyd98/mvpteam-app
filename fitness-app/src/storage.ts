@@ -92,6 +92,37 @@ export function useSettings() {
  * Devuelve el último log de una serie concreta, si existe.
  * Usado para mostrar "última vez que hiciste esta serie".
  */
+/**
+ * Índice de registros para consultas instantáneas.
+ * Se construye UNA vez cada vez que cambian los logs (useMemo) en lugar de
+ * recorrer y ordenar todo el historial por cada serie en cada pintado.
+ * Mismo resultado que findLatestLog / findPreviousMicrocycleLog.
+ */
+export type LogIndex = {
+  latest: (dayId: string, mc: number, exIdx: number, setNumber: number) => SetLog | undefined;
+  previous: (dayId: string, mc: number, exIdx: number, setNumber: number) => SetLog | undefined;
+};
+
+export function buildLogIndex(logs: SetLog[]): LogIndex {
+  // dayId:exIdx:set → registros de esa serie en cualquier microciclo, del más reciente al más antiguo
+  const bySeries = new Map<string, SetLog[]>();
+  // dayId:mc:exIdx:set → el más reciente
+  const byExact = new Map<string, SetLog>();
+  for (const l of logs) {
+    const sk = `${l.dayId}:${l.exerciseIndex}:${l.setNumber}`;
+    const arr = bySeries.get(sk);
+    if (arr) arr.push(l); else bySeries.set(sk, [l]);
+    const ek = `${l.dayId}:${l.microcycleNumber}:${l.exerciseIndex}:${l.setNumber}`;
+    const cur = byExact.get(ek);
+    if (!cur || l.loggedAt > cur.loggedAt) byExact.set(ek, l);
+  }
+  for (const arr of bySeries.values()) arr.sort((a, b) => b.loggedAt.localeCompare(a.loggedAt));
+  return {
+    latest: (d, mc, ex, s) => byExact.get(`${d}:${mc}:${ex}:${s}`),
+    previous: (d, mc, ex, s) => bySeries.get(`${d}:${ex}:${s}`)?.find(l => l.microcycleNumber !== mc),
+  };
+}
+
 export function findLatestLog(
   logs: SetLog[],
   dayId: string,

@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { buildVideoFinder, fixVideoUrl } from "../lib/videoMatch";
 import { fetchAllRows } from "../lib/fetchAll";
+import { currentMicrocycleForDay, resumePosition } from "../lib/resumePosition";
 import VIDEO_CATALOG from "../data/videoCatalog.json";
 
 // ── Cola de guardado offline (persistente en localStorage) ───────
@@ -27,7 +28,7 @@ const removePending = (id: number) => {
 import { supabase } from "../lib/supabase";
 import type { Program, SetLog } from "../types";
 import { setKey } from "../types";
-import { findLatestLog, findPreviousMicrocycleLog, useSettings } from "../storage";
+import { buildLogIndex, useSettings } from "../storage";
 import SetLogger from "../components/SetLogger";
 import SettingsPanel from "../components/SettingsPanel";
 import RestTimer from "../components/RestTimer";
@@ -89,6 +90,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const [lockingSaving, setLockingSaving] = useState(false);
 
   const [logs, setLogs] = useState<SetLog[]>([]);
+  // Índice de registros: se recalcula solo cuando cambian los logs (consultas O(1) al pintar)
+  const logIndex = useMemo(() => buildLogIndex(logs), [logs]);
   const [settings, setSettings] = useSettings();
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -177,6 +180,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const loadedProgramIdRef  = useRef<number | null>(null);
   const lastProgramJsonRef  = useRef<string>("");       // para no repintar si no cambia
   const deletedAtRef        = useRef(new Map<string, number>()); // series borradas (clave → ms)
+  const positionedRef       = useRef(false);            // ya se colocó en el día/Mc donde lo dejó
   // Función reutilizable de sync (online + visibilitychange + interval)
   // useCallback con [] porque solo usa setters estables y el cliente supabase (module-level)
   const flushPending = useCallback(async () => {
@@ -455,8 +459,10 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       if (!background) setSaveError("No se pudieron cargar todos tus registros. Tira hacia abajo o pulsa ↺ para reintentar.");
     }
 
+    let serverLogs: SetLog[] | null = null;
     if (logsRes.data && !(logsRes.error && background)) {
       const converted: SetLog[] = logsRes.data.flatMap((row: any) => {
+        // (los registros convertidos se usan también para colocar al cliente donde lo dejó)
         const entry = idToEntryRef.current.get(row.exercise_set_id);
         if (!entry) return [];
         return [{
@@ -475,6 +481,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         } as SetLog];
       });
 
+      serverLogs = converted;
       if (!background || programChanged) {
         setLogs(converted);
       } else {
@@ -520,6 +527,18 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       const nextLocks = new Set<string>(locksRes.data.map((r: any) => lockKey(String(r.day_id), r.microcycle_number)));
       setLockedMcs(prev =>
         prev.size === nextLocks.size && [...nextLocks].every(k => prev.has(k)) ? prev : nextLocks);
+    }
+
+    // Colocar al cliente donde lo dejó: al abrir la app o al cambiar de programa.
+    // Nunca en recargas en segundo plano ni con el botón ↺ (no le movemos de donde está).
+    if (serverLogs && (!positionedRef.current || programChanged) && !background) {
+      const locks = new Set<string>((locksRes.data ?? []).map((r: any) => lockKey(String(r.day_id), r.microcycle_number)));
+      const pos = resumePosition(transformed, serverLogs, (d, m) => locks.has(lockKey(d, m)));
+      if (pos) {
+        setDayId(pos.dayId);
+        setMicrocycleNumber(pos.microcycleNumber);
+      }
+      positionedRef.current = true;
     }
 
     // Intentar sincronizar guardados pendientes al cargar
@@ -791,7 +810,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     : null;
   const editingTargetSet = editingExercise?.sets.find((s) => s.number === editing?.setNumber);
   const editingExistingLog = editing
-    ? findLatestLog(logs, editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
+    ? logIndex.latest(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
     : undefined;
   // Solo mostrar log anterior si el ejercicio del microciclo anterior es el mismo que el actual
   // (si hubo sustitución en el Mc anterior, esos datos pertenecen a otro ejercicio)
@@ -801,7 +820,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const editingCurrExName = editingSub?.name ?? editingExercise?.name ?? "";
   const editingPrevExName = editingPrevMcSub?.name ?? editingExercise?.name ?? "";
   const editingPreviousLog = editing && editingCurrExName === editingPrevExName
-    ? findPreviousMicrocycleLog(logs, editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
+    ? logIndex.previous(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
     : undefined;
 
   // ── Pantallas de carga / sin programa ──────────────────────────
@@ -1239,7 +1258,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 return (
                   <button
                     key={d.id}
-                    onClick={() => { setDayId(d.id); setMicrocycleNumber(1); }}
+                    onClick={() => {
+                      setDayId(d.id);
+                      // Ir al microciclo que le toca en ese día, no al Mc 1
+                      setMicrocycleNumber(currentMicrocycleForDay(program, logs, d.id, isLocked));
+                    }}
                     className="flex flex-col items-center justify-center rounded-xl transition-all active:scale-95 shrink-0"
                     style={{
                       width: 48, minHeight: 52, paddingTop: 6, paddingBottom: 6,
@@ -1322,7 +1345,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           {microcycle && (() => {
             const totalSetsInDay = microcycle.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
             const completedSetsInDay = microcycle.exercises.reduce((sum, ex, exIdx) =>
-              sum + ex.sets.filter(s => findLatestLog(logs, dayId, microcycleNumber, exIdx, s.number)).length, 0
+              sum + ex.sets.filter(s => logIndex.latest(dayId, microcycleNumber, exIdx, s.number)).length, 0
             );
             const allDayDone = totalSetsInDay > 0 && completedSetsInDay === totalSetsInDay;
             const pct = totalSetsInDay > 0 ? Math.round((completedSetsInDay / totalSetsInDay) * 100) : 0;
@@ -1347,7 +1370,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                 const displayGroup = sub?.muscleGroup ?? ex.muscleGroup;
                 {/* Progreso de series */}
                 const completedSets = ex.sets.filter(s =>
-                  findLatestLog(logs, dayId, microcycleNumber, idx, s.number)
+                  logIndex.latest(dayId, microcycleNumber, idx, s.number)
                 ).length;
                 const totalSets = ex.sets.length;
                 const allDone = completedSets === totalSets;
@@ -1408,8 +1431,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   </div>
                   <div className="space-y-1.5">
                     {ex.sets.map((s) => {
-                      const log = findLatestLog(logs, dayId, microcycleNumber, idx, s.number);
-                      const prevLog = findPreviousMicrocycleLog(logs, dayId, microcycleNumber, idx, s.number);
+                      const log = logIndex.latest(dayId, microcycleNumber, idx, s.number);
+                      const prevLog = logIndex.previous(dayId, microcycleNumber, idx, s.number);
 
                       // Verificar que el ejercicio del microciclo anterior es el mismo que el actual
                       // (si se cambió el ejercicio, los datos previos pertenecen a otro ejercicio)
