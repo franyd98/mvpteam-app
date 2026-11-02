@@ -1,3 +1,4 @@
+
 -- AUDITORÍA DE LA BASE DE DATOS · todo en una sola tabla (solo lectura: no cambia nada)
 -- Ejecuta el archivo completo y pégame el resultado (o expórtalo a CSV).
 

@@ -1,3 +1,4 @@
+
 -- ═══════════════════════════════════════════════════════════════════
 -- SEGURIDAD 1 · Impedir que un cliente se haga admin
 --

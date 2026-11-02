@@ -131,6 +131,35 @@ export default function ProgramEditor({ programId, onBack }: Props) {
   const currentDay = program?.days[selectedDayIdx] ?? null;
   const currentMc = currentDay?.microcycles.find(m => m.number === selectedMcNum) ?? currentDay?.microcycles[0] ?? null;
 
+  // ── Protección del historial ─────────────────────────────────────
+  // Al borrar series de un programa, los pesos que el cliente ya registró en ellas
+  // NO se borran, pero quedan desvinculados (set_logs.exercise_set_id → NULL) y el
+  // cliente deja de verlos en su historial. Antes de borrar, contamos cuántos hay y avisamos.
+  const countLogsForSets = async (setIds: number[]): Promise<number> => {
+    if (setIds.length === 0) return 0;
+    let total = 0;
+    for (let i = 0; i < setIds.length; i += 300) {   // por tandas (límite de longitud de URL)
+      const { count, error } = await supabase
+        .from("set_logs").select("id", { count: "exact", head: true })
+        .in("exercise_set_id", setIds.slice(i, i + 300));
+      if (error) return -1;
+      total += count ?? 0;
+    }
+    return total;
+  };
+  /** true = se puede continuar. Pregunta solo si hay registros (o no se pudo comprobar). */
+  const confirmHistoryLoss = async (setIds: number[], what: string): Promise<boolean> => {
+    const n = await countLogsForSets(setIds);
+    if (n === 0) return true;
+    if (n < 0) return confirm(`No se ha podido comprobar si ${what} tiene pesos registrados por el cliente.\n\n¿Continuar de todos modos?`);
+    return confirm(
+      `⚠️ ${what} tiene ${n} serie${n === 1 ? "" : "s"} ya registrada${n === 1 ? "" : "s"} por el cliente.\n\n` +
+      `Si continúas, esos pesos quedarán desvinculados y el cliente dejará de verlos en su historial y estadísticas.\n\n` +
+      `¿Continuar de todos modos?`,
+    );
+  };
+  const setIdsOf = (exercises: EditorEx[]) => exercises.flatMap(e => e.sets.map(s => s.id));
+
   const saveName = async () => {
     if (!program || !nameInput.trim()) return;
     setSaving(true);
@@ -203,6 +232,8 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     if (!program) return;
     if (program.days.length <= 1) { alert("El programa debe tener al menos un día."); return; }
     if (!confirm(`¿Eliminar este día y todos sus microciclos y ejercicios?`)) return;
+    const dayToDelete = program.days.find(d => d.id === dayId);
+    if (!(await confirmHistoryLoss(setIdsOf(dayToDelete?.microcycles.flatMap(m => m.exercises) ?? []), "Este día"))) return;
     setSaving(true);
     await supabase.from("program_days").delete().eq("id", dayId);
     const newDays = program.days.filter(d => d.id !== dayId);
@@ -282,6 +313,7 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     if (!currentDay || !currentMc) return;
     if (currentDay.microcycles.length <= 1) { alert("Debe quedar al menos 1 microciclo."); return; }
     if (!confirm(`¿Eliminar Microciclo ${currentMc.number}? Se perderán todos sus ejercicios.`)) return;
+    if (!(await confirmHistoryLoss(setIdsOf(currentMc.exercises), `El Microciclo ${currentMc.number}`))) return;
     setSaving(true);
     await supabase.from("microcycles").delete().eq("id", currentMc.id);
     const next = currentDay.microcycles.find(m => m.number !== currentMc.number)?.number ?? 1;

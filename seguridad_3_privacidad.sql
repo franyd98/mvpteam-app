@@ -1,3 +1,4 @@
+
 -- ═══════════════════════════════════════════════════════════════════
 -- SEGURIDAD 3 · Privacidad
 --
@@ -13,13 +14,21 @@
 -- Se puede ejecutar varias veces sin problema.
 -- ═══════════════════════════════════════════════════════════════════
 
+-- Función auxiliar: ¿el usuario actual es admin? (también la crea seguridad_2; repetirla no pasa nada)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin');
+$$;
+
 -- A. Perfiles
 DROP POLICY IF EXISTS "Autenticados leen perfiles" ON public.profiles;
 DROP POLICY IF EXISTS "own_profile_read"           ON public.profiles;
 DROP POLICY IF EXISTS "admin_read_profiles"        ON public.profiles;
 CREATE POLICY "own_profile_read"    ON public.profiles FOR SELECT USING (id = auth.uid());
 CREATE POLICY "admin_read_profiles" ON public.profiles FOR SELECT USING (public.is_admin());
--- (is_admin() la crea seguridad_2_permisos.sql: ejecútalo antes que este)
 
 -- B. Diagnóstico de las fotos
 SELECT 'Bucket checkin-photos' AS que,

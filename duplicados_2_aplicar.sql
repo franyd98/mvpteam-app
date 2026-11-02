@@ -1,3 +1,4 @@
+
 -- ═══════════════════════════════════════════════════════════════════
 -- DUPLICADOS · PASO 2 · FUSIONAR Y BORRAR
 -- Ejecuta antes duplicados_1_previsualizar.sql (crea la función _ex_key)

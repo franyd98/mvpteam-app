@@ -1,3 +1,4 @@
+
 -- ═══════════════════════════════════════════════════════════════════
 -- FASE 4 · Guardar en Supabase lo que antes solo vivía en el móvil del cliente
 --   · client_day_marks       → días marcados como "entrenado" o "descanso"

@@ -1,3 +1,4 @@
+
 -- ═══════════════════════════════════════════════════════════════════
 -- DUPLICADOS · PASO 1 · PREVISUALIZAR (no cambia ningún ejercicio)
 --

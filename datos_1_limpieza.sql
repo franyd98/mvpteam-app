@@ -1,3 +1,4 @@
+
 -- ═══════════════════════════════════════════════════════════════════
 -- DATOS 1 · Limpiar inconsistencias y añadir reglas para que no se repitan
 --
