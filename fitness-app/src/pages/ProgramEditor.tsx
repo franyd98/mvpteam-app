@@ -703,80 +703,93 @@ export default function ProgramEditor({ programId, onBack }: Props) {
 
     setSaving(true);
 
-    for (const mc of otherMcs) {
-      // Emparejar 1 a 1: cada fila del origen se queda con UNA fila del destino
-      // (mismo exercise_id, por orden). Así los duplicados no quedan "invisibles".
-      const destSorted = [...mc.exercises].sort((a, b) => a.order_index - b.order_index);
-      const srcSorted  = [...currentMc.exercises].sort((a, b) => a.order_index - b.order_index);
-      const used = new Set<number>();
-      const matchFor = new Map<number, typeof destSorted[number]>(); // src.id → dest
-      for (const srcEx of srcSorted) {
-        const d = destSorted.find(e => e.exercise_id === srcEx.exercise_id && !used.has(e.id));
-        if (d) { used.add(d.id); matchFor.set(srcEx.id, d); }
-      }
+    // 1º: en una sola operación en la base de datos (editor_1_sincronizar.sql):
+    //     todo o nada, sin cientos de peticiones. Si la función aún no existe,
+    //     se usa el método antiguo (paso a paso desde la app).
+    const { error: rpcErr } = await supabase.rpc("sync_microcycle_structure", { p_src_mc_id: currentMc.id });
+    const rpcMissing = !!rpcErr && (rpcErr.code === "PGRST202" || /could not find the function/i.test(rpcErr.message));
+    if (rpcErr && !rpcMissing) {
+      setSaving(false);
+      alert(`❌ No se ha podido sincronizar (no se ha cambiado nada): ${rpcErr.message}`);
+      return;
+    }
 
-      // 1. Eliminar filas del destino sin pareja (ejercicios que sobran o duplicados)
-      for (const dEx of destSorted) {
-        if (!used.has(dEx.id)) {
-          await supabase.from("microcycle_exercises").delete().eq("id", dEx.id);
+    if (rpcMissing) {
+      for (const mc of otherMcs) {
+        // Emparejar 1 a 1: cada fila del origen se queda con UNA fila del destino
+        // (mismo exercise_id, por orden). Así los duplicados no quedan "invisibles".
+        const destSorted = [...mc.exercises].sort((a, b) => a.order_index - b.order_index);
+        const srcSorted  = [...currentMc.exercises].sort((a, b) => a.order_index - b.order_index);
+        const used = new Set<number>();
+        const matchFor = new Map<number, typeof destSorted[number]>(); // src.id → dest
+        for (const srcEx of srcSorted) {
+          const d = destSorted.find(e => e.exercise_id === srcEx.exercise_id && !used.has(e.id));
+          if (d) { used.add(d.id); matchFor.set(srcEx.id, d); }
         }
-      }
 
-      // 2. Para cada ejercicio del origen, añadir o ajustar en el destino
-      for (const srcEx of srcSorted) {
-        const destEx = matchFor.get(srcEx.id);
-
-        if (!destEx) {
-          // 2a. Ejercicio nuevo: crear con series vacías
-          const { data: newMe } = await supabase
-            .from("microcycle_exercises")
-            .insert({
-              microcycle_id: mc.id,
-              exercise_id: srcEx.exercise_id,
-              order_index: srcEx.order_index,
-              total_sets: srcEx.sets.length,
-              note: srcEx.note ?? null,
-            })
-            .select()
-            .single();
-          if (newMe) {
-            await supabase.from("exercise_sets").insert(
-              srcEx.sets.map(s => ({
-                microcycle_exercise_id: newMe.id,
-                set_number: s.set_number,
-                target_reps: null,
-                target_rpe: null,
-              }))
-            );
+        // 1. Eliminar filas del destino sin pareja (ejercicios que sobran o duplicados)
+        for (const dEx of destSorted) {
+          if (!used.has(dEx.id)) {
+            await supabase.from("microcycle_exercises").delete().eq("id", dEx.id);
           }
-        } else {
-          // 2b. Ejercicio ya existe: actualizar orden, ajustar series y propagar note
-          await supabase
-            .from("microcycle_exercises")
-            .update({ order_index: srcEx.order_index, total_sets: srcEx.sets.length, note: srcEx.note ?? null })
-            .eq("id", destEx.id);
+        }
 
-          const destSets = [...destEx.sets].sort((a, b) => a.set_number - b.set_number);
-          const targetCount = srcEx.sets.length;
+        // 2. Para cada ejercicio del origen, añadir o ajustar en el destino
+        for (const srcEx of srcSorted) {
+          const destEx = matchFor.get(srcEx.id);
 
-          if (destSets.length < targetCount) {
-            // Añadir series que faltan (sin reps/RIR)
-            const toAdd = [];
-            for (let n = destSets.length + 1; n <= targetCount; n++) {
-              toAdd.push({
-                microcycle_exercise_id: destEx.id,
-                set_number: n,
-                target_reps: null,
-                target_rpe: null,
-              });
+          if (!destEx) {
+            // 2a. Ejercicio nuevo: crear con series vacías
+            const { data: newMe } = await supabase
+              .from("microcycle_exercises")
+              .insert({
+                microcycle_id: mc.id,
+                exercise_id: srcEx.exercise_id,
+                order_index: srcEx.order_index,
+                total_sets: srcEx.sets.length,
+                note: srcEx.note ?? null,
+              })
+              .select()
+              .single();
+            if (newMe) {
+              await supabase.from("exercise_sets").insert(
+                srcEx.sets.map(s => ({
+                  microcycle_exercise_id: newMe.id,
+                  set_number: s.set_number,
+                  target_reps: null,
+                  target_rpe: null,
+                }))
+              );
             }
-            await supabase.from("exercise_sets").insert(toAdd);
-          } else if (destSets.length > targetCount) {
-            // Eliminar series sobrantes (las últimas)
-            const idsToRemove = destSets
-              .slice(targetCount)
-              .map(s => s.id);
-            await supabase.from("exercise_sets").delete().in("id", idsToRemove);
+          } else {
+            // 2b. Ejercicio ya existe: actualizar orden, ajustar series y propagar note
+            await supabase
+              .from("microcycle_exercises")
+              .update({ order_index: srcEx.order_index, total_sets: srcEx.sets.length, note: srcEx.note ?? null })
+              .eq("id", destEx.id);
+
+            const destSets = [...destEx.sets].sort((a, b) => a.set_number - b.set_number);
+            const targetCount = srcEx.sets.length;
+
+            if (destSets.length < targetCount) {
+              // Añadir series que faltan (sin reps/RIR)
+              const toAdd = [];
+              for (let n = destSets.length + 1; n <= targetCount; n++) {
+                toAdd.push({
+                  microcycle_exercise_id: destEx.id,
+                  set_number: n,
+                  target_reps: null,
+                  target_rpe: null,
+                });
+              }
+              await supabase.from("exercise_sets").insert(toAdd);
+            } else if (destSets.length > targetCount) {
+              // Eliminar series sobrantes (las últimas)
+              const idsToRemove = destSets
+                .slice(targetCount)
+                .map(s => s.id);
+              await supabase.from("exercise_sets").delete().in("id", idsToRemove);
+            }
           }
         }
       }
