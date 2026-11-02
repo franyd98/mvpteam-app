@@ -532,11 +532,21 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     // Solo resetear el día seleccionado si es la primera carga (dayId vacío)
     setDayId(prev => prev || (transformed.days[0]?.id ?? ""));
 
-    // Todos los registros (por tandas: Supabase corta en 1.000 por petición)
-    const [logsRes, locksRes] = await Promise.all([
-      fetchAllRows<any>((from, to) =>
+    // Registros del programa activo (por tandas: Supabase corta en 1.000 por petición).
+    // 1º: solo los de este programa (rendimiento_2_funciones.sql). Antes se descargaban
+    //     los de TODOS los programas pasados y se tiraban los que no eran de este.
+    // 2º: si la función aún no existe, el método antiguo.
+    const loadProgramLogs = async () => {
+      const viaRpc = await fetchAllRows<any>((from, to) =>
+        supabase.rpc("client_program_logs", { p_program_id: raw.id })
+          .order("exercise_set_id", { ascending: true }).range(from, to));
+      if (!viaRpc.error) return viaRpc;
+      return fetchAllRows<any>((from, to) =>
         supabase.from("set_logs").select("*").eq("client_id", profile.id)
-          .order("exercise_set_id", { ascending: true }).range(from, to)),
+          .order("exercise_set_id", { ascending: true }).range(from, to));
+    };
+    const [logsRes, locksRes] = await Promise.all([
+      loadProgramLogs(),
       supabase.from("locked_microcycles").select("day_id,microcycle_number").eq("client_id", profile.id),
     ]);
 

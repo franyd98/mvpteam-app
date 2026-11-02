@@ -130,6 +130,28 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
   const loadClientActivities = async (ids: string[]) => {
     if (ids.length === 0) { setClientActivities([]); return; }
+
+    // 1º: resumen calculado en la base de datos (rendimiento_2_funciones.sql):
+    //     una fila por cliente en vez de miles de series.
+    const { data: summary, error: sumErr } = await supabase.rpc("client_activity_summary", { p_client_ids: ids });
+    if (!sumErr && summary) {
+      const byId = new Map((summary as { client_id: string; last_at: string | null; sessions_30: number }[])
+        .map(r => [r.client_id, r]));
+      const nowMs = Date.now();
+      setClientActivities(ids.map(id => {
+        const r = byId.get(id);
+        const lastAt = r?.last_at ?? null;
+        return {
+          clientId: id,
+          lastAt,
+          sessionsLast30: r?.sessions_30 ?? 0,
+          daysAgo: lastAt ? Math.floor((nowMs - new Date(lastAt).getTime()) / 86400000) : null,
+        };
+      }));
+      return;
+    }
+
+    // 2º (si la función aún no existe): método antiguo, descargando las series del último mes
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     // Por tandas: con varios clientes se pasa de 1.000 registros en 30 días y
     // Supabase cortaba el resto (sesiones y "días sin entrenar" salían mal).
@@ -412,22 +434,42 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     await loadDietAssignments();
   };
   const handleDuplicateDiet = async (plan: DietPlan) => {
-    const { data: newPlan } = await supabase.from("diet_plans")
+    // Copia en 3 peticiones (plan → todas las comidas → todas las opciones) en vez de
+    // una por comida y por opción. Si algo falla, se borra la copia a medias.
+    const { data: newPlan, error: pErr } = await supabase.from("diet_plans")
       .insert({ name: plan.name + " (copia)", kcal_on: plan.kcal_on, kcal_off: plan.kcal_off, notes: plan.notes })
       .select().single();
-    if (!newPlan) { showToast("Error al duplicar"); return; }
-    const { data: meals } = await supabase.from("diet_meals").select("*, diet_options(*)").eq("plan_id", plan.id).order("sort_order");
-    for (const meal of meals ?? []) {
-      const { data: newMeal } = await supabase.from("diet_meals")
-        .insert({ plan_id: newPlan.id, name: meal.name, emoji: meal.emoji, day_type: meal.day_type, sort_order: meal.sort_order })
-        .select().single();
-      if (!newMeal) continue;
-      for (const opt of (meal as any).diet_options ?? []) {
-        await supabase.from("diet_options").insert({ meal_id: newMeal.id, name: opt.name, content: opt.content, sort_order: opt.sort_order });
+    if (pErr || !newPlan) { showToast("Error al duplicar"); return; }
+    try {
+      const { data: meals, error: lErr } = await supabase.from("diet_meals")
+        .select("*, diet_options(*)").eq("plan_id", plan.id).order("sort_order");
+      if (lErr) throw lErr;
+      const srcMeals = (meals ?? []) as any[];
+      if (srcMeals.length > 0) {
+        const { data: newMeals, error: mErr } = await supabase.from("diet_meals")
+          .insert(srcMeals.map(m => ({ plan_id: newPlan.id, name: m.name, emoji: m.emoji, day_type: m.day_type, sort_order: m.sort_order })))
+          .select("id, sort_order, name");
+        if (mErr || !newMeals || newMeals.length !== srcMeals.length) throw mErr ?? new Error("No se copiaron todas las comidas");
+        // Emparejar por posición: Postgres devuelve las filas insertadas en el mismo orden
+        const options = srcMeals.flatMap((m, i) => (m.diet_options ?? []).map((o: any) => ({
+          meal_id: (newMeals[i] as any).id, name: o.name, content: o.content, sort_order: o.sort_order,
+        })));
+        if (options.length > 0) {
+          const { error: oErr } = await supabase.from("diet_options").insert(options);
+          if (oErr) throw oErr;
+        }
       }
+      await loadDietPlans();
+      showToast(`✅ "${plan.name}" duplicado`);
+    } catch (e: any) {
+      // Borrar la copia a medias (opciones → comidas → plan)
+      const { data: half } = await supabase.from("diet_meals").select("id").eq("plan_id", newPlan.id);
+      const halfIds = (half ?? []).map((m: any) => m.id);
+      if (halfIds.length) await supabase.from("diet_options").delete().in("meal_id", halfIds);
+      await supabase.from("diet_meals").delete().eq("plan_id", newPlan.id);
+      await supabase.from("diet_plans").delete().eq("id", newPlan.id);
+      showToast(`❌ Error al duplicar: ${e?.message ?? "desconocido"}`);
     }
-    await loadDietPlans();
-    showToast(`✅ "${plan.name}" duplicado`);
   };
   const handleDeleteDiet = async (plan: DietPlan) => {
     if (!confirm(`¿Eliminar "${plan.name}"? También se desasignará de los clientes.`)) return;

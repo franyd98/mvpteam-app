@@ -1340,70 +1340,88 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
   };
 
   // ── Guardar ───────────────────────────────────────────────────────
+  // ── Guardar una dieta generada (común a coach y cliente) ─────────
+  // Antes: ~22 peticiones seguidas (cada comida y cada opción por separado) y, en modo
+  // cliente, se desactivaba la dieta actual ANTES de crear la nueva → si algo fallaba
+  // a mitad, quedaba una dieta a medias y el cliente sin ninguna activa.
+  // Ahora: plan → todas las comidas de golpe → todas las opciones de golpe (3 peticiones).
+  // Si algo falla, se borra lo creado a medias. La asignación se hace al final.
+  const slotOf = (macro: string) =>
+    macro === "protein" ? "proteina" : macro === "carbs" ? "hidrato" : macro === "fat" ? "grasa" : "extra";
+
+  const createDietPlan = async (name: string, notes: string): Promise<string> => {
+    if (!macrosOn || !macrosOff) throw new Error("Faltan los macros");
+    const { data: planRow, error: planErr } = await supabase
+      .from("diet_plans")
+      .insert({
+        name,
+        kcal_on:     macrosOn.kcal,      kcal_off:     macrosOff.kcal,
+        protein_on:  macrosOn.protein_g, protein_off:  macrosOff.protein_g,
+        carbs_on:    macrosOn.carbs_g,   carbs_off:    macrosOff.carbs_g,
+        fat_on:      macrosOn.fat_g,     fat_off:      macrosOff.fat_g,
+        notes,
+      })
+      .select("id").single();
+    if (planErr || !planRow) throw planErr ?? new Error("No se pudo crear el plan");
+    const pid = planRow.id;
+
+    try {
+      // Todas las comidas en una sola petición
+      const { data: mealRows, error: mErr } = await supabase
+        .from("diet_meals")
+        .insert(planOn.map((meal, i) => ({
+          plan_id: pid, name: meal.name, emoji: meal.emoji, day_type: "both", sort_order: i,
+        })))
+        .select("id, sort_order");
+      if (mErr || !mealRows || mealRows.length !== planOn.length) throw mErr ?? new Error("No se guardaron todas las comidas");
+      const mealIdByOrder = new Map(mealRows.map((r: any) => [r.sort_order, r.id]));
+
+      // Todas las opciones de todas las comidas en una sola petición
+      const options = planOn.flatMap((meal, i) => meal.options.map((opt, j) => ({
+        meal_id:    mealIdByOrder.get(i),
+        name:       opt.profileLabel,
+        sort_order: j,
+        content:    opt.foods.map(food => ({
+          label:    food.label,
+          slot:     slotOf(food.macro),
+          isChoice: false,
+          note:     food.noteText ?? "",
+          items:    [{ ingId: food.ing.id, grams: food.grams }],
+        })),
+      })));
+      if (options.length > 0) {
+        const { error: oErr } = await supabase.from("diet_options").insert(options);
+        if (oErr) throw oErr;
+      }
+      return pid;
+    } catch (e) {
+      // Limpiar lo creado a medias (si los permisos lo permiten; si no, queda sin asignar e invisible)
+      const { data: half } = await supabase.from("diet_meals").select("id").eq("plan_id", pid);
+      const halfIds = (half ?? []).map((m: any) => m.id);
+      if (halfIds.length) await supabase.from("diet_options").delete().in("meal_id", halfIds);
+      await supabase.from("diet_meals").delete().eq("plan_id", pid);
+      await supabase.from("diet_plans").delete().eq("id", pid);
+      throw e;
+    }
+  };
+
   const handleSave = async () => {
     if (!macrosOn || !macrosOff || !planOn.length) return;
     if (!planName.trim()) { showToast("⚠️ El plan necesita un nombre"); return; }
     setSaving(true);
     try {
-      const { data: planRow, error: planErr } = await supabase
-        .from("diet_plans")
-        .insert({
-          name:        planName.trim(),
-          kcal_on:     macrosOn.kcal,    kcal_off:     macrosOff.kcal,
-          protein_on:  macrosOn.protein_g, protein_off: macrosOff.protein_g,
-          carbs_on:    macrosOn.carbs_g,   carbs_off:   macrosOff.carbs_g,
-          fat_on:      macrosOn.fat_g,     fat_off:     macrosOff.fat_g,
-          notes:       planNotes,
-        })
-        .select("id").single();
+      const pid = await createDietPlan(planName.trim(), planNotes);
 
-      if (planErr || !planRow) throw planErr ?? new Error("No plan id");
-      const pid = planRow.id;
-
-      // Para cada comida → guardar las 3 opciones como diet_options
-      for (let i = 0; i < planOn.length; i++) {
-        const meal = planOn[i];
-        const { data: mealRow, error: mErr } = await supabase
-          .from("diet_meals")
-          .insert({
-            plan_id:    pid,
-            name:       meal.name,
-            emoji:      meal.emoji,
-            day_type:   "both",
-            sort_order: i,
-          })
-          .select("id").single();
-
-        if (mErr || !mealRow) throw mErr ?? new Error("No meal id");
-
-        for (let j = 0; j < meal.options.length; j++) {
-          const opt     = meal.options[j];
-          const content = opt.foods.map(food => ({
-            label:    food.label,
-            slot:
-              food.macro === "protein" ? "proteina" :
-              food.macro === "carbs"   ? "hidrato"  :
-              food.macro === "fat"     ? "grasa"    : "extra",
-            isChoice: false,
-            note:     food.noteText ?? "",
-            items:    [{ ingId: food.ing.id, grams: food.grams }],
-          }));
-
-          await supabase.from("diet_options").insert({
-            meal_id:    mealRow.id,
-            name:       opt.profileLabel,
-            content,
-            sort_order: j,
-          });
-        }
-      }
-
-      // Asignar al cliente (solo si hay cliente — no en modo plantilla)
+      // Asignar al cliente (solo si hay cliente — no en modo plantilla).
+      // Antes se usaba upsert por client_id, que necesita una regla "una dieta por
+      // cliente" que no existe (cada cliente tiene historial) → no se asignaba.
       if (clientId) {
-        await supabase.from("diet_assignments").upsert(
-          { client_id: clientId, plan_id: pid, active: true },
-          { onConflict: "client_id" },
-        );
+        const { error: offErr } = await supabase.from("diet_assignments")
+          .update({ active: false }).eq("client_id", clientId);
+        if (offErr) throw offErr;
+        const { error: asgErr } = await supabase.from("diet_assignments")
+          .insert({ client_id: clientId, plan_id: pid, active: true });
+        if (asgErr) throw asgErr;
         showToast("✅ Plan guardado y asignado al cliente");
       } else {
         showToast("✅ Plantilla guardada correctamente");
@@ -1422,50 +1440,17 @@ export default function DietGenerator({ clientId, clientName, onBack, clientMode
     try {
       const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 
-      // Desactivar TODAS las asignaciones anteriores del cliente (pasan al historial)
-      await supabase
-        .from("diet_assignments")
-        .update({ active: false })
-        .eq("client_id", clientId);
+      // 1. Crear la dieta completa (si falla, la dieta actual sigue intacta)
+      const pid = await createDietPlan(`Mi dieta — ${today}`, "__CLIENT_GENERATED__");
 
-      const { data: planRow, error: planErr } = await supabase
-        .from("diet_plans")
-        .insert({
-          name:        `Mi dieta — ${today}`,
-          kcal_on:     macrosOn.kcal,      kcal_off:     macrosOff.kcal,
-          protein_on:  macrosOn.protein_g, protein_off:  macrosOff.protein_g,
-          carbs_on:    macrosOn.carbs_g,   carbs_off:    macrosOff.carbs_g,
-          fat_on:      macrosOn.fat_g,     fat_off:      macrosOff.fat_g,
-          notes:       "__CLIENT_GENERATED__",
-        })
-        .select("id").single();
-
-      if (planErr || !planRow) throw planErr ?? new Error("No plan id");
-      const pid = planRow.id;
-
-      for (let i = 0; i < planOn.length; i++) {
-        const meal = planOn[i];
-        const { data: mealRow, error: mErr } = await supabase
-          .from("diet_meals")
-          .insert({ plan_id: pid, name: meal.name, emoji: meal.emoji, day_type: "both", sort_order: i })
-          .select("id").single();
-        if (mErr || !mealRow) throw mErr ?? new Error("No meal id");
-        for (let j = 0; j < meal.options.length; j++) {
-          const opt     = meal.options[j];
-          const content = opt.foods.map(food => ({
-            label:    food.label,
-            slot:     food.macro === "protein" ? "proteina" : food.macro === "carbs" ? "hidrato" : food.macro === "fat" ? "grasa" : "extra",
-            isChoice: false,
-            note:     food.noteText ?? "",
-            items:    [{ ingId: food.ing.id, grams: food.grams }],
-          }));
-          await supabase.from("diet_options").insert({ meal_id: mealRow.id, name: opt.profileLabel, content, sort_order: j });
-        }
-      }
-
-      await supabase.from("diet_assignments").insert({
+      // 2. Solo ahora: pasar las anteriores al historial y activar la nueva
+      const { error: offErr } = await supabase.from("diet_assignments")
+        .update({ active: false }).eq("client_id", clientId);
+      if (offErr) throw offErr;
+      const { error: asgErr } = await supabase.from("diet_assignments").insert({
         client_id: clientId, plan_id: pid, active: true, source: "client",
       });
+      if (asgErr) throw asgErr;
 
       showToast("✅ ¡Dieta guardada! Ya aparece en 'Mi Plan'");
     } catch (e: any) {
