@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/fetchAll";
+import { withSignedUrls } from "../lib/photos";
 import ProgramEditor from "./ProgramEditor";
 import { AntroTable } from "./CheckInPage";
 import VisitaPresencial from "./VisitaPresencial";
@@ -280,7 +281,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       perims: p.data ?? [],
       folds: fl.data ?? [],
       fatigues: f.data ?? [],
-      photos: ph.data ?? [],
+      // Enlaces temporales (el bucket de fotos es privado)
+      photos: await withSignedUrls(ph.data ?? []),
     });
     setLoadingCheckIn(false);
   };

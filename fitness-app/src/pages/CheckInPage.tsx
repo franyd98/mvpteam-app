@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { supabase } from "../lib/supabase";
+import { photoPath, withSignedUrls } from "../lib/photos";
 import MiniChart from "../components/MiniChart";
 import type { ChartPoint } from "../components/MiniChart";
 type Profile = { id: string; full_name: string; role: string };
@@ -452,7 +453,8 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     setPerimLogs(p.data ?? []);
     setFoldLogs(fl.data ?? []);
     setFatigueLogs(f.data ?? []);
-    setPhotoLogs(ph.data ?? []);
+    // Enlaces temporales (el bucket de fotos es privado)
+    setPhotoLogs(await withSignedUrls(ph.data ?? []));
   };
 
   // ── Streak de días consecutivos con registro de peso ─────────
@@ -604,9 +606,8 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
 
   const handleDeletePhoto = async (photo: any) => {
     if (!confirm("¿Eliminar esta foto?")) return;
-    // El path es la parte tras el nombre del bucket en la URL pública
-    const marker = "/checkin-photos/";
-    const path = photo.url.includes(marker) ? photo.url.split(marker)[1] : null;
+    // Ruta del archivo a partir de la URL guardada en la BD (no del enlace temporal)
+    const path = photoPath(photo.storage_url ?? photo.url);
     if (path) await supabase.storage.from("checkin-photos").remove([path]);
     await supabase.from("checkin_photos").delete().eq("id", photo.id);
     setPhotoLogs(prev => prev.filter(p => p.id !== photo.id));
