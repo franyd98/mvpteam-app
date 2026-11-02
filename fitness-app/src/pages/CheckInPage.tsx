@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { supabase } from "../lib/supabase";
+import { localDay } from "../lib/resumePosition";
 import { photoPath, withSignedUrls } from "../lib/photos";
 import MiniChart from "../components/MiniChart";
 import type { ChartPoint } from "../components/MiniChart";
@@ -8,7 +9,7 @@ type Tab = "hoy" | "progreso" | "registro";
 type RegTab = "peso" | "perimetros" | "pliegues" | "fatiga" | "antropometria" | "fotos";
 type EnergyLevel = "bajo" | "normal" | "alto" | "";
 
-const today = () => new Date().toISOString().split("T")[0];
+const today = () => localDay(new Date());
 const fmtDate = (d: string) =>
   new Date(d + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
 const fmtShort = (d: string) =>
@@ -464,9 +465,9 @@ export default function CheckInPage({ profile, onBack }: { profile: Profile; onB
     let count = 0;
     const d = new Date();
     // Si hoy todavía no hay registro, empieza a contar desde ayer
-    if (!dates.has(d.toISOString().split("T")[0])) d.setDate(d.getDate() - 1);
+    if (!dates.has(localDay(d))) d.setDate(d.getDate() - 1);
     while (true) {
-      const iso = d.toISOString().split("T")[0];
+      const iso = localDay(d);
       if (dates.has(iso)) { count++; d.setDate(d.getDate() - 1); }
       else break;
     }

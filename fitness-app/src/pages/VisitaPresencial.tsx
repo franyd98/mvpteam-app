@@ -3,10 +3,11 @@
 
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import { localDay } from "../lib/resumePosition";
 
 type Profile = { id: string; full_name: string; role: string };
 
-const todayStr = () => new Date().toISOString().split("T")[0];
+const todayStr = () => localDay(new Date());
 
 // ── Input helpers ────────────────────────────────────────────────
 function Field({ label, value, onChange, unit = "", step = "0.1", placeholder = "—" }: {

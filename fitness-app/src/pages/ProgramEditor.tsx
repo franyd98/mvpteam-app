@@ -148,12 +148,12 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     return total;
   };
   /** true = se puede continuar. Pregunta solo si hay registros (o no se pudo comprobar). */
-  const confirmHistoryLoss = async (setIds: number[], what: string): Promise<boolean> => {
+  const confirmHistoryLoss = async (setIds: number[], what: string, verb = "tiene"): Promise<boolean> => {
     const n = await countLogsForSets(setIds);
     if (n === 0) return true;
     if (n < 0) return confirm(`No se ha podido comprobar si ${what} tiene pesos registrados por el cliente.\n\n¿Continuar de todos modos?`);
     return confirm(
-      `⚠️ ${what} tiene ${n} serie${n === 1 ? "" : "s"} ya registrada${n === 1 ? "" : "s"} por el cliente.\n\n` +
+      `⚠️ ${what} ${verb} ${n} serie${n === 1 ? "" : "s"} ya registrada${n === 1 ? "" : "s"} por el cliente.\n\n` +
       `Si continúas, esos pesos quedarán desvinculados y el cliente dejará de verlos en su historial y estadísticas.\n\n` +
       `¿Continuar de todos modos?`,
     );
@@ -405,6 +405,8 @@ export default function ProgramEditor({ programId, onBack }: Props) {
 
   const removeExercise = async (meId: number, exName: string) => {
     if (!confirm(`¿Quitar "${exName}" de este microciclo?`)) return;
+    const exToRemove = currentMc?.exercises.find(e => e.id === meId);
+    if (!(await confirmHistoryLoss(setIdsOf(exToRemove ? [exToRemove] : []), `"${exName}"`))) return;
     setSaving(true);
     await supabase.from("microcycle_exercises").delete().eq("id", meId);
     setProgram(p => {
@@ -449,8 +451,9 @@ export default function ProgramEditor({ programId, onBack }: Props) {
 
   const removeSet = async (ex: EditorEx) => {
     if (ex.sets.length <= 1) return;
-    setSaving(true);
     const lastSet = ex.sets[ex.sets.length - 1];
+    if (!(await confirmHistoryLoss([lastSet.id], `La serie ${lastSet.set_number} de "${ex.name}"`))) return;
+    setSaving(true);
     await supabase.from("exercise_sets").delete().eq("id", lastSet.id);
     setProgram(p => {
       if (!p) return p;
@@ -676,6 +679,27 @@ export default function ProgramEditor({ programId, onBack }: Props) {
       `• Se ajustará el número de series.\n` +
       `• Los valores de reps/RIR que ya existan no se tocarán.`
     )) return;
+
+    // Calcular de antemano qué series se borrarán (ejercicios que sobran + series de más)
+    // para avisar si el cliente ya tiene pesos registrados en ellas.
+    {
+      const srcSorted = [...currentMc.exercises].sort((a, b) => a.order_index - b.order_index);
+      const atRisk: number[] = [];
+      for (const mc of otherMcs) {
+        const destSorted = [...mc.exercises].sort((a, b) => a.order_index - b.order_index);
+        const used = new Set<number>();
+        for (const srcEx of srcSorted) {
+          const d = destSorted.find(e => e.exercise_id === srcEx.exercise_id && !used.has(e.id));
+          if (d) {
+            used.add(d.id);
+            const extra = [...d.sets].sort((a, b) => a.set_number - b.set_number).slice(srcEx.sets.length);
+            atRisk.push(...extra.map(s => s.id));
+          }
+        }
+        for (const dEx of destSorted) if (!used.has(dEx.id)) atRisk.push(...dEx.sets.map(s => s.id));
+      }
+      if (!(await confirmHistoryLoss(atRisk, "La sincronización", "borraría"))) return;
+    }
 
     setSaving(true);
 

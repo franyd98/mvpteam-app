@@ -4,7 +4,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { buildVideoFinder, fixVideoUrl } from "../lib/videoMatch";
 import { fetchAllRows } from "../lib/fetchAll";
-import { currentMicrocycleForDay, resumePosition } from "../lib/resumePosition";
+import { currentMicrocycleForDay, localDay, resumePosition } from "../lib/resumePosition";
 import { fetchDayMarks, fetchSubs, saveDayMark, saveSub } from "../lib/clientPrefs";
 import VIDEO_CATALOG from "../data/videoCatalog.json";
 
@@ -1043,11 +1043,11 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   // ── Render del widget streak + semana ────────────────────────
   const renderStreakWidget = () => {
-    const logDates = new Set(logs.map(l => l.loggedAt.slice(0, 10)));
+    const logDates = new Set(logs.map(l => localDay(l.loggedAt)));
     const trainedDates = new Set([...logDates, ...manualTrainDays]);
 
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = localDay(now);
 
     // ── Semana actual (L a D) ──
     const dow = now.getDay();
@@ -1055,7 +1055,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     const weekDays = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(now);
       d.setDate(now.getDate() + mondayOffset + i);
-      return d.toISOString().slice(0, 10);
+      return localDay(d);
     });
     const mondayStr = weekDays[0]; // límite inferior del streak
     const DAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
@@ -1066,7 +1066,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     let restConsec = 0;
     const checkDate = new Date();
     for (let i = 0; i < 14; i++) {
-      const ds = checkDate.toISOString().slice(0, 10);
+      const ds = localDay(checkDate);
       if (ds < mondayStr) break; // no pasar del lunes de esta semana
       if (trainedDates.has(ds)) { streak++; restConsec = 0; }
       else { restConsec++; if (restConsec > 1) break; }
@@ -1078,7 +1078,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
     let consecWithoutRest = 0;
     const cd2 = new Date();
     for (let i = 0; i < 14; i++) {
-      const ds = cd2.toISOString().slice(0, 10);
+      const ds = localDay(cd2);
       if (trainedDates.has(ds) && !manualRestDays.has(ds)) {
         consecWithoutRest++;
         cd2.setDate(cd2.getDate() - 1);
@@ -1734,9 +1734,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
       {/* ── Modal: Calendario mensual de entrenamientos ── */}
       {showCalendar && (() => {
-        const logDates = new Set(logs.map(l => l.loggedAt.slice(0, 10)));
+        const logDates = new Set(logs.map(l => localDay(l.loggedAt)));
         const trainedDates = new Set([...logDates, ...manualTrainDays]);
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayStr = localDay(new Date());
         const firstDay = new Date(calYear, calMonth, 1);
         const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
         // Día de la semana del primer día (0=Dom → ajustamos a Lunes=0)

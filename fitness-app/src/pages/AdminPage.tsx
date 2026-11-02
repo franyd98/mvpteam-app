@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/fetchAll";
+import { localDay } from "../lib/resumePosition";
 import { withSignedUrls } from "../lib/photos";
 import ProgramEditor from "./ProgramEditor";
 import { AntroTable } from "./CheckInPage";
@@ -138,7 +139,7 @@ export default function AdminPage({ profile }: { profile: Profile }) {
     for (const r of (data ?? []) as { client_id: string; logged_at: string }[]) {
       if (!byClient[r.client_id] || r.logged_at > byClient[r.client_id]) byClient[r.client_id] = r.logged_at;
       if (!daysSet[r.client_id]) daysSet[r.client_id] = new Set();
-      daysSet[r.client_id].add(r.logged_at.slice(0, 10));
+      daysSet[r.client_id].add(localDay(r.logged_at));
     }
     const now = Date.now();
     setClientActivities(ids.map(id => ({
@@ -868,11 +869,11 @@ export default function AdminPage({ profile }: { profile: Profile }) {
 
         {/* Strip adherencia — últimos 14 días */}
         {clientLogs.length > 0 && (() => {
-          const trainedDates = new Set(clientLogs.map(l => l.logged_at.slice(0, 10)));
+          const trainedDates = new Set(clientLogs.map(l => localDay(l.logged_at)));
           const today = new Date();
           const days = Array.from({ length: 14 }, (_, i) => {
             const d = new Date(today); d.setDate(d.getDate() - 13 + i);
-            return d.toISOString().slice(0, 10);
+            return localDay(d);
           });
           return (
             <div className="flex gap-1 px-4 py-2 max-w-3xl mx-auto">
