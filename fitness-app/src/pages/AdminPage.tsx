@@ -54,6 +54,9 @@ export default function AdminPage({ profile }: { profile: Profile }) {
   // Vista de progreso de cliente
   const [viewingClient, setViewingClient] = useState<Profile | null>(null);
   const [clientLogs, setClientLogs] = useState<ClientLog[]>([]);
+  // Lo que marca el cliente en su app: días entrenado/descanso y cambios de ejercicio
+  const [clientDayMarks, setClientDayMarks] = useState<Map<string, "trained" | "rest">>(new Map());
+  const [clientSubs, setClientSubs] = useState<{ day: string; mc: number; pos: number; original: string; nuevo: string }[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [selectedTrainingDay, setSelectedTrainingDay] = useState<string | null>(null);
   const [clientViewTab, setClientViewTab] = useState<"entreno" | "checkin" | "dieta">("entreno");
@@ -312,6 +315,34 @@ export default function AdminPage({ profile }: { profile: Profile }) {
       .range(from, to) as unknown as PromiseLike<{ data: ClientLog[] | null; error: { message: string } | null }>);
     setClientLogs(data);
     setLoadingLogs(false);
+    loadClientMarksAndSubs(client.id);
+  };
+
+  // Días marcados y cambios de ejercicio del cliente (tablas de fase4_tablas_cliente.sql).
+  // Si las tablas no existen todavía, simplemente no se muestra nada.
+  const loadClientMarksAndSubs = async (clientId: string) => {
+    setClientDayMarks(new Map());
+    setClientSubs([]);
+    const [marksRes, subsRes] = await Promise.all([
+      supabase.from("client_day_marks").select("day, status").eq("client_id", clientId),
+      supabase.from("client_substitutions")
+        .select("name, microcycle_exercises ( order_index, exercises ( name ), microcycles ( number, program_days ( name ) ) )")
+        .eq("client_id", clientId),
+    ]);
+    if (!marksRes.error && marksRes.data) {
+      setClientDayMarks(new Map(marksRes.data.map((r: any) => [String(r.day), r.status])));
+    }
+    if (!subsRes.error && subsRes.data) {
+      const rows = (subsRes.data as any[]).map(r => ({
+        day:      r.microcycle_exercises?.microcycles?.program_days?.name ?? "?",
+        mc:       r.microcycle_exercises?.microcycles?.number ?? 0,
+        pos:      r.microcycle_exercises?.order_index ?? 0,
+        original: r.microcycle_exercises?.exercises?.name ?? "?",
+        nuevo:    r.name,
+      }));
+      rows.sort((a, b) => a.day.localeCompare(b.day) || a.mc - b.mc || a.pos - b.pos);
+      setClientSubs(rows);
+    }
   };
 
   const handleAssign = async (programId: number, clientId: string, clientName: string) => {
@@ -867,8 +898,8 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           )}
         </div>
 
-        {/* Strip adherencia — últimos 14 días */}
-        {clientLogs.length > 0 && (() => {
+        {/* Strip adherencia — últimos 14 días (registros + días que marca el cliente) */}
+        {(clientLogs.length > 0 || clientDayMarks.size > 0) && (() => {
           const trainedDates = new Set(clientLogs.map(l => localDay(l.logged_at)));
           const today = new Date();
           const days = Array.from({ length: 14 }, (_, i) => {
@@ -877,14 +908,46 @@ export default function AdminPage({ profile }: { profile: Profile }) {
           });
           return (
             <div className="flex gap-1 px-4 py-2 max-w-3xl mx-auto">
-              {days.map(day => (
-                <div key={day} className="flex-1 rounded-sm transition-all"
-                  style={{ height: 5, background: trainedDates.has(day) ? "#8B1A2F" : "#1E1E1E" }}
-                  title={day} />
-              ))}
+              {days.map(day => {
+                const mark = clientDayMarks.get(day);
+                const kind = mark === "rest" ? "rest"
+                  : trainedDates.has(day) ? "logged"
+                  : mark === "trained" ? "marked" : "none";
+                const color = { logged: "#8B1A2F", marked: "#C0292B66", rest: "#3a3f4b", none: "#1E1E1E" }[kind];
+                const label = { logged: "entreno registrado", marked: "marcado entrenado (sin registrar pesos)", rest: "descanso", none: "sin actividad" }[kind];
+                return (
+                  <div key={day} className="flex-1 rounded-sm transition-all"
+                    style={{ height: 5, background: color }}
+                    title={`${day} · ${label}`} />
+                );
+              })}
             </div>
           );
         })()}
+        {clientDayMarks.size > 0 && (
+          <div className="flex gap-3 px-4 pb-1 max-w-3xl mx-auto text-[10px]" style={{ color: "#666" }}>
+            <span><span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: "#8B1A2F" }} />Registrado</span>
+            <span><span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: "#C0292B66" }} />Marcado entrenado</span>
+            <span><span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: "#3a3f4b" }} />Descanso</span>
+          </div>
+        )}
+        {clientSubs.length > 0 && (
+          <details className="px-4 py-2 max-w-3xl mx-auto text-xs" style={{ color: "#888" }}>
+            <summary className="cursor-pointer select-none" style={{ color: "#aaa" }}>
+              <i className="ti ti-refresh mr-1" style={{ fontSize: 12 }} />
+              El cliente ha cambiado {clientSubs.length} ejercicio{clientSubs.length === 1 ? "" : "s"}
+            </summary>
+            <ul className="mt-2 space-y-1">
+              {clientSubs.map((c, i) => (
+                <li key={i}>
+                  <span style={{ color: "#666" }}>{c.day} · Mc{c.mc}:</span>{" "}
+                  <span className="line-through" style={{ color: "#555" }}>{c.original}</span>{" → "}
+                  <span style={{ color: "#ddd" }}>{c.nuevo}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
 
         {/* Sub-tabs + botón Visita Presencial */}
         <div className="flex items-center gap-1 px-3 py-2 max-w-3xl mx-auto overflow-x-auto scrollbar-hide"

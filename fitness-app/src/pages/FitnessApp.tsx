@@ -914,6 +914,16 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
   const editingPreviousLog = editing && editingCurrExName === editingPrevExName
     ? logIndex.previous(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, editing.setNumber)
     : undefined;
+  // Serie anterior de este mismo ejercicio y microciclo (ej. serie 1 al abrir la 2):
+  // sugerencia de peso cuando no hay semana anterior (Mc 1 o ejercicio nuevo)
+  const editingSessionLog = (() => {
+    if (!editing) return undefined;
+    for (let n = editing.setNumber - 1; n >= 1; n--) {
+      const l = logIndex.latest(editing.dayId, editing.microcycleNumber, editing.exerciseIndex, n);
+      if (l) return l;
+    }
+    return undefined;
+  })();
 
   // ── Pantallas de carga / sin programa ──────────────────────────
 
@@ -1897,6 +1907,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
           weightUnit={settings.weightUnit}
           existingLog={editingExistingLog}
           previousLog={editingPreviousLog}
+          sessionLog={editingSessionLog}
           onSave={handleSave}
           onCancel={() => setEditing(null)}
           onDelete={editingExistingLog ? handleDelete : undefined}

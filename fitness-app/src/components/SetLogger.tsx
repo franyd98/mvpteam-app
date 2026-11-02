@@ -21,6 +21,7 @@ type Props = {
   weightUnit: WeightUnit;
   existingLog?: SetLog;
   previousLog?: SetLog;
+  sessionLog?: SetLog;          // serie anterior de HOY (sugerencia si no hay semana anterior)
   onSave: (data: { weight: number; reps: number; rpe: number; rp_reps?: number; drop_weight?: number; drop_reps?: number }) => void;
   onCancel: () => void;
   onDelete?: () => void;
@@ -36,6 +37,7 @@ export default function SetLogger({
   weightUnit,
   existingLog,
   previousLog,
+  sessionLog,
   onSave,
   onCancel,
   onDelete,
@@ -52,15 +54,11 @@ export default function SetLogger({
   const isDrop = hasDrop && isLastSet;
 
   // Estados principales
-  // Pre-rellena desde existingLog si ya hay registro; si no, desde previousLog como sugerencia
-  const [weight, setWeight] = useState<string>(
-    existingLog ? String(existingLog.weight) :
-    previousLog ? String(previousLog.weight) : ""
-  );
-  const [reps, setReps] = useState<string>(
-    existingLog ? String(existingLog.reps) :
-    previousLog ? String(previousLog.reps) : ""
-  );
+  // Pre-rellena desde existingLog si ya hay registro; si no, desde previousLog (semana
+  // anterior) como sugerencia; y si tampoco hay, desde la serie anterior de hoy.
+  const suggestion = existingLog ?? previousLog ?? sessionLog;
+  const [weight, setWeight] = useState<string>(suggestion ? String(suggestion.weight) : "");
+  const [reps, setReps] = useState<string>(suggestion ? String(suggestion.reps) : "");
   // Sólo pre-rellenar RPE si se guardó un valor positivo — rpe=0 significa "no introducido"
   const [rpe,    setRpe]    = useState<string>(existingLog && (existingLog.rpe ?? 0) > 0 ? String(existingLog.rpe) : "");
   // Estados extra para R&P y Drop Set
