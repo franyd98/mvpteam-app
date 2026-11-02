@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { buildVideoFinder, fixVideoUrl } from "../lib/videoMatch";
+import VIDEO_CATALOG from "../data/videoCatalog.json";
 
 // ── Cola de guardado offline (persistente en localStorage) ───────
 type PendingSaveRow = {
@@ -110,13 +111,38 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
       return s ? new Set(JSON.parse(s)) : new Set();
     } catch { return new Set(); }
   });
-  const toggleManualRest = (ds: string) => {
-    setManualRestDays(prev => {
-      const next = new Set(prev);
-      if (next.has(ds)) next.delete(ds); else next.add(ds);
-      try { localStorage.setItem("mvp_manual_rest_days", JSON.stringify([...next])); } catch {}
-      return next;
-    });
+  // Días entrenados marcados manualmente (Pole, cardio, entreno sin apuntar…)
+  const [manualTrainDays, setManualTrainDays] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem("mvp_manual_train_days");
+      return s ? new Set(JSON.parse(s)) : new Set();
+    } catch { return new Set(); }
+  });
+  const saveDaySets = (train: Set<string>, rest: Set<string>) => {
+    setManualTrainDays(train);
+    setManualRestDays(rest);
+    try {
+      localStorage.setItem("mvp_manual_train_days", JSON.stringify([...train]));
+      localStorage.setItem("mvp_manual_rest_days",  JSON.stringify([...rest]));
+    } catch {}
+  };
+  // Al tocar un día:
+  //  · sin registros en la app → vacío → entrenado → descanso → vacío
+  //  · con registros (ya cuenta como entrenado) → entrenado ↔ descanso
+  const cycleDayStatus = (ds: string, hasLogs: boolean) => {
+    const train = new Set(manualTrainDays);
+    const rest  = new Set(manualRestDays);
+    if (hasLogs) {
+      train.delete(ds);
+      if (rest.has(ds)) rest.delete(ds); else rest.add(ds);
+    } else if (rest.has(ds)) {
+      rest.delete(ds);                      // descanso → vacío
+    } else if (train.has(ds)) {
+      train.delete(ds); rest.add(ds);       // entrenado → descanso
+    } else {
+      train.add(ds);                        // vacío → entrenado
+    }
+    saveDaySets(train, rest);
   };
 
   // Sustituciones de ejercicio — persisten en localStorage por cliente
@@ -186,7 +212,12 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   // Vídeo de un ejercicio: el suyo si lo tiene; si no, el del ejercicio del
   // catálogo con el nombre equivalente (mayúsculas, acentos, prefijos, etc.).
-  const findVideo = useMemo(() => buildVideoFinder(dbExercises), [dbExercises]);
+  // Catálogo = ejercicios de la BD + catálogo de vídeos incluido en la app
+  // (por si la BD no devuelve todos los ejercicios al cliente).
+  const findVideo = useMemo(
+    () => buildVideoFinder([...dbExercises, ...VIDEO_CATALOG]),
+    [dbExercises],
+  );
   const resolveVideo = useCallback(
     (ref: string | null | undefined, name: string) => fixVideoUrl(ref) ?? findVideo(name),
     [findVideo],
@@ -816,8 +847,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
   // ── Render del widget streak + semana ────────────────────────
   const renderStreakWidget = () => {
-    const trainedDates = new Set(logs.map(l => l.loggedAt.slice(0, 10)));
-    if (trainedDates.size === 0) return null;
+    const logDates = new Set(logs.map(l => l.loggedAt.slice(0, 10)));
+    const trainedDates = new Set([...logDates, ...manualTrainDays]);
 
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
@@ -940,7 +971,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   {DAY_LABELS[i]}
                 </span>
                 <button
-                  onClick={() => canToggle && toggleManualRest(ds)}
+                  onClick={() => canToggle && cycleDayStatus(ds, logDates.has(ds))}
                   className="w-full flex items-center justify-center transition-all active:opacity-60"
                   style={{
                     aspectRatio: "1 / 1",
@@ -951,7 +982,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                     color,
                     boxShadow: shadow,
                   }}
-                  title={canToggle ? (isManualRest ? "Quitar descanso" : "Marcar descanso") : undefined}
+                  title={canToggle ? "Toca para marcar entrenado / descanso" : undefined}
                 >
                   {showAsTrained
                     ? <i className="ti ti-check" style={{ fontSize: 12 }} />
@@ -963,6 +994,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
             );
           })}
         </div>
+        <p className="text-center text-[11px] pb-3 -mt-1" style={{ color: "#666" }}>
+          Toca un día para marcarlo como <span style={{ color: "#aaa" }}>entrenado</span> o <span style={{ color: "#aaa" }}>descanso</span>
+        </p>
       </div>
     );
   };
@@ -1491,7 +1525,8 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
 
       {/* ── Modal: Calendario mensual de entrenamientos ── */}
       {showCalendar && (() => {
-        const trainedDates = new Set(logs.map(l => l.loggedAt.slice(0, 10)));
+        const logDates = new Set(logs.map(l => l.loggedAt.slice(0, 10)));
+        const trainedDates = new Set([...logDates, ...manualTrainDays]);
         const todayStr = new Date().toISOString().slice(0, 10);
         const firstDay = new Date(calYear, calMonth, 1);
         const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -1503,7 +1538,7 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
         // Contar días entrenados en el mes
         const trainedThisMonth = Array.from({ length: daysInMonth }, (_, i) => {
           const d = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`;
-          return trainedDates.has(d);
+          return trainedDates.has(d) && !manualRestDays.has(d);
         }).filter(Boolean).length;
 
         // Total días pasados del mes (hasta hoy)
@@ -1603,16 +1638,18 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   }
 
                   return (
-                    <div key={day}
-                      className="aspect-square flex flex-col items-center justify-center rounded-xl text-xs font-black relative transition-all"
-                      style={{ background: bg, border, color, boxShadow: shadow }}>
+                    <button key={day}
+                      onClick={() => isPast && cycleDayStatus(ds, logDates.has(ds))}
+                      disabled={!isPast}
+                      className="aspect-square flex flex-col items-center justify-center rounded-xl text-xs font-black relative transition-all active:opacity-60"
+                      style={{ background: bg, border, color, boxShadow: shadow, minHeight: 0 }}>
                       {showTrained
                         ? <i className="ti ti-check" style={{ fontSize: 11 }} />
                         : isRest
                           ? <i className="ti ti-moon" style={{ fontSize: 10 }} />
                           : <span>{day}</span>
                       }
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -1631,6 +1668,9 @@ export default function FitnessApp({ profile }: { profile: Profile }) {
                   </span>
                 ))}
               </div>
+              <p className="text-center text-[11px] -mt-3 pb-6" style={{ color: "#666" }}>
+                Toca un día pasado para marcarlo como entrenado o descanso
+              </p>
             </div>
           </div>
         );
