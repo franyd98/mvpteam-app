@@ -653,21 +653,27 @@ export default function ProgramEditor({ programId, onBack }: Props) {
     setSaving(true);
 
     for (const mc of otherMcs) {
-      // Mapa exercise_id → EditorEx del microciclo destino
-      const destMap = new Map(mc.exercises.map(e => [e.exercise_id, e]));
-      // IDs de ejercicios que deben estar (según el mc origen)
-      const srcIds = new Set(currentMc.exercises.map(e => e.exercise_id));
+      // Emparejar 1 a 1: cada fila del origen se queda con UNA fila del destino
+      // (mismo exercise_id, por orden). Así los duplicados no quedan "invisibles".
+      const destSorted = [...mc.exercises].sort((a, b) => a.order_index - b.order_index);
+      const srcSorted  = [...currentMc.exercises].sort((a, b) => a.order_index - b.order_index);
+      const used = new Set<number>();
+      const matchFor = new Map<number, typeof destSorted[number]>(); // src.id → dest
+      for (const srcEx of srcSorted) {
+        const d = destSorted.find(e => e.exercise_id === srcEx.exercise_id && !used.has(e.id));
+        if (d) { used.add(d.id); matchFor.set(srcEx.id, d); }
+      }
 
-      // 1. Eliminar ejercicios del destino que no están en el origen
-      for (const dEx of mc.exercises) {
-        if (!srcIds.has(dEx.exercise_id)) {
+      // 1. Eliminar filas del destino sin pareja (ejercicios que sobran o duplicados)
+      for (const dEx of destSorted) {
+        if (!used.has(dEx.id)) {
           await supabase.from("microcycle_exercises").delete().eq("id", dEx.id);
         }
       }
 
       // 2. Para cada ejercicio del origen, añadir o ajustar en el destino
-      for (const srcEx of currentMc.exercises) {
-        const destEx = destMap.get(srcEx.exercise_id);
+      for (const srcEx of srcSorted) {
+        const destEx = matchFor.get(srcEx.id);
 
         if (!destEx) {
           // 2a. Ejercicio nuevo: crear con series vacías
